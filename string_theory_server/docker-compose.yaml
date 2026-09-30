@@ -1,0 +1,30 @@
+services:
+  # Development services
+  postgres:
+    image: ghcr.io/serverpod/postgres:16
+    ports:
+      - "8090:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: string_theory
+      POSTGRES_PASSWORD: "kFWRLLXfX9MftHqdvZLbyxB4ZOwINXQC"
+    volumes:
+      - string_theory_data:/var/lib/postgresql/data
+
+
+  # Test services
+  postgres_test:
+    image: ghcr.io/serverpod/postgres:16
+    ports:
+      - "9090:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: string_theory_test
+      POSTGRES_PASSWORD: "WdpOsfODtQAerx3UBObqFkOTBCt0-BzX"
+    volumes:
+      - string_theory_test_data:/var/lib/postgresql/data
+
+
+volumes:
+  string_theory_data:
+  string_theory_test_data:

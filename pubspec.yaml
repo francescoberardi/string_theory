@@ -1,0 +1,11 @@
+name: _
+publish_to: none
+
+environment:
+  sdk: '^3.12.2'
+
+workspace:
+  - string_theory_client
+  - string_theory_server
+  - string_theory_flutter
+
