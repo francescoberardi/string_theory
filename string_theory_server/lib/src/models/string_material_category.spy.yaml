@@ -1,0 +1,10 @@
+### String material category classification for tension decay calculations.
+enum: StringMaterialCategory
+values:
+  - coPoly
+  - multifilament
+  - syntheticGut
+  - naturalGut
+  - kevlar
+  - hybrid
+  - other

@@ -1,0 +1,14 @@
+class: Racquet
+table: racquet
+fields:
+  userId: int
+  name: String
+  brand: String?
+  model: String?
+  isPrimary: bool, default=false
+  createdAt: DateTime, default=now
+  updatedAt: DateTime, default=now
+  activeStringJob: StringJob?, relation(optional, onDelete=SetNull)
+indexes:
+  racquet_user_id_idx:
+    fields: userId

@@ -15,9 +15,12 @@ import 'package:serverpod_auth_core_server/serverpod_auth_core_server.dart'
     as _iacs;
 import 'package:serverpod_auth_idp_server/serverpod_auth_idp_server.dart'
     as _iais;
+import 'package:string_theory_server/src/generated/string_material_category.dart'
+    as _iqkmcx65;
 import '../auth/anonymous_idp_endpoint.dart' as _in0zita6;
 import '../auth/email_idp_endpoint.dart' as _iuc1hd5t;
 import '../auth/jwt_refresh_endpoint.dart' as _inwq3ztq;
+import '../endpoints/bag_endpoint.dart' as _i30u42n8;
 import '../greetings/greeting_endpoint.dart' as _il624ik7;
 
 class Endpoints extends _is.EndpointDispatch {
@@ -40,6 +43,12 @@ class Endpoints extends _is.EndpointDispatch {
         ..initialize(
           server,
           'jwtRefresh',
+          null,
+        ),
+      'bag': _i30u42n8.BagEndpoint()
+        ..initialize(
+          server,
+          'bag',
           null,
         ),
       'greeting': _il624ik7.GreetingEndpoint()
@@ -278,6 +287,132 @@ class Endpoints extends _is.EndpointDispatch {
                         session,
                         refreshToken: params['refreshToken'],
                       ),
+        ),
+      },
+    );
+    connectors['bag'] = _is.EndpointConnector(
+      name: 'bag',
+      endpoint: endpoints['bag']!,
+      methodConnectors: {
+        'getVirtualBag': _is.MethodConnector(
+          name: 'getVirtualBag',
+          params: {},
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['bag'] as _i30u42n8.BagEndpoint)
+                  .getVirtualBag(session),
+        ),
+        'createRacquet': _is.MethodConnector(
+          name: 'createRacquet',
+          params: {
+            'racquetName': _is.ParameterDescription(
+              name: 'racquetName',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+            'brand': _is.ParameterDescription(
+              name: 'brand',
+              type: _is.getType<String?>(),
+              nullable: true,
+            ),
+            'model': _is.ParameterDescription(
+              name: 'model',
+              type: _is.getType<String?>(),
+              nullable: true,
+            ),
+            'isPrimary': _is.ParameterDescription(
+              name: 'isPrimary',
+              type: _is.getType<bool?>(),
+              nullable: true,
+            ),
+            'materialCategory': _is.ParameterDescription(
+              name: 'materialCategory',
+              type: _is.getType<_iqkmcx65.StringMaterialCategory?>(),
+              nullable: true,
+            ),
+            'stringBrand': _is.ParameterDescription(
+              name: 'stringBrand',
+              type: _is.getType<String?>(),
+              nullable: true,
+            ),
+            'stringModel': _is.ParameterDescription(
+              name: 'stringModel',
+              type: _is.getType<String?>(),
+              nullable: true,
+            ),
+            'tension': _is.ParameterDescription(
+              name: 'tension',
+              type: _is.getType<double?>(),
+              nullable: true,
+            ),
+            'maxRatedHours': _is.ParameterDescription(
+              name: 'maxRatedHours',
+              type: _is.getType<double?>(),
+              nullable: true,
+            ),
+            'stringingDate': _is.ParameterDescription(
+              name: 'stringingDate',
+              type: _is.getType<DateTime?>(),
+              nullable: true,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['bag'] as _i30u42n8.BagEndpoint).createRacquet(
+                    session,
+                    racquetName: params['racquetName'],
+                    brand: params['brand'],
+                    model: params['model'],
+                    isPrimary: params['isPrimary'],
+                    materialCategory: params['materialCategory'],
+                    stringBrand: params['stringBrand'],
+                    stringModel: params['stringModel'],
+                    tension: params['tension'],
+                    maxRatedHours: params['maxRatedHours'],
+                    stringingDate: params['stringingDate'],
+                  ),
+        ),
+        'setPrimary': _is.MethodConnector(
+          name: 'setPrimary',
+          params: {
+            'racquetId': _is.ParameterDescription(
+              name: 'racquetId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['bag'] as _i30u42n8.BagEndpoint).setPrimary(
+                session,
+                racquetId: params['racquetId'],
+              ),
+        ),
+        'deleteRacquet': _is.MethodConnector(
+          name: 'deleteRacquet',
+          params: {
+            'racquetId': _is.ParameterDescription(
+              name: 'racquetId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['bag'] as _i30u42n8.BagEndpoint).deleteRacquet(
+                    session,
+                    racquetId: params['racquetId'],
+                  ),
         ),
       },
     );

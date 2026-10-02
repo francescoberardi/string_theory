@@ -19,6 +19,9 @@ import 'package:serverpod_auth_core_server/serverpod_auth_core_server.dart'
 import 'package:serverpod_test/serverpod_test.dart' as _ist;
 import 'package:string_theory_server/src/generated/greetings/greeting.dart'
     as _i6qn1rsc;
+import 'package:string_theory_server/src/generated/racquet.dart' as _iwugozzn;
+import 'package:string_theory_server/src/generated/string_material_category.dart'
+    as _iqkmcx65;
 import 'package:string_theory_server/src/generated/protocol.dart';
 import 'package:string_theory_server/src/generated/endpoints.dart';
 export 'package:serverpod_test/serverpod_test_public_exports.dart';
@@ -158,6 +161,8 @@ class TestEndpoints {
 
   late final _JwtRefreshEndpoint jwtRefresh;
 
+  late final _BagEndpoint bag;
+
   late final _GreetingEndpoint greeting;
 }
 
@@ -177,6 +182,10 @@ class _InternalTestEndpoints extends TestEndpoints
       serializationManager,
     );
     jwtRefresh = _JwtRefreshEndpoint(
+      endpoints,
+      serializationManager,
+    );
+    bag = _BagEndpoint(
       endpoints,
       serializationManager,
     );
@@ -539,6 +548,160 @@ class _JwtRefreshEndpoint {
                   _localCallContext.arguments,
                 )
                 as _ida.Future<_iacs.AuthSuccess>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+}
+
+class _BagEndpoint {
+  _BagEndpoint(
+    this._endpointDispatch,
+    this._serializationManager,
+  );
+
+  final _is.EndpointDispatch _endpointDispatch;
+
+  final _is.SerializationManager _serializationManager;
+
+  _ida.Future<List<_iwugozzn.Racquet>> getVirtualBag(
+    _ist.TestSessionBuilder sessionBuilder,
+  ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'bag',
+            method: 'getVirtualBag',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'bag',
+          methodName: 'getVirtualBag',
+          parameters: _ist.testObjectToJson({}),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<List<_iwugozzn.Racquet>>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _ida.Future<_iwugozzn.Racquet> createRacquet(
+    _ist.TestSessionBuilder sessionBuilder, {
+    required String racquetName,
+    String? brand,
+    String? model,
+    bool? isPrimary,
+    _iqkmcx65.StringMaterialCategory? materialCategory,
+    String? stringBrand,
+    String? stringModel,
+    double? tension,
+    double? maxRatedHours,
+    DateTime? stringingDate,
+  }) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'bag',
+            method: 'createRacquet',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'bag',
+          methodName: 'createRacquet',
+          parameters: _ist.testObjectToJson({
+            'racquetName': racquetName,
+            'brand': brand,
+            'model': model,
+            'isPrimary': isPrimary,
+            'materialCategory': materialCategory,
+            'stringBrand': stringBrand,
+            'stringModel': stringModel,
+            'tension': tension,
+            'maxRatedHours': maxRatedHours,
+            'stringingDate': stringingDate,
+          }),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<_iwugozzn.Racquet>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _ida.Future<_iwugozzn.Racquet> setPrimary(
+    _ist.TestSessionBuilder sessionBuilder, {
+    required int racquetId,
+  }) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'bag',
+            method: 'setPrimary',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'bag',
+          methodName: 'setPrimary',
+          parameters: _ist.testObjectToJson({'racquetId': racquetId}),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<_iwugozzn.Racquet>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _ida.Future<bool> deleteRacquet(
+    _ist.TestSessionBuilder sessionBuilder, {
+    required int racquetId,
+  }) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'bag',
+            method: 'deleteRacquet',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'bag',
+          methodName: 'deleteRacquet',
+          parameters: _ist.testObjectToJson({'racquetId': racquetId}),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<bool>);
         return _localReturnValue;
       } finally {
         await _localUniqueSession.close();

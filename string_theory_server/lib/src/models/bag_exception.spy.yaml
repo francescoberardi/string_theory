@@ -1,0 +1,5 @@
+### Exception thrown during BagEndpoint operations.
+exception: BagException
+fields:
+  message: String
+  statusCode: int

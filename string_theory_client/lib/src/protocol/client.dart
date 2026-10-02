@@ -19,6 +19,9 @@ import 'package:serverpod_auth_idp_client/serverpod_auth_idp_client.dart'
 import 'package:serverpod_client/serverpod_client.dart' as _isc;
 import 'package:string_theory_client/src/protocol/greetings/greeting.dart'
     as _iowftvok;
+import 'package:string_theory_client/src/protocol/racquet.dart' as _ib48ci23;
+import 'package:string_theory_client/src/protocol/string_material_category.dart'
+    as _iwafl9xb;
 import 'protocol.dart' as _il2as5qe;
 
 /// By extending [AnonymousIdpBaseEndpoint], the anonymous identity provider endpoint
@@ -268,6 +271,73 @@ class EndpointJwtRefresh extends _iacc.EndpointRefreshJwtTokens {
       );
 }
 
+/// Endpoint for managing virtual gear bags, racquets, and string setups.
+/// {@category Endpoint}
+class EndpointBag extends _isc.EndpointRef {
+  EndpointBag(_isc.EndpointCaller caller) : super(caller);
+
+  @override
+  String get name => 'bag';
+
+  /// Returns all racquets in the virtual bag owned by the authenticated user,
+  /// eagerly loading each racquet's active string job.
+  _ida.Future<List<_ib48ci23.Racquet>> getVirtualBag() =>
+      caller.callServerEndpoint<List<_ib48ci23.Racquet>>(
+        'bag',
+        'getVirtualBag',
+        {},
+      );
+
+  /// Atomically creates a new racquet frame and its initial mounted string job
+  /// within a single database transaction.
+  _ida.Future<_ib48ci23.Racquet> createRacquet({
+    required String racquetName,
+    String? brand,
+    String? model,
+    bool? isPrimary,
+    _iwafl9xb.StringMaterialCategory? materialCategory,
+    String? stringBrand,
+    String? stringModel,
+    double? tension,
+    double? maxRatedHours,
+    DateTime? stringingDate,
+  }) => caller.callServerEndpoint<_ib48ci23.Racquet>(
+    'bag',
+    'createRacquet',
+    {
+      'racquetName': racquetName,
+      'brand': brand,
+      'model': model,
+      'isPrimary': isPrimary,
+      'materialCategory': materialCategory,
+      'stringBrand': stringBrand,
+      'stringModel': stringModel,
+      'tension': tension,
+      'maxRatedHours': maxRatedHours,
+      'stringingDate': stringingDate,
+    },
+  );
+
+  /// Sets the specified racquet as the primary racquet in the user's bag,
+  /// atomically unsetting any previous primary racquets and returning the racquet
+  /// with its active string job loaded.
+  _ida.Future<_ib48ci23.Racquet> setPrimary({required int racquetId}) =>
+      caller.callServerEndpoint<_ib48ci23.Racquet>(
+        'bag',
+        'setPrimary',
+        {'racquetId': racquetId},
+      );
+
+  /// Deletes a racquet and its associated string jobs.
+  /// Throws [BagException] if the racquet does not belong to the authenticated user.
+  _ida.Future<bool> deleteRacquet({required int racquetId}) =>
+      caller.callServerEndpoint<bool>(
+        'bag',
+        'deleteRacquet',
+        {'racquetId': racquetId},
+      );
+}
+
 /// This is an example endpoint that returns a greeting message through
 /// its [hello] method.
 /// {@category Endpoint}
@@ -327,6 +397,7 @@ class Client extends _isc.ServerpodClientShared {
     anonymousIdp = EndpointAnonymousIdp(this);
     emailIdp = EndpointEmailIdp(this);
     jwtRefresh = EndpointJwtRefresh(this);
+    bag = EndpointBag(this);
     greeting = EndpointGreeting(this);
     modules = Modules(this);
   }
@@ -337,6 +408,8 @@ class Client extends _isc.ServerpodClientShared {
 
   late final EndpointJwtRefresh jwtRefresh;
 
+  late final EndpointBag bag;
+
   late final EndpointGreeting greeting;
 
   late final Modules modules;
@@ -346,6 +419,7 @@ class Client extends _isc.ServerpodClientShared {
     'anonymousIdp': anonymousIdp,
     'emailIdp': emailIdp,
     'jwtRefresh': jwtRefresh,
+    'bag': bag,
     'greeting': greeting,
   };
 

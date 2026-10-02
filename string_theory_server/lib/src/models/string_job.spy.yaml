@@ -1,0 +1,20 @@
+class: StringJob
+table: string_job
+fields:
+  userId: int
+  racquetId: int, relation(parent=racquet, onDelete=Cascade)
+  materialCategory: StringMaterialCategory
+  brand: String?
+  model: String?
+  stringingDate: DateTime, default=now
+  installedTension: double?
+  maxRatedHours: double, default=20.0
+  totalCourtHours: double, default=0.0
+  currentHealthScore: int, default=100
+  isActive: bool, default=true
+  createdAt: DateTime, default=now
+indexes:
+  string_job_user_id_idx:
+    fields: userId
+  string_job_racquet_id_idx:
+    fields: racquetId

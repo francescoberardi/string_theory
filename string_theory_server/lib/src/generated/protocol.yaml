@@ -11,5 +11,10 @@ emailIdp:
   - hasAccount:
 jwtRefresh:
   - refreshAccessToken:
+bag:
+  - getVirtualBag:
+  - createRacquet:
+  - setPrimary:
+  - deleteRacquet:
 greeting:
   - hello:

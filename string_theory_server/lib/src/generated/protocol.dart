@@ -17,8 +17,17 @@ import 'package:serverpod_auth_core_server/serverpod_auth_core_server.dart'
     as _iacs;
 import 'package:serverpod_auth_idp_server/serverpod_auth_idp_server.dart'
     as _iais;
+import 'package:string_theory_server/src/generated/racquet.dart' as _iwugozzn;
+import 'bag_exception.dart' as _ik2s0sst;
 import 'greetings/greeting.dart' as _izw8z7ou;
+import 'racquet.dart' as _iiy1gsnd;
+import 'string_job.dart' as _ipf7mlcg;
+import 'string_material_category.dart' as _i5v32zda;
+export 'bag_exception.dart';
 export 'greetings/greeting.dart';
+export 'racquet.dart';
+export 'string_job.dart';
+export 'string_material_category.dart';
 
 class Protocol extends _is.DatabaseSerializationManager {
   Protocol._();
@@ -28,6 +37,234 @@ class Protocol extends _is.DatabaseSerializationManager {
   static final Protocol _instance = Protocol._().._registerHostProtocols();
 
   static List<_isp.TableDefinition> get targetTableDefinitions => [
+    _isp.TableDefinition(
+      name: 'racquet',
+      dartName: 'Racquet',
+      schema: 'public',
+      module: 'string_theory',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int?',
+          columnDefault: 'serial',
+        ),
+        _isp.ColumnDefinition(
+          name: 'userId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'name',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'brand',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'model',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'isPrimary',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: false,
+          dartType: 'bool',
+          columnDefault: 'false',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+          columnDefault: 'now',
+        ),
+        _isp.ColumnDefinition(
+          name: 'updatedAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+          columnDefault: 'now',
+        ),
+        _isp.ColumnDefinition(
+          name: 'activeStringJobId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: true,
+          dartType: 'int?',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'racquet_fk_0',
+          columns: ['activeStringJobId'],
+          referenceTable: 'string_job',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.setNull,
+          matchType: null,
+        ),
+      ],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'racquet_user_id_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'userId',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'string_job',
+      dartName: 'StringJob',
+      schema: 'public',
+      module: 'string_theory',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int?',
+          columnDefault: 'serial',
+        ),
+        _isp.ColumnDefinition(
+          name: 'userId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'racquetId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'materialCategory',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'protocol:StringMaterialCategory',
+        ),
+        _isp.ColumnDefinition(
+          name: 'brand',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'model',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'stringingDate',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+          columnDefault: 'now',
+        ),
+        _isp.ColumnDefinition(
+          name: 'installedTension',
+          columnType: _isp.ColumnType.doublePrecision,
+          isNullable: true,
+          dartType: 'double?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'maxRatedHours',
+          columnType: _isp.ColumnType.doublePrecision,
+          isNullable: false,
+          dartType: 'double',
+          columnDefault: '20.0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'totalCourtHours',
+          columnType: _isp.ColumnType.doublePrecision,
+          isNullable: false,
+          dartType: 'double',
+          columnDefault: '0.0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'currentHealthScore',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '100',
+        ),
+        _isp.ColumnDefinition(
+          name: 'isActive',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: false,
+          dartType: 'bool',
+          columnDefault: 'true',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+          columnDefault: 'now',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'string_job_fk_0',
+          columns: ['racquetId'],
+          referenceTable: 'racquet',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+      ],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'string_job_user_id_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'userId',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'string_job_racquet_id_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'racquetId',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
     ..._iais.Protocol.targetTableDefinitions,
     ..._iacs.Protocol.targetTableDefinitions,
     ..._isp.Protocol.targetTableDefinitions,
@@ -60,11 +297,44 @@ class Protocol extends _is.DatabaseSerializationManager {
       }
     }
 
+    if (t == _ik2s0sst.BagException) {
+      return _ik2s0sst.BagException.fromJson(data) as T;
+    }
     if (t == _izw8z7ou.Greeting) {
       return _izw8z7ou.Greeting.fromJson(data) as T;
     }
+    if (t == _iiy1gsnd.Racquet) {
+      return _iiy1gsnd.Racquet.fromJson(data) as T;
+    }
+    if (t == _ipf7mlcg.StringJob) {
+      return _ipf7mlcg.StringJob.fromJson(data) as T;
+    }
+    if (t == _i5v32zda.StringMaterialCategory) {
+      return _i5v32zda.StringMaterialCategory.fromJson(data) as T;
+    }
+    if (t == _is.getType<_ik2s0sst.BagException?>()) {
+      return (data != null ? _ik2s0sst.BagException.fromJson(data) : null) as T;
+    }
     if (t == _is.getType<_izw8z7ou.Greeting?>()) {
       return (data != null ? _izw8z7ou.Greeting.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_iiy1gsnd.Racquet?>()) {
+      return (data != null ? _iiy1gsnd.Racquet.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_ipf7mlcg.StringJob?>()) {
+      return (data != null ? _ipf7mlcg.StringJob.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_i5v32zda.StringMaterialCategory?>()) {
+      return (data != null
+              ? _i5v32zda.StringMaterialCategory.fromJson(data)
+              : null)
+          as T;
+    }
+    if (t == List<_iwugozzn.Racquet>) {
+      return (data as List)
+              .map((e) => deserialize<_iwugozzn.Racquet>(e))
+              .toList()
+          as T;
     }
     try {
       return _iais.Protocol().deserialize<T>(data, t);
@@ -80,7 +350,11 @@ class Protocol extends _is.DatabaseSerializationManager {
 
   static String? getClassNameForType(Type type) {
     return switch (type) {
+      _ik2s0sst.BagException => 'BagException',
       _izw8z7ou.Greeting => 'Greeting',
+      _iiy1gsnd.Racquet => 'Racquet',
+      _ipf7mlcg.StringJob => 'StringJob',
+      _i5v32zda.StringMaterialCategory => 'StringMaterialCategory',
       _ => null,
     };
   }
@@ -98,8 +372,16 @@ class Protocol extends _is.DatabaseSerializationManager {
     }
 
     switch (data) {
+      case _ik2s0sst.BagException():
+        return 'BagException';
       case _izw8z7ou.Greeting():
         return 'Greeting';
+      case _iiy1gsnd.Racquet():
+        return 'Racquet';
+      case _ipf7mlcg.StringJob():
+        return 'StringJob';
+      case _i5v32zda.StringMaterialCategory():
+        return 'StringMaterialCategory';
     }
     className = _iais.Protocol().getClassNameForObject(data);
     if (className != null) {
@@ -126,8 +408,20 @@ class Protocol extends _is.DatabaseSerializationManager {
     if (dataClassName is! String) {
       return super.deserializeByClassName(data);
     }
+    if (dataClassName == 'BagException') {
+      return deserialize<_ik2s0sst.BagException>(data['data']);
+    }
     if (dataClassName == 'Greeting') {
       return deserialize<_izw8z7ou.Greeting>(data['data']);
+    }
+    if (dataClassName == 'Racquet') {
+      return deserialize<_iiy1gsnd.Racquet>(data['data']);
+    }
+    if (dataClassName == 'StringJob') {
+      return deserialize<_ipf7mlcg.StringJob>(data['data']);
+    }
+    if (dataClassName == 'StringMaterialCategory') {
+      return deserialize<_i5v32zda.StringMaterialCategory>(data['data']);
     }
     if (dataClassName.startsWith('serverpod_auth_idp.')) {
       data['className'] = dataClassName.substring(19);
@@ -168,6 +462,12 @@ class Protocol extends _is.DatabaseSerializationManager {
       if (table != null) {
         return table;
       }
+    }
+    switch (t) {
+      case _iiy1gsnd.Racquet:
+        return _iiy1gsnd.Racquet.t;
+      case _ipf7mlcg.StringJob:
+        return _ipf7mlcg.StringJob.t;
     }
     return null;
   }

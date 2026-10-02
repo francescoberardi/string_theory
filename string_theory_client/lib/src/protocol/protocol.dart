@@ -16,8 +16,17 @@ import 'package:serverpod_auth_core_client/serverpod_auth_core_client.dart'
 import 'package:serverpod_auth_idp_client/serverpod_auth_idp_client.dart'
     as _iaic;
 import 'package:serverpod_client/serverpod_client.dart' as _isc;
+import 'package:string_theory_client/src/protocol/racquet.dart' as _ib48ci23;
+import 'bag_exception.dart' as _ik2s0sst;
 import 'greetings/greeting.dart' as _izw8z7ou;
+import 'racquet.dart' as _iiy1gsnd;
+import 'string_job.dart' as _ipf7mlcg;
+import 'string_material_category.dart' as _i5v32zda;
+export 'bag_exception.dart';
 export 'greetings/greeting.dart';
+export 'racquet.dart';
+export 'string_job.dart';
+export 'string_material_category.dart';
 export 'client.dart';
 
 class Protocol extends _isc.SerializationManager {
@@ -54,11 +63,44 @@ class Protocol extends _isc.SerializationManager {
       }
     }
 
+    if (t == _ik2s0sst.BagException) {
+      return _ik2s0sst.BagException.fromJson(data) as T;
+    }
     if (t == _izw8z7ou.Greeting) {
       return _izw8z7ou.Greeting.fromJson(data) as T;
     }
+    if (t == _iiy1gsnd.Racquet) {
+      return _iiy1gsnd.Racquet.fromJson(data) as T;
+    }
+    if (t == _ipf7mlcg.StringJob) {
+      return _ipf7mlcg.StringJob.fromJson(data) as T;
+    }
+    if (t == _i5v32zda.StringMaterialCategory) {
+      return _i5v32zda.StringMaterialCategory.fromJson(data) as T;
+    }
+    if (t == _isc.getType<_ik2s0sst.BagException?>()) {
+      return (data != null ? _ik2s0sst.BagException.fromJson(data) : null) as T;
+    }
     if (t == _isc.getType<_izw8z7ou.Greeting?>()) {
       return (data != null ? _izw8z7ou.Greeting.fromJson(data) : null) as T;
+    }
+    if (t == _isc.getType<_iiy1gsnd.Racquet?>()) {
+      return (data != null ? _iiy1gsnd.Racquet.fromJson(data) : null) as T;
+    }
+    if (t == _isc.getType<_ipf7mlcg.StringJob?>()) {
+      return (data != null ? _ipf7mlcg.StringJob.fromJson(data) : null) as T;
+    }
+    if (t == _isc.getType<_i5v32zda.StringMaterialCategory?>()) {
+      return (data != null
+              ? _i5v32zda.StringMaterialCategory.fromJson(data)
+              : null)
+          as T;
+    }
+    if (t == List<_ib48ci23.Racquet>) {
+      return (data as List)
+              .map((e) => deserialize<_ib48ci23.Racquet>(e))
+              .toList()
+          as T;
     }
     try {
       return _iaic.Protocol().deserialize<T>(data, t);
@@ -71,7 +113,11 @@ class Protocol extends _isc.SerializationManager {
 
   static String? getClassNameForType(Type type) {
     return switch (type) {
+      _ik2s0sst.BagException => 'BagException',
       _izw8z7ou.Greeting => 'Greeting',
+      _iiy1gsnd.Racquet => 'Racquet',
+      _ipf7mlcg.StringJob => 'StringJob',
+      _i5v32zda.StringMaterialCategory => 'StringMaterialCategory',
       _ => null,
     };
   }
@@ -89,8 +135,16 @@ class Protocol extends _isc.SerializationManager {
     }
 
     switch (data) {
+      case _ik2s0sst.BagException():
+        return 'BagException';
       case _izw8z7ou.Greeting():
         return 'Greeting';
+      case _iiy1gsnd.Racquet():
+        return 'Racquet';
+      case _ipf7mlcg.StringJob():
+        return 'StringJob';
+      case _i5v32zda.StringMaterialCategory():
+        return 'StringMaterialCategory';
     }
     className = _iaic.Protocol().getClassNameForObject(data);
     if (className != null) {
@@ -113,8 +167,20 @@ class Protocol extends _isc.SerializationManager {
     if (dataClassName is! String) {
       return super.deserializeByClassName(data);
     }
+    if (dataClassName == 'BagException') {
+      return deserialize<_ik2s0sst.BagException>(data['data']);
+    }
     if (dataClassName == 'Greeting') {
       return deserialize<_izw8z7ou.Greeting>(data['data']);
+    }
+    if (dataClassName == 'Racquet') {
+      return deserialize<_iiy1gsnd.Racquet>(data['data']);
+    }
+    if (dataClassName == 'StringJob') {
+      return deserialize<_ipf7mlcg.StringJob>(data['data']);
+    }
+    if (dataClassName == 'StringMaterialCategory') {
+      return deserialize<_i5v32zda.StringMaterialCategory>(data['data']);
     }
     if (dataClassName.startsWith('serverpod_auth_idp.')) {
       data['className'] = dataClassName.substring(19);
