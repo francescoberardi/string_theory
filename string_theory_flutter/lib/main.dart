@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'bloc/bag_bloc.dart';
 import 'client.dart';
 import 'screens/greetings_screen.dart';
 import 'screens/settings_screen.dart';
+import 'theme/court_midnight_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -11,42 +14,29 @@ void main() async {
   runApp(const MyApp());
 }
 
-/// Builds the Court Midnight theme.
-ThemeData _buildCourtMidnightTheme() {
-  return ThemeData(
-    useMaterial3: true,
-    scaffoldBackgroundColor: const Color(0xFF121516),
-    colorScheme: const ColorScheme.dark(
-      surface: Color(0xFF1A1E20),
-      primary: Color(0xFFC6F10E),
-      onPrimary: Colors.black,
-      onSurface: Colors.white,
-      outline: Color(0xFF2A3034),
-    ),
-    textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
-    appBarTheme: AppBarTheme(
-      backgroundColor: const Color(0xFF121516),
-      foregroundColor: Colors.white,
-      elevation: 0,
-      titleTextStyle: GoogleFonts.barlowCondensed(
-        fontSize: 22,
-        fontWeight: FontWeight.bold,
-        color: Colors.white,
-        letterSpacing: 0.5,
-      ),
-    ),
-  );
-}
-
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final BagBloc? bagBloc;
+
+  const MyApp({super.key, this.bagBloc});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    final materialApp = MaterialApp(
       title: 'String Theory',
-      theme: _buildCourtMidnightTheme(),
+      theme: CourtMidnightTheme.themeData,
       home: const MyHomePage(title: 'STRING THEORY'),
+    );
+
+    if (bagBloc != null) {
+      return BlocProvider<BagBloc>.value(
+        value: bagBloc!,
+        child: materialApp,
+      );
+    }
+
+    return BlocProvider<BagBloc>(
+      create: (context) => BagBloc(client: client)..add(const LoadBag()),
+      child: materialApp,
     );
   }
 }
