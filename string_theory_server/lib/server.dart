@@ -1,6 +1,8 @@
 import 'dart:io';
 
+import 'package:serverpod/serverpod.dart' as serverpod_base;
 import 'package:serverpod_auth_idp_server/core.dart';
+import 'package:serverpod_auth_idp_server/providers/anonymous.dart';
 import 'package:serverpod_auth_idp_server/providers/email.dart';
 import 'package:serverpod_cloud_storage/serverpod_cloud_storage.dart';
 
@@ -8,15 +10,8 @@ import 'src/cache_busting.dart';
 import 'src/generated/serverpod.dart';
 import 'src/web/routes/app_config_route.dart';
 
-/// The starting point of the Serverpod server.
-void run(List<String> args) async {
-  // Initialize Serverpod. The generated Serverpod class is already connected
-  // with your project's generated code.
-  final pod = Serverpod(args);
-
-  // Initialize authentication services for the server.
-  // Token managers will be used to validate and issue authentication keys,
-  // and the identity providers will be the authentication options available for users.
+/// Initializes authentication services for the server.
+void initializeAuthServices(serverpod_base.Serverpod pod) {
   pod.initializeAuthServices(
     tokenManagerBuilders: [
       // Use JWT for authentication keys towards the server.
@@ -32,8 +27,18 @@ void run(List<String> args) async {
       ServerpodCloudEmailIdpConfig(
         appDisplayName: 'string_theory',
       ),
+      AnonymousIdpConfig(),
     ],
   );
+}
+
+/// The starting point of the Serverpod server.
+void run(List<String> args) async {
+  // Initialize Serverpod. The generated Serverpod class is already connected
+  // with your project's generated code.
+  final pod = Serverpod(args);
+
+  initializeAuthServices(pod);
 
   // Serve all files in the web/static relative directory under /web.
   // These are used by the default web page.

@@ -1,3 +1,5 @@
+anonymousIdp:
+  - login:
 emailIdp:
   - login:
   - startRegistration:

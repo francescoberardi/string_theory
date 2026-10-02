@@ -21,6 +21,28 @@ import 'package:string_theory_client/src/protocol/greetings/greeting.dart'
     as _iowftvok;
 import 'protocol.dart' as _il2as5qe;
 
+/// By extending [AnonymousIdpBaseEndpoint], the anonymous identity provider endpoint
+/// is made available on the server to allow guest authentication.
+/// {@category Endpoint}
+class EndpointAnonymousIdp extends _iaic.EndpointAnonymousIdpBase {
+  EndpointAnonymousIdp(_isc.EndpointCaller caller) : super(caller);
+
+  @override
+  String get name => 'anonymousIdp';
+
+  /// Creates a new anonymous account and returns its session.
+  ///
+  /// Invokes the [AnonymousIdp.beforeAnonymousAccount] callback if configured,
+  /// which may prevent account creation if the endpoint is protected.
+  @override
+  _ida.Future<_iacc.AuthSuccess> login({String? token}) =>
+      caller.callServerEndpoint<_iacc.AuthSuccess>(
+        'anonymousIdp',
+        'login',
+        {'token': token},
+      );
+}
+
 /// By extending [EmailIdpBaseEndpoint], the email identity provider endpoints
 /// are made available on the server and enable the corresponding sign-in widget
 /// on the client.
@@ -302,11 +324,14 @@ class Client extends _isc.ServerpodClientShared {
              disconnectStreamsOnLostInternetConnection,
          httpClientOverride: httpClientOverride,
        ) {
+    anonymousIdp = EndpointAnonymousIdp(this);
     emailIdp = EndpointEmailIdp(this);
     jwtRefresh = EndpointJwtRefresh(this);
     greeting = EndpointGreeting(this);
     modules = Modules(this);
   }
+
+  late final EndpointAnonymousIdp anonymousIdp;
 
   late final EndpointEmailIdp emailIdp;
 
@@ -318,6 +343,7 @@ class Client extends _isc.ServerpodClientShared {
 
   @override
   Map<String, _isc.EndpointRef> get endpointRefLookup => {
+    'anonymousIdp': anonymousIdp,
     'emailIdp': emailIdp,
     'jwtRefresh': jwtRefresh,
     'greeting': greeting,
