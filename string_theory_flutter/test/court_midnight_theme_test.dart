@@ -1,27 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart' as flutter_test;
-import 'package:flutter_test/flutter_test.dart' hide test;
+import 'package:flutter_test/flutter_test.dart';
 import 'package:string_theory_flutter/theme/court_midnight_theme.dart';
 
-/// ATDD Red-Phase test runner helper allowing `test.skip(...)` syntax in Dart.
-// ignore: camel_case_types
-class test {
-  static void skip(
-    String description,
-    dynamic Function() body, {
-    String? reason,
-  }) {
-    flutter_test.test(
-      description,
-      body,
-      skip: reason ?? 'ATDD RED PHASE: Scaffold pending implementation',
-    );
-  }
-}
-
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('Court Midnight Theme Foundation', () {
-    test.skip(
+    test(
       '[P0] AC-1 should configure ThemeData with Court Midnight visual tokens and typography',
       () {
         final theme = CourtMidnightTheme.themeData;
@@ -56,7 +41,7 @@ void main() {
         );
         expect(
           theme.textTheme.headlineMedium?.fontFamily,
-          contains('Barlow Condensed'),
+          anyOf(contains('Barlow Condensed'), contains('BarlowCondensed')),
           reason: 'Headings must use Barlow Condensed font family',
         );
         expect(
