@@ -80,6 +80,7 @@ class SettingsScreen extends StatelessWidget {
   }
 
   void _showLinkFeedback(BuildContext context, String message) {
+    if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -93,6 +94,120 @@ class SettingsScreen extends StatelessWidget {
         duration: const Duration(seconds: 3),
       ),
     );
+  }
+
+  Future<void> _confirmReauthenticate(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1E20),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFF2A3034)),
+        ),
+        title: Text(
+          'Re-authenticate Guest?',
+          style: GoogleFonts.barlowCondensed(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
+        content: Text(
+          'This will generate a new anonymous guest identity. Your current session will be replaced.',
+          style: GoogleFonts.inter(color: Colors.white70, fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.inter(color: Colors.white60),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFC6F10E),
+              foregroundColor: Colors.black,
+            ),
+            child: Text(
+              'Re-authenticate',
+              style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      try {
+        await _authService.loginAsGuest();
+        if (context.mounted) {
+          _showLinkFeedback(context, 'Guest session refreshed');
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _confirmSignOut(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1E20),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFF2A3034)),
+        ),
+        title: Text(
+          'Sign Out Device?',
+          style: GoogleFonts.barlowCondensed(
+            color: const Color(0xFFFF453A),
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
+        content: Text(
+          'Signing out will remove your guest session token from secure storage. You will lose access to data associated with this guest identity.',
+          style: GoogleFonts.inter(color: Colors.white70, fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.inter(color: Colors.white60),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFF453A),
+              foregroundColor: Colors.white,
+            ),
+            child: Text(
+              'Sign Out',
+              style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      await _authService.signOut();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Device signed out')),
+        );
+      }
+    }
   }
 
   @override
@@ -325,23 +440,7 @@ class SettingsScreen extends StatelessWidget {
                           ),
                         ),
                         trailing: OutlinedButton(
-                          onPressed: () async {
-                            try {
-                              await auth.loginAsGuest();
-                              if (context.mounted) {
-                                _showLinkFeedback(
-                                  context,
-                                  'Guest session refreshed',
-                                );
-                              }
-                            } catch (e) {
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Error: $e')),
-                                );
-                              }
-                            }
-                          },
+                          onPressed: () => _confirmReauthenticate(context),
                           style: OutlinedButton.styleFrom(
                             side: const BorderSide(color: Color(0xFF2A3034)),
                           ),
@@ -375,16 +474,7 @@ class SettingsScreen extends StatelessWidget {
                           ),
                         ),
                         trailing: OutlinedButton(
-                          onPressed: () async {
-                            await auth.signOut();
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Device signed out'),
-                                ),
-                              );
-                            }
-                          },
+                          onPressed: () => _confirmSignOut(context),
                           style: OutlinedButton.styleFrom(
                             side: const BorderSide(color: Color(0xFFFF453A)),
                           ),

@@ -20,10 +20,10 @@ final serverUrl = getServerUrl();
 
 /// Sets up a global client object that can be used to talk to the server from
 /// anywhere in our app.
-late final Client client;
+late Client client;
 
 /// Global authentication service managing guest onboarding, rehydration, and session state.
-late final AuthService authService;
+late AuthService authService;
 
 Future<void> initializeClient() async {
   client = Client(await serverUrl)

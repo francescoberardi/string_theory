@@ -66,6 +66,7 @@ class _MyHomePageState extends State<MyHomePage> {
     super.initState();
     // If not authenticated after launch (e.g. offline on first boot), notify user
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       if (!authService.isAuthenticated) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

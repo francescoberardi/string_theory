@@ -72,4 +72,35 @@ void main() {
       expect(find.text('ACCOUNT & SYNC'), findsOneWidget);
     },
   );
+
+  testWidgets(
+    'given unauthenticated state, MyHomePage displays OFFLINE badge and retry snackbar',
+    (tester) async {
+      final storage = InMemoryAuthSuccessStorage();
+      app_client.client = Client('http://localhost:8080/')
+        ..authSessionManager = FlutterAuthSessionManager(storage: storage);
+      app_client.authService = AuthService(
+        client: app_client.client,
+        anonymousEndpoint: FakeEndpointAnonymousIdp(),
+      );
+
+      await tester.pumpWidget(const MyApp());
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 750));
+
+      expect(find.text('OFFLINE'), findsOneWidget);
+      expect(
+        find.text(
+          'Offline on first launch: unable to provision guest session.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Retry'), findsOneWidget);
+
+      await tester.tap(find.text('Retry'), warnIfMissed: false);
+      await tester.pumpAndSettle();
+
+      expect(find.text('GUEST'), findsOneWidget);
+    },
+  );
 }

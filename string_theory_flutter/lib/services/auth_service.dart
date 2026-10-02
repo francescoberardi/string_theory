@@ -8,6 +8,7 @@ import '../client.dart' as app_client;
 class AuthService {
   final Client? _clientOverride;
   final EndpointAnonymousIdp? _anonymousEndpointOverride;
+  Future<bool>? _inFlightLogin;
 
   AuthService({
     Client? client,
@@ -45,9 +46,24 @@ class AuthService {
   }
 
   /// Explicitly requests a new anonymous guest account and persists it to secure storage.
-  Future<bool> loginAsGuest() async {
+  /// Deduplicates concurrent in-flight requests to prevent creating duplicate anonymous accounts.
+  Future<bool> loginAsGuest({String? token}) async {
+    if (_inFlightLogin != null) {
+      return await _inFlightLogin!;
+    }
+
+    final future = _performLoginAsGuest(token: token);
+    _inFlightLogin = future;
     try {
-      final authSuccess = await _anonymousEndpoint.login();
+      return await future;
+    } finally {
+      _inFlightLogin = null;
+    }
+  }
+
+  Future<bool> _performLoginAsGuest({String? token}) async {
+    try {
+      final authSuccess = await _anonymousEndpoint.login(token: token);
       await _client.auth.updateSignedInUser(authSuccess);
       return isAuthenticated;
     } catch (e) {

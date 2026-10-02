@@ -104,5 +104,123 @@ void main() {
         );
       },
     );
+
+    testWidgets(
+      'given link account dialog, when Continue with Google is tapped, then shows google preview feedback',
+      (tester) async {
+        final storage = InMemoryAuthSuccessStorage(sampleAuthSuccess);
+        final client = Client('http://localhost:8080/')
+          ..authSessionManager = FlutterAuthSessionManager(storage: storage);
+        final authService = AuthService(
+          client: client,
+          anonymousEndpoint: FakeEndpointAnonymousIdp(),
+        );
+        await authService.initialize();
+
+        await tester.pumpWidget(
+          MaterialApp(home: SettingsScreen(authService: authService)),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('Link Google / Email'));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('Continue with Google'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Google linking preview enabled'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'given link account dialog, when Continue with Email is tapped, then shows email preview feedback',
+      (tester) async {
+        final storage = InMemoryAuthSuccessStorage(sampleAuthSuccess);
+        final client = Client('http://localhost:8080/')
+          ..authSessionManager = FlutterAuthSessionManager(storage: storage);
+        final authService = AuthService(
+          client: client,
+          anonymousEndpoint: FakeEndpointAnonymousIdp(),
+        );
+        await authService.initialize();
+
+        await tester.pumpWidget(
+          MaterialApp(home: SettingsScreen(authService: authService)),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('Link Google / Email'));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('Continue with Email'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Email linking preview enabled'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'given settings screen, when Refresh is tapped and confirmed, then re-authenticates and shows feedback',
+      (tester) async {
+        final storage = InMemoryAuthSuccessStorage(sampleAuthSuccess);
+        final client = Client('http://localhost:8080/')
+          ..authSessionManager = FlutterAuthSessionManager(storage: storage);
+        final fakeEndpoint = FakeEndpointAnonymousIdp();
+        final authService = AuthService(
+          client: client,
+          anonymousEndpoint: fakeEndpoint,
+        );
+        await authService.initialize();
+
+        await tester.pumpWidget(
+          MaterialApp(home: SettingsScreen(authService: authService)),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.ensureVisible(find.text('Refresh'));
+        await tester.tap(find.text('Refresh'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Re-authenticate Guest?'), findsOneWidget);
+        await tester.tap(find.text('Re-authenticate'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Guest session refreshed'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'given settings screen, when Sign Out is tapped and confirmed, then signs out and shows feedback',
+      (tester) async {
+        final storage = InMemoryAuthSuccessStorage(sampleAuthSuccess);
+        final client = Client('http://localhost:8080/')
+          ..authSessionManager = FlutterAuthSessionManager(storage: storage);
+        final authService = AuthService(
+          client: client,
+          anonymousEndpoint: FakeEndpointAnonymousIdp(),
+        );
+        await authService.initialize();
+
+        await tester.pumpWidget(
+          MaterialApp(home: SettingsScreen(authService: authService)),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.ensureVisible(find.text('Sign Out'));
+        await tester.tap(find.text('Sign Out'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Sign Out Device?'), findsOneWidget);
+        final dialogConfirmButton = find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.text('Sign Out'),
+        );
+        await tester.tap(dialogConfirmButton);
+        await tester.pumpAndSettle();
+
+        expect(find.text('Device signed out'), findsOneWidget);
+        expect(authService.isAuthenticated, isFalse);
+      },
+    );
   });
 }

@@ -19,10 +19,12 @@ class FakeEndpointAnonymousIdp implements EndpointAnonymousIdp {
   AuthSuccess? successToReturn;
   Exception? exceptionToThrow;
   int loginCalls = 0;
+  String? lastTokenReceived;
 
   @override
   Future<AuthSuccess> login({String? token}) async {
     loginCalls++;
+    lastTokenReceived = token;
     if (exceptionToThrow != null) throw exceptionToThrow!;
     return successToReturn!;
   }
@@ -131,6 +133,50 @@ void main() {
         expect(authService.isAuthenticated, isFalse);
         expect(authService.currentUserId, isNull);
         expect(await storage.get(), isNull);
+      },
+    );
+
+    test(
+      'given concurrent loginAsGuest calls, then deduplicates in-flight calls to single endpoint invocation',
+      () async {
+        final storage = InMemoryAuthSuccessStorage();
+        final client = Client('http://localhost:8080/')
+          ..authSessionManager = FlutterAuthSessionManager(storage: storage);
+        final fakeEndpoint = FakeEndpointAnonymousIdp()
+          ..successToReturn = sampleAuthSuccess;
+
+        final authService = AuthService(
+          client: client,
+          anonymousEndpoint: fakeEndpoint,
+        );
+
+        final results = await Future.wait([
+          authService.loginAsGuest(),
+          authService.loginAsGuest(),
+        ]);
+
+        expect(results, equals([true, true]));
+        expect(fakeEndpoint.loginCalls, equals(1));
+        expect(authService.isAuthenticated, isTrue);
+      },
+    );
+
+    test(
+      'given loginAsGuest with token, then forwards token to anonymous endpoint',
+      () async {
+        final storage = InMemoryAuthSuccessStorage();
+        final client = Client('http://localhost:8080/')
+          ..authSessionManager = FlutterAuthSessionManager(storage: storage);
+        final fakeEndpoint = FakeEndpointAnonymousIdp()
+          ..successToReturn = sampleAuthSuccess;
+
+        final authService = AuthService(
+          client: client,
+          anonymousEndpoint: fakeEndpoint,
+        );
+
+        await authService.loginAsGuest(token: 'attestation-token-xyz');
+        expect(fakeEndpoint.lastTokenReceived, equals('attestation-token-xyz'));
       },
     );
   });
