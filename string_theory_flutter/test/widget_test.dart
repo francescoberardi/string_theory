@@ -1,15 +1,75 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility that Flutter provides. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:serverpod_auth_idp_flutter/serverpod_auth_idp_flutter.dart';
+import 'package:string_theory_client/string_theory_client.dart';
+import 'package:string_theory_flutter/client.dart' as app_client;
+import 'package:string_theory_flutter/main.dart';
+import 'package:string_theory_flutter/services/auth_service.dart';
 
-// import 'package:flutter/material.dart';
-// import 'package:flutter_test/flutter_test.dart';
-//
-// import 'package:PROJECTNAME_flutter/main.dart';
+class InMemoryAuthSuccessStorage implements ClientAuthSuccessStorage {
+  AuthSuccess? _stored;
+
+  InMemoryAuthSuccessStorage([this._stored]);
+
+  @override
+  Future<AuthSuccess?> get() async => _stored;
+
+  @override
+  Future<void> set(AuthSuccess? data) async => _stored = data;
+}
+
+class FakeEndpointAnonymousIdp implements EndpointAnonymousIdp {
+  @override
+  Future<AuthSuccess> login({String? token}) async {
+    return AuthSuccess(
+      authStrategy: 'session',
+      token: 'dummy-token',
+      authUserId: UuidValue.fromString('99999999-9999-9999-9999-999999999999'),
+      scopeNames: {},
+    );
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
 
 void main() {
-  // Add your app tests here
+  setUp(() {
+    final storage = InMemoryAuthSuccessStorage(
+      AuthSuccess(
+        authStrategy: 'session',
+        token: 'test-token',
+        authUserId: UuidValue.fromString(
+          '99999999-9999-9999-9999-999999999999',
+        ),
+        scopeNames: {},
+      ),
+    );
+    app_client.client = Client('http://localhost:8080/')
+      ..authSessionManager = FlutterAuthSessionManager(storage: storage);
+    app_client.authService = AuthService(
+      client: app_client.client,
+      anonymousEndpoint: FakeEndpointAnonymousIdp(),
+    );
+  });
+
+  testWidgets(
+    'MyHomePage displays title, auth badge, and navigates to Settings',
+    (tester) async {
+      await app_client.authService.initialize();
+
+      await tester.pumpWidget(const MyApp());
+      await tester.pumpAndSettle();
+
+      expect(find.text('STRING THEORY'), findsOneWidget);
+      expect(find.text('GUEST'), findsOneWidget);
+      expect(find.byIcon(Icons.settings_outlined), findsOneWidget);
+
+      await tester.tap(find.byIcon(Icons.settings_outlined));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Settings'), findsOneWidget);
+      expect(find.text('ACCOUNT & SYNC'), findsOneWidget);
+    },
+  );
 }
