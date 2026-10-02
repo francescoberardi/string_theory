@@ -7,6 +7,7 @@ pubspec_overrides.yaml
 
 # Agents
 .dart_skills/
+.agent/
 .agents/
 .claude/
 .gemini/
@@ -17,3 +18,14 @@ pubspec_overrides.yaml
 
 # Serverpod Cloud CLI
 .scloud/
+
+# BMAD Framework internals and local state
+_bmad/
+!_bmad/custom/config.toml
+
+# Personal overrides / local runs
+_bmad/*/local/
+_bmad/**/temp/
+
+# Keep all BMAD artifacts and outputs
+!_bmad-output/
