@@ -22,6 +22,9 @@ jobs:
       VERSION: '4.0.3'
       SERVERPOD_PASSWORD_database: 'WdpOsfODtQAerx3UBObqFkOTBCt0-BzX'
       SERVERPOD_PASSWORD_redis: 'U66M8P1Mmb6Bc935BI4d5lghgtEbwfgJ'
+      SERVERPOD_PASSWORD_jwtHmacSha512PrivateKey: 'U9NulwfQO5yTWil2FAlXbDyFhUGxHJ7q'
+      SERVERPOD_PASSWORD_jwtRefreshTokenHashPepper: 'DvHB3LSDiedPXFiPamJh4P8W3Zl6yb_U'
+      SERVERPOD_PASSWORD_emailSecretHashPepper: 'rB86LuGVpzstLfd222yRpDrco13BbIfw'
 
     steps:
       - uses: actions/checkout@v4
