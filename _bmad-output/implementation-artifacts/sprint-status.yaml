@@ -29,20 +29,20 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-02-2026 17:45
-last_updated: 10-04-2026 10:10
+last_updated: 10-04-2026 11:00
 project: string_theory
 project_key: NOKEY
 tracking_system: file-system
 story_location: 
   /Users/francescoberardi/projects/personal/string_theory/_bmad-output/implementation-artifacts
 development_status:
-  epic-1: in-progress
-  1-1-anonymous-guest-authentication-token-rehydration: review
-  1-2-serverpod-racquet-stringjob-schema-bagendpoint: review
-  1-3-court-midnight-theme-bagbloc-reactive-state-foundation: review
+  epic-1: done
+  1-1-anonymous-guest-authentication-token-rehydration: done
+  1-2-serverpod-racquet-stringjob-schema-bagendpoint: done
+  1-3-court-midnight-theme-bagbloc-reactive-state-foundation: done
   1-4-add-racquet-form-with-string-category-smart-defaults-presets: done
   1-5-virtual-bag-responsive-screen-instant-demo-bag-seeder: done
-  epic-1-retrospective: optional
+  epic-1-retrospective: done
 
   epic-2: backlog
   2-1-pure-dart-decayengine-domain-calculation-unit-tests: backlog
@@ -71,3 +71,23 @@ development_status:
   5-3-end-to-end-demo-script-verification-walkthrough: backlog
   5-4-github-actions-ci-pipeline-with-serverpod-flutter-patrol-tes: backlog
   epic-5-retrospective: optional
+action_items:
+  - id: "epic-1-retro-item-1-extract-racquetcard-and-radialhealthgaug"
+    epic: 1
+    action: "Extract RacquetCard and RadialHealthGauge widgets into standalone widget
+      files"
+    owner: "Amelia (Developer)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-10-04.md"
+  - id: "epic-1-retro-item-2-implement-authoritative-pure-dart-decaye"
+    epic: 1
+    action: "Implement authoritative pure Dart DecayEngine shared calculation"
+    owner: "Winston (Architect)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-10-04.md"
+  - id: "epic-1-retro-item-3-implement-dailydecayfuturecall-for-sched"
+    epic: 1
+    action: "Implement DailyDecayFutureCall for scheduled backend decay updates"
+    owner: "Amelia (Developer)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-10-04.md"
