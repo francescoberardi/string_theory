@@ -2,7 +2,7 @@
 title: 'Story 1.4: Add Racquet Form with String Category Smart Defaults & Presets'
 type: 'feature'
 created: '2026-10-04'
-status: 'completed'
+status: 'in-review'
 baseline_commit: 'c8f970868f0c2a26532822ca0010077884d622f9'
 route: 'dispatch'
 review_loop_iteration: 0

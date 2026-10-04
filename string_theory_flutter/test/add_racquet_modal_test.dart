@@ -348,5 +348,154 @@ void main() {
         ).called(1);
       },
     );
+
+    testWidgets(
+      '[Edge-Case] should allow date picker selection and dispatch custom stringingDate',
+      (tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: CourtMidnightTheme.themeData,
+            home: Scaffold(
+              body: AddRacquetModal(bagBloc: mockBagBloc),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Tap preset to populate basic fields
+        await tester.tap(find.byKey(AddRacquetModal.keyPresetRpmBlast));
+        await tester.pumpAndSettle();
+
+        // Tap Date picker field
+        await tester.tap(find.byKey(AddRacquetModal.keyDateField));
+        await tester.pumpAndSettle();
+
+        // Tap 1st day of month in date picker dialog and confirm
+        await tester.tap(find.text('1').first);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('OK'));
+        await tester.pumpAndSettle();
+
+        // Submit form
+        await tester.tap(find.byKey(AddRacquetModal.keySubmitButton));
+        await tester.pumpAndSettle();
+
+        // Verify stringingDate day was dispatched as 1
+        verify(
+          () => mockBagBloc.add(
+            any(
+              that: isA<AddRacquet>().having(
+                (e) => e.stringingDate.day,
+                'stringingDate.day',
+                1,
+              ),
+            ),
+          ),
+        ).called(1);
+      },
+    );
+
+    testWidgets(
+      '[Edge-Case] should show validation errors for invalid, negative, or non-numeric tension and max hours',
+      (tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: CourtMidnightTheme.themeData,
+            home: Scaffold(
+              body: AddRacquetModal(bagBloc: mockBagBloc),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Fill valid name, brand, category, string
+        await tester.tap(find.byKey(AddRacquetModal.keyPresetRpmBlast));
+        await tester.pumpAndSettle();
+
+        // Enter non-numeric / negative values
+        await tester.enterText(
+          find.byKey(AddRacquetModal.keyTensionField),
+          'not-a-number',
+        );
+        await tester.enterText(
+          find.byKey(AddRacquetModal.keyMaxHoursField),
+          '-5.0',
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(AddRacquetModal.keySubmitButton));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Invalid tension'), findsOneWidget);
+        expect(find.text('Invalid max hours'), findsOneWidget);
+        verifyNever(() => mockBagBloc.add(any()));
+      },
+    );
+
+    testWidgets(
+      '[Edge-Case] should pre-populate smart defaults for Kevlar (25h), Hybrid (25h), and Other (20h)',
+      (tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: CourtMidnightTheme.themeData,
+            home: Scaffold(
+              body: AddRacquetModal(bagBloc: mockBagBloc),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // 1. Kevlar -> 25.0 hrs
+        await tester.tap(find.byKey(AddRacquetModal.keyCategoryField));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Kevlar').last);
+        await tester.pumpAndSettle();
+        expect(find.text('25.0'), findsOneWidget);
+
+        // 2. Hybrid -> 25.0 hrs
+        await tester.tap(find.byKey(AddRacquetModal.keyCategoryField));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Hybrid').last);
+        await tester.pumpAndSettle();
+        expect(find.text('25.0'), findsOneWidget);
+
+        // 3. Other -> 20.0 hrs
+        await tester.tap(find.byKey(AddRacquetModal.keyCategoryField));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Other').last);
+        await tester.pumpAndSettle();
+        expect(find.text('20.0'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      '[Edge-Case] should update category dropdown display to Co-Polyester after preset tap',
+      (tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: CourtMidnightTheme.themeData,
+            home: Scaffold(
+              body: AddRacquetModal(bagBloc: mockBagBloc),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Tap preset button
+        await tester.tap(find.byKey(AddRacquetModal.keyPresetRpmBlast));
+        await tester.pumpAndSettle();
+
+        // Verify category dropdown displays 'Co-Polyester'
+        expect(
+          find.descendant(
+            of: find.byKey(AddRacquetModal.keyCategoryField),
+            matching: find.text('Co-Polyester'),
+          ),
+          findsOneWidget,
+          reason:
+              'Category dropdown must display Co-Polyester after preset is tapped',
+        );
+      },
+    );
   });
 }

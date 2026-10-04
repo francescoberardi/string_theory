@@ -180,11 +180,13 @@ class _AddRacquetModalState extends State<AddRacquetModal> {
   }
 
   Future<void> _selectDate() async {
+    final now = DateTime.now();
+    final initialDate = _stringingDate.isAfter(now) ? now : _stringingDate;
     final picked = await showDatePicker(
       context: context,
-      initialDate: _stringingDate,
+      initialDate: initialDate,
       firstDate: DateTime(2020),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
+      lastDate: now,
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -199,6 +201,7 @@ class _AddRacquetModalState extends State<AddRacquetModal> {
         );
       },
     );
+    if (!mounted) return;
     if (picked != null) {
       setState(() {
         _stringingDate = picked;
@@ -303,367 +306,385 @@ class _AddRacquetModalState extends State<AddRacquetModal> {
         ),
       ),
       child: SafeArea(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 16,
-            bottom: 24 + MediaQuery.of(context).viewInsets.bottom,
-          ),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Top drag handle
-                Center(
-                  child: Container(
-                    width: 36,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: CourtMidnightTheme.surfaceBorder,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                // Header row
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 560),
+            child: SingleChildScrollView(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 16,
+                bottom: 24 + MediaQuery.of(context).viewInsets.bottom,
+              ),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(
-                      'ADD NEW RACQUET',
-                      style: GoogleFonts.barlowCondensed(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: CourtMidnightTheme.textPrimary,
-                        letterSpacing: 0.5,
+                    // Top drag handle
+                    Center(
+                      child: Container(
+                        width: 36,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: CourtMidnightTheme.surfaceBorder,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
                       ),
                     ),
-                    IconButton(
+                    const SizedBox(height: 12),
+
+                    // Header row
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'ADD NEW RACQUET',
+                          style: GoogleFonts.barlowCondensed(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: CourtMidnightTheme.textPrimary,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.close,
+                            color: CourtMidnightTheme.textSecondary,
+                            size: 20,
+                          ),
+                          onPressed: () {
+                            if (Navigator.of(context).canPop()) {
+                              Navigator.of(context).pop();
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    // 1-Tap Preset Button
+                    OutlinedButton.icon(
+                      key: AddRacquetModal.keyPresetRpmBlast,
+                      onPressed: () => _applyPreset(RacquetPreset.popularPoly),
                       icon: const Icon(
-                        Icons.close,
-                        color: CourtMidnightTheme.textSecondary,
-                        size: 20,
+                        Icons.bolt,
+                        color: CourtMidnightTheme.primaryVolt,
+                        size: 18,
                       ),
-                      onPressed: () {
-                        if (Navigator.of(context).canPop()) {
-                          Navigator.of(context).pop();
+                      label: Text(
+                        'Popular Poly: Babolat RPM Blast @ 52 lbs',
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: CourtMidnightTheme.primaryVolt,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
+                        side: const BorderSide(
+                          color: CourtMidnightTheme.primaryMuted,
+                          width: 1,
+                        ),
+                        backgroundColor: CourtMidnightTheme.surfaceElevated,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Racquet Frame Inputs
+                    TextFormField(
+                      key: AddRacquetModal.keyNameField,
+                      controller: _nameController,
+                      textInputAction: TextInputAction.next,
+                      style: GoogleFonts.inter(
+                        color: CourtMidnightTheme.textPrimary,
+                        fontSize: 14,
+                      ),
+                      decoration: _inputDecoration(
+                        labelText: 'Racquet Nickname / Frame *',
+                        hintText: 'e.g. Babolat Pure Aero',
+                      ),
+                      validator: (val) {
+                        if (val == null || val.trim().isEmpty) {
+                          return 'Racquet name is required';
                         }
+                        return null;
                       },
                     ),
-                  ],
-                ),
-                const SizedBox(height: 12),
+                    const SizedBox(height: 12),
 
-                // 1-Tap Preset Button
-                OutlinedButton.icon(
-                  key: AddRacquetModal.keyPresetRpmBlast,
-                  onPressed: () => _applyPreset(RacquetPreset.popularPoly),
-                  icon: const Icon(
-                    Icons.bolt,
-                    color: CourtMidnightTheme.primaryVolt,
-                    size: 18,
-                  ),
-                  label: Text(
-                    'Popular Poly: Babolat RPM Blast @ 52 lbs',
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: CourtMidnightTheme.primaryVolt,
-                    ),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 10,
-                    ),
-                    side: const BorderSide(
-                      color: CourtMidnightTheme.primaryMuted,
-                      width: 1,
-                    ),
-                    backgroundColor: CourtMidnightTheme.surfaceElevated,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Racquet Frame Inputs
-                TextFormField(
-                  key: AddRacquetModal.keyNameField,
-                  controller: _nameController,
-                  style: GoogleFonts.inter(
-                    color: CourtMidnightTheme.textPrimary,
-                    fontSize: 14,
-                  ),
-                  decoration: _inputDecoration(
-                    labelText: 'Racquet Nickname / Frame *',
-                    hintText: 'e.g. Babolat Pure Aero',
-                  ),
-                  validator: (val) {
-                    if (val == null || val.trim().isEmpty) {
-                      return 'Racquet name is required';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 12),
-
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        key: AddRacquetModal.keyBrandField,
-                        controller: _brandController,
-                        style: GoogleFonts.inter(
-                          color: CourtMidnightTheme.textPrimary,
-                          fontSize: 14,
-                        ),
-                        decoration: _inputDecoration(
-                          labelText: 'Brand (optional)',
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextFormField(
-                        key: AddRacquetModal.keyModelField,
-                        controller: _modelController,
-                        style: GoogleFonts.inter(
-                          color: CourtMidnightTheme.textPrimary,
-                          fontSize: 14,
-                        ),
-                        decoration: _inputDecoration(
-                          labelText: 'Model (optional)',
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                // String Material Category Dropdown
-                DropdownButtonFormField<StringMaterialCategory>(
-                  key: AddRacquetModal.keyCategoryField,
-                  initialValue: _selectedCategory,
-                  dropdownColor: CourtMidnightTheme.surfaceElevated,
-                  style: GoogleFonts.inter(
-                    color: CourtMidnightTheme.textPrimary,
-                    fontSize: 14,
-                  ),
-                  decoration: _inputDecoration(
-                    labelText: 'String Material Category *',
-                  ),
-                  items: StringMaterialCategory.values.map((cat) {
-                    return DropdownMenuItem<StringMaterialCategory>(
-                      value: cat,
-                      child: Text(cat.displayName),
-                    );
-                  }).toList(),
-                  onChanged: (cat) {
-                    if (cat == null) return;
-                    setState(() {
-                      _selectedCategory = cat;
-                      _maxHoursController.text =
-                          StringCategoryDefaults.maxHours(
-                            cat,
-                          ).toStringAsFixed(1);
-                    });
-                  },
-                  validator: (val) {
-                    if (val == null) {
-                      return 'Please select a material category';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 12),
-
-                // String Brand & Model Inputs
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        key: AddRacquetModal.keyStringBrandField,
-                        controller: _stringBrandController,
-                        style: GoogleFonts.inter(
-                          color: CourtMidnightTheme.textPrimary,
-                          fontSize: 14,
-                        ),
-                        decoration: _inputDecoration(
-                          labelText: 'String Brand *',
-                        ),
-                        validator: (val) {
-                          if (val == null || val.trim().isEmpty) {
-                            return 'String brand is required';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextFormField(
-                        key: AddRacquetModal.keyStringModelField,
-                        controller: _stringModelController,
-                        style: GoogleFonts.inter(
-                          color: CourtMidnightTheme.textPrimary,
-                          fontSize: 14,
-                        ),
-                        decoration: _inputDecoration(
-                          labelText: 'String Model *',
-                        ),
-                        validator: (val) {
-                          if (val == null || val.trim().isEmpty) {
-                            return 'String model is required';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-
-                // Tension & Max Hours Inputs
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        key: AddRacquetModal.keyTensionField,
-                        controller: _tensionController,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        style: GoogleFonts.inter(
-                          color: CourtMidnightTheme.textPrimary,
-                          fontSize: 14,
-                        ),
-                        decoration: _inputDecoration(
-                          labelText: 'Tension (lbs) *',
-                        ),
-                        validator: (val) {
-                          if (val == null || val.trim().isEmpty) {
-                            return 'Tension is required';
-                          }
-                          final parsed = double.tryParse(val.trim());
-                          if (parsed == null || parsed <= 0) {
-                            return 'Invalid tension';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextFormField(
-                        key: AddRacquetModal.keyMaxHoursField,
-                        controller: _maxHoursController,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        style: GoogleFonts.inter(
-                          color: CourtMidnightTheme.textPrimary,
-                          fontSize: 14,
-                        ),
-                        decoration: _inputDecoration(
-                          labelText: 'Max Rated Hours *',
-                        ),
-                        validator: (val) {
-                          if (val == null || val.trim().isEmpty) {
-                            return 'Max hours is required';
-                          }
-                          final parsed = double.tryParse(val.trim());
-                          if (parsed == null || parsed <= 0) {
-                            return 'Invalid max hours';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-
-                // Stringing Date & Primary Switch
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        key: AddRacquetModal.keyDateField,
-                        controller: _dateController,
-                        readOnly: true,
-                        onTap: _selectDate,
-                        style: GoogleFonts.inter(
-                          color: CourtMidnightTheme.textPrimary,
-                          fontSize: 14,
-                        ),
-                        decoration: _inputDecoration(
-                          labelText: 'Stringing Date',
-                          suffixIcon: const Icon(
-                            Icons.calendar_today,
-                            color: CourtMidnightTheme.textSecondary,
-                            size: 18,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Primary',
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            key: AddRacquetModal.keyBrandField,
+                            controller: _brandController,
+                            textInputAction: TextInputAction.next,
                             style: GoogleFonts.inter(
-                              color: CourtMidnightTheme.textSecondary,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
+                              color: CourtMidnightTheme.textPrimary,
+                              fontSize: 14,
+                            ),
+                            decoration: _inputDecoration(
+                              labelText: 'Brand (optional)',
                             ),
                           ),
-                          Switch(
-                            key: AddRacquetModal.keyPrimarySwitch,
-                            value: _isPrimary,
-                            activeThumbColor: CourtMidnightTheme.primaryVolt,
-                            onChanged: (val) =>
-                                setState(() => _isPrimary = val),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextFormField(
+                            key: AddRacquetModal.keyModelField,
+                            controller: _modelController,
+                            textInputAction: TextInputAction.next,
+                            style: GoogleFonts.inter(
+                              color: CourtMidnightTheme.textPrimary,
+                              fontSize: 14,
+                            ),
+                            decoration: _inputDecoration(
+                              labelText: 'Model (optional)',
+                            ),
                           ),
-                        ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // String Material Category Dropdown
+                    DropdownButtonFormField<StringMaterialCategory>(
+                      key: AddRacquetModal.keyCategoryField,
+                      // ignore: deprecated_member_use
+                      value: _selectedCategory,
+                      dropdownColor: CourtMidnightTheme.surfaceElevated,
+                      style: GoogleFonts.inter(
+                        color: CourtMidnightTheme.textPrimary,
+                        fontSize: 14,
+                      ),
+                      decoration: _inputDecoration(
+                        labelText: 'String Material Category *',
+                      ),
+                      items: StringMaterialCategory.values.map((cat) {
+                        return DropdownMenuItem<StringMaterialCategory>(
+                          value: cat,
+                          child: Text(cat.displayName),
+                        );
+                      }).toList(),
+                      onChanged: (cat) {
+                        if (cat == null) return;
+                        setState(() {
+                          _selectedCategory = cat;
+                          _maxHoursController.text =
+                              StringCategoryDefaults.maxHours(
+                                cat,
+                              ).toStringAsFixed(1);
+                        });
+                      },
+                      validator: (val) {
+                        if (val == null) {
+                          return 'Please select a material category';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 12),
+
+                    // String Brand & Model Inputs
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            key: AddRacquetModal.keyStringBrandField,
+                            controller: _stringBrandController,
+                            textInputAction: TextInputAction.next,
+                            style: GoogleFonts.inter(
+                              color: CourtMidnightTheme.textPrimary,
+                              fontSize: 14,
+                            ),
+                            decoration: _inputDecoration(
+                              labelText: 'String Brand *',
+                            ),
+                            validator: (val) {
+                              if (val == null || val.trim().isEmpty) {
+                                return 'String brand is required';
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextFormField(
+                            key: AddRacquetModal.keyStringModelField,
+                            controller: _stringModelController,
+                            textInputAction: TextInputAction.next,
+                            style: GoogleFonts.inter(
+                              color: CourtMidnightTheme.textPrimary,
+                              fontSize: 14,
+                            ),
+                            decoration: _inputDecoration(
+                              labelText: 'String Model *',
+                            ),
+                            validator: (val) {
+                              if (val == null || val.trim().isEmpty) {
+                                return 'String model is required';
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Tension & Max Hours Inputs
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            key: AddRacquetModal.keyTensionField,
+                            controller: _tensionController,
+                            textInputAction: TextInputAction.next,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            style: GoogleFonts.inter(
+                              color: CourtMidnightTheme.textPrimary,
+                              fontSize: 14,
+                            ),
+                            decoration: _inputDecoration(
+                              labelText: 'Tension (lbs) *',
+                            ),
+                            validator: (val) {
+                              if (val == null || val.trim().isEmpty) {
+                                return 'Tension is required';
+                              }
+                              final parsed = double.tryParse(val.trim());
+                              if (parsed == null ||
+                                  !parsed.isFinite ||
+                                  parsed <= 0) {
+                                return 'Invalid tension';
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextFormField(
+                            key: AddRacquetModal.keyMaxHoursField,
+                            controller: _maxHoursController,
+                            textInputAction: TextInputAction.done,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            style: GoogleFonts.inter(
+                              color: CourtMidnightTheme.textPrimary,
+                              fontSize: 14,
+                            ),
+                            decoration: _inputDecoration(
+                              labelText: 'Max Rated Hours *',
+                            ),
+                            validator: (val) {
+                              if (val == null || val.trim().isEmpty) {
+                                return 'Max hours is required';
+                              }
+                              final parsed = double.tryParse(val.trim());
+                              if (parsed == null ||
+                                  !parsed.isFinite ||
+                                  parsed <= 0) {
+                                return 'Invalid max hours';
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Stringing Date & Primary Switch
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            key: AddRacquetModal.keyDateField,
+                            controller: _dateController,
+                            readOnly: true,
+                            onTap: _selectDate,
+                            style: GoogleFonts.inter(
+                              color: CourtMidnightTheme.textPrimary,
+                              fontSize: 14,
+                            ),
+                            decoration: _inputDecoration(
+                              labelText: 'Stringing Date',
+                              suffixIcon: const Icon(
+                                Icons.calendar_today,
+                                color: CourtMidnightTheme.textSecondary,
+                                size: 18,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Primary',
+                                style: GoogleFonts.inter(
+                                  color: CourtMidnightTheme.textSecondary,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              Switch(
+                                key: AddRacquetModal.keyPrimarySwitch,
+                                value: _isPrimary,
+                                activeThumbColor:
+                                    CourtMidnightTheme.primaryVolt,
+                                onChanged: (val) =>
+                                    setState(() => _isPrimary = val),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Submit CTA Button
+                    SizedBox(
+                      height: 48,
+                      child: ElevatedButton(
+                        key: AddRacquetModal.keySubmitButton,
+                        onPressed: _submit,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: CourtMidnightTheme.primaryVolt,
+                          foregroundColor: Colors.black,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: Text(
+                          'ADD RACQUET TO BAG',
+                          style: GoogleFonts.barlowCondensed(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
-
-                // Submit CTA Button
-                SizedBox(
-                  height: 48,
-                  child: ElevatedButton(
-                    key: AddRacquetModal.keySubmitButton,
-                    onPressed: _submit,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: CourtMidnightTheme.primaryVolt,
-                      foregroundColor: Colors.black,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: Text(
-                      'ADD RACQUET TO BAG',
-                      style: GoogleFonts.barlowCondensed(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ),
