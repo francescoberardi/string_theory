@@ -48,3 +48,19 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-2-serverpod-real-time-websocket-streaming-bagstreammessage.md`
   summary: Configure Redis before running more than one server instance so bag updates reach subscribers on every instance.
   evidence: No `redis` block exists in string_theory_server/config/*.yaml; MessageScope.auto then delivers in-process only, so a client connected to another instance never receives the message.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-3-healthsyncservice-strategy-pattern-judge-simulation-generator.md`
+  summary: Re-run health sync when the app returns to the foreground (and coalesce concurrent syncs) so matches finished while the app is backgrounded are detected without a cold start.
+  evidence: VirtualBagScreen._bindHealthSyncService syncs once per service bind and nothing in lib/ observes AppLifecycleState; the human chose launch-only sync for Story 3.3 (2026-10-04). Adding a resume trigger makes concurrent syncWorkouts() calls reachable, which the Android plugin's single pending result does not tolerate.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-3-healthsyncservice-strategy-pattern-judge-simulation-generator.md`
+  summary: Verify on device (Patrol) that Android Health Connect permissions in AndroidManifest.xml match PluginHealthGateway.authorizationTypesFor and that the permission flow works with FlutterFragmentActivity.
+  evidence: Only Dart-side type lists are unit-tested with a mocked Health; dropping a manifest permission or reverting MainActivity passes every test while syncWorkouts() silently returns [] on device. No Patrol or integration_test setup exists yet.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-3-healthsyncservice-strategy-pattern-judge-simulation-generator.md`
+  summary: Surface health-access status to the user (Health Connect not installed, permission denied) instead of a silent empty sync.
+  evidence: NativeHealthSyncService only debugPrints on denial or plugin errors (per Story 3.3's frozen intent); there is no getHealthConnectSdkStatus() check and no Settings entry, so "no tennis workouts" and "not connected" look identical.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-3-healthsyncservice-strategy-pattern-judge-simulation-generator.md`
+  summary: Reconcile detected workouts against already-logged SessionLogs (or persist seen ids) so each cold start does not re-detect the last 7 days as new.
+  evidence: _seenIds and _lastSync are in-memory by Story 3.3 decision; every launch re-emits workouts the server already holds under the unique externalWorkoutId index. Story 3.4 consumes pendingWorkouts and must filter them.
