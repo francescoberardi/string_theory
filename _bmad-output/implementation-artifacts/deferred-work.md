@@ -40,3 +40,11 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-2-serverpod-real-time-websocket-streaming-bagstreammessage.md`
   summary: Publish BagStreamMessage from DailyDecayFutureCall, fastForwardRacquetAge, and racquet CRUD so open clients stay live for every health/bag change, not only session logging.
   evidence: Story 3.2 intent limited publishing to sessionLogged (restrung comes in 4.1); review noted the nightly decay cron is the main source of score changes yet pushes nothing to connected clients.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-2-serverpod-real-time-websocket-streaming-bagstreammessage.md`
+  summary: Add a stringJobId to BagStreamMessage (or refetch on restrung) before Story 4.1 publishes restrung events.
+  evidence: BagBloc._onBagStreamReceived patches whichever activeStringJob is in its current state; a restrung message would overwrite the old job's score/hours instead of swapping in the new job.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-2-serverpod-real-time-websocket-streaming-bagstreammessage.md`
+  summary: Configure Redis before running more than one server instance so bag updates reach subscribers on every instance.
+  evidence: No `redis` block exists in string_theory_server/config/*.yaml; MessageScope.auto then delivers in-process only, so a client connected to another instance never receives the message.
