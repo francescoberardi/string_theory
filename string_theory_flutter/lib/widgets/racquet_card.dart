@@ -1,0 +1,282 @@
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:string_theory_client/string_theory_client.dart';
+import 'package:string_theory_flutter/bloc/bag_bloc.dart';
+import 'package:string_theory_flutter/domain/decay_engine.dart';
+import 'package:string_theory_flutter/theme/court_midnight_theme.dart';
+import 'package:string_theory_flutter/widgets/radial_health_gauge.dart';
+
+/// Athletic racquet card displaying stringbed health, specs, and status badges.
+///
+/// Integrates [RadialHealthGauge] and displays cautionary badge
+/// "Dead Stringbed — High Shock Risk" when health drops below 40%.
+class RacquetCard extends StatelessWidget {
+  final Racquet racquet;
+  final BagBloc bloc;
+  final VoidCallback? onTap;
+
+  const RacquetCard({
+    super.key,
+    required this.racquet,
+    required this.bloc,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final job = racquet.activeStringJob;
+    final hasJob = job != null;
+    final health = hasJob ? job.currentHealthScore : null;
+
+    final isCritical = health != null && health < 40;
+    final cardBg = isCritical
+        ? CourtMidnightTheme.healthCriticalBg
+        : CourtMidnightTheme.surface;
+    final cardBorder = isCritical
+        ? Border.all(color: CourtMidnightTheme.healthCritical, width: 1.5)
+        : Border.all(color: CourtMidnightTheme.surfaceBorder, width: 1.0);
+
+    final stringParts = <String>[];
+    if (job != null) {
+      final nameParts = [
+        if (job.brand != null && job.brand!.trim().isNotEmpty)
+          job.brand!.trim(),
+        if (job.model != null && job.model!.trim().isNotEmpty)
+          job.model!.trim(),
+      ].join(' ');
+      if (nameParts.isNotEmpty) stringParts.add(nameParts);
+      if (job.installedTension != null) {
+        stringParts.add('${job.installedTension!.toStringAsFixed(0)} lbs');
+      }
+    }
+    final stringSpecs = stringParts.isNotEmpty
+        ? stringParts.join(' • ')
+        : 'No string mounted';
+
+    final tensionLossText = (hasJob && health != null)
+        ? DecayEngine.calculateTensionLossText(
+            healthScore: health,
+            installedTensionLbs: job.installedTension ?? 52.0,
+          )
+        : null;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: cardBg,
+          borderRadius: BorderRadius.circular(18),
+          border: cardBorder,
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Left: Standalone Animated Radial Health Gauge
+            RadialHealthGauge(
+              healthScore: health,
+              size: 54,
+              animate: true,
+            ),
+            const SizedBox(width: 14),
+
+            // Center: Racquet specs & strings
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          racquet.name,
+                          style: GoogleFonts.barlowCondensed(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: CourtMidnightTheme.textPrimary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (racquet.isPrimary) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: CourtMidnightTheme.primaryVolt,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            'PRIMARY',
+                            style: GoogleFonts.barlowCondensed(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    stringSpecs,
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: hasJob
+                          ? CourtMidnightTheme.textSecondary
+                          : CourtMidnightTheme.textTertiary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  if (job != null)
+                    Text(
+                      '${job.materialCategory.displayName} • ${job.totalCourtHours.toStringAsFixed(1)}h / ${job.maxRatedHours.toStringAsFixed(0)}h max'
+                      '${tensionLossText != null ? ' • $tensionLossText' : ''}',
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        color: CourtMidnightTheme.textTertiary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  if (isCritical) ...[
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: CourtMidnightTheme.healthCritical.withValues(
+                          alpha: 0.15,
+                        ),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: CourtMidnightTheme.healthCritical.withValues(
+                            alpha: 0.5,
+                          ),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.warning_amber_rounded,
+                            size: 12,
+                            color: CourtMidnightTheme.healthCritical,
+                          ),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              'Dead Stringbed — High Shock Risk',
+                              style: GoogleFonts.inter(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: CourtMidnightTheme.healthCritical,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+
+            // Right: Quick context menu
+            if (racquet.id != null)
+              PopupMenuButton<String>(
+                icon: const Icon(
+                  Icons.more_vert,
+                  color: CourtMidnightTheme.textTertiary,
+                  size: 20,
+                ),
+                color: CourtMidnightTheme.surfaceElevated,
+                onSelected: (value) async {
+                  if (value == 'primary' && racquet.id != null) {
+                    bloc.add(SetPrimaryRacquet(racquet.id!));
+                  } else if (value == 'delete' && racquet.id != null) {
+                    final confirmed = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        backgroundColor: CourtMidnightTheme.surfaceElevated,
+                        title: Text(
+                          'Delete Racquet',
+                          style: GoogleFonts.barlowCondensed(
+                            color: CourtMidnightTheme.textPrimary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 20,
+                          ),
+                        ),
+                        content: Text(
+                          'Are you sure you want to remove "${racquet.name}" from your bag? This cannot be undone.',
+                          style: GoogleFonts.inter(
+                            color: CourtMidnightTheme.textSecondary,
+                            fontSize: 14,
+                          ),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(ctx).pop(false),
+                            child: const Text(
+                              'Cancel',
+                              style: TextStyle(
+                                color: CourtMidnightTheme.textTertiary,
+                              ),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.of(ctx).pop(true),
+                            child: const Text(
+                              'Delete',
+                              style: TextStyle(
+                                color: CourtMidnightTheme.healthCritical,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (confirmed == true && racquet.id != null) {
+                      bloc.add(DeleteRacquet(racquet.id!));
+                    }
+                  }
+                },
+                itemBuilder: (context) => [
+                  if (!racquet.isPrimary && racquet.id != null)
+                    const PopupMenuItem(
+                      value: 'primary',
+                      child: Text('Set as Primary'),
+                    ),
+                  if (racquet.id != null)
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: Text(
+                        'Delete Racquet',
+                        style: TextStyle(
+                          color: CourtMidnightTheme.healthCritical,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}

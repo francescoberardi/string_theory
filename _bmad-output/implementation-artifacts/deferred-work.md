@@ -8,3 +8,11 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-1-pure-dart-decayengine-domain-calculation-unit-tests.md`
   summary: Eliminate the duplicated DecayEngine between string_theory_server and string_theory_flutter via a single shared source.
   evidence: The two files are identical apart from imports, so formulas can drift; consolidating needs a new shared package, which is beyond Story 2.1's scope.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-2-animated-radial-health-gauge-widget-racquet-card-integration.md`
+  summary: Await asynchronous BagLoaded or BagError emission in VirtualBagScreen pull-to-refresh.
+  evidence: Reviewer noted RefreshIndicator.onRefresh resolves prematurely because Bloc.add(LoadBag()) is synchronous fire-and-forget; existing behavior from Story 1.5.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-2-animated-radial-health-gauge-widget-racquet-card-integration.md`
+  summary: Extract RacquetPreset and StringCategoryDefaults domain models out of add_racquet_modal.dart into domain layer.
+  evidence: Pre-existing presentation file declared domain constants and defaults during Story 1.4; should be placed in pure domain models.

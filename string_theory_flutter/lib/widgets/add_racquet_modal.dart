@@ -4,29 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:string_theory_client/string_theory_client.dart';
 
 import '../bloc/bag_bloc.dart';
+import '../domain/decay_engine.dart';
 import '../theme/court_midnight_theme.dart';
-
-/// Extension to provide user-friendly display names for string material categories.
-extension StringMaterialCategoryExtension on StringMaterialCategory {
-  String get displayName {
-    switch (this) {
-      case StringMaterialCategory.coPoly:
-        return 'Co-Polyester';
-      case StringMaterialCategory.multifilament:
-        return 'Multifilament';
-      case StringMaterialCategory.syntheticGut:
-        return 'Synthetic Gut';
-      case StringMaterialCategory.naturalGut:
-        return 'Natural Gut';
-      case StringMaterialCategory.kevlar:
-        return 'Kevlar';
-      case StringMaterialCategory.hybrid:
-        return 'Hybrid';
-      case StringMaterialCategory.other:
-        return 'Other';
-    }
-  }
-}
 
 /// Preset racquet and string bed configuration for 1-tap setup.
 class RacquetPreset {

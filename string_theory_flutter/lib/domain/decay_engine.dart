@@ -74,3 +74,25 @@ class DecayEngine {
     return '~${kgDrop.toStringAsFixed(1)} kg / ~${lbsDrop.toStringAsFixed(1)} lbs drop';
   }
 }
+
+/// Extension to provide user-friendly display names for string material categories.
+extension StringMaterialCategoryExtension on StringMaterialCategory {
+  String get displayName {
+    switch (this) {
+      case StringMaterialCategory.coPoly:
+        return 'Co-Polyester';
+      case StringMaterialCategory.multifilament:
+        return 'Multifilament';
+      case StringMaterialCategory.syntheticGut:
+        return 'Synthetic Gut';
+      case StringMaterialCategory.naturalGut:
+        return 'Natural Gut';
+      case StringMaterialCategory.kevlar:
+        return 'Kevlar';
+      case StringMaterialCategory.hybrid:
+        return 'Hybrid';
+      case StringMaterialCategory.other:
+        return 'Other';
+    }
+  }
+}
