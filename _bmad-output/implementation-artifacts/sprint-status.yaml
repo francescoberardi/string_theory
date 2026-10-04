@@ -40,7 +40,7 @@ development_status:
   1-1-anonymous-guest-authentication-token-rehydration: review
   1-2-serverpod-racquet-stringjob-schema-bagendpoint: review
   1-3-court-midnight-theme-bagbloc-reactive-state-foundation: review
-  1-4-add-racquet-form-with-string-category-smart-defaults-presets: review
+  1-4-add-racquet-form-with-string-category-smart-defaults-presets: done
   1-5-virtual-bag-responsive-screen-instant-demo-bag-seeder: backlog
   epic-1-retrospective: optional
 
