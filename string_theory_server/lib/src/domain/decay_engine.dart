@@ -63,9 +63,12 @@ class DecayEngine {
     }
 
     final healthDropFraction = (100 - clampedScore) / 100.0;
+    final effectiveTension = installedTensionLbs <= 0
+        ? 0.0
+        : installedTensionLbs;
     // Maximum expected elasticity tension loss when strings are fully dead (0% health)
     // is approximately 25% of installed tension.
-    final lbsDrop = installedTensionLbs * 0.25 * healthDropFraction;
+    final lbsDrop = effectiveTension * 0.25 * healthDropFraction;
     final kgDrop = lbsDrop * 0.45359237;
 
     return '~${kgDrop.toStringAsFixed(1)} kg / ~${lbsDrop.toStringAsFixed(1)} lbs drop';

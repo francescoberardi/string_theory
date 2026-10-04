@@ -85,6 +85,20 @@ void main() {
           expect(text, equals('~0.0 kg / ~0.0 lbs drop'));
         },
       );
+
+      test(
+        '[P1] AC-2 should clamp negative installed tension to 0 drop',
+        () {
+          // Given: A degraded health score with negative installed tension
+          final text = DecayEngine.calculateTensionLossText(
+            healthScore: 50,
+            installedTensionLbs: -52.0,
+          );
+
+          // Then: Tension loss indicates 0 drop without negative numbers
+          expect(text, equals('~0.0 kg / ~0.0 lbs drop'));
+        },
+      );
     });
 
     group('AC-3: Boundary Clamping & Material Category Shelf Life Tiers', () {
@@ -103,6 +117,26 @@ void main() {
 
           // Then: Health is 100%
           expect(health, equals(100));
+        },
+      );
+
+      test(
+        '[P0] AC-3 should clamp health score to 0% after 400 days elapsed even with 0 hours played',
+        () {
+          // Given: 0 hours played, but strung >400 days ago (shelf life 75 days)
+          // Calendar penalty: (424 / 75) * 30 = ~169.6 -> clamped to 0%
+          final stringingDate = DateTime(2025, 1, 1);
+          final now = DateTime(2026, 3, 1); // >400 days
+          final health = DecayEngine.calculateHealth(
+            hoursPlayed: 0.0,
+            maxRatedHours: 20.0,
+            stringingDate: stringingDate,
+            materialCategory: StringMaterialCategory.coPoly,
+            now: now,
+          );
+
+          // Then: Health is clamped to 0% purely by calendar aging
+          expect(health, equals(0));
         },
       );
 

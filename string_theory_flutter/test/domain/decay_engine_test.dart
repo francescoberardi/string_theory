@@ -69,6 +69,18 @@ void main() {
           expect(text, equals('~0.0 kg / ~0.0 lbs drop'));
         },
       );
+
+      test(
+        '[P1] AC-2 should clamp negative installed tension to 0 drop',
+        () {
+          final text = DecayEngine.calculateTensionLossText(
+            healthScore: 50,
+            installedTensionLbs: -52.0,
+          );
+
+          expect(text, equals('~0.0 kg / ~0.0 lbs drop'));
+        },
+      );
     });
 
     group('AC-3: Boundary Clamping & Material Category Shelf Life Tiers', () {
@@ -85,6 +97,23 @@ void main() {
           );
 
           expect(health, equals(100));
+        },
+      );
+
+      test(
+        '[P0] AC-3 should clamp health score to 0% after 400 days elapsed even with 0 hours played',
+        () {
+          final stringingDate = DateTime(2025, 1, 1);
+          final now = DateTime(2026, 3, 1);
+          final health = DecayEngine.calculateHealth(
+            hoursPlayed: 0.0,
+            maxRatedHours: 20.0,
+            stringingDate: stringingDate,
+            materialCategory: StringMaterialCategory.coPoly,
+            now: now,
+          );
+
+          expect(health, equals(0));
         },
       );
 
