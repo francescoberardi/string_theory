@@ -15,6 +15,7 @@ class BagBloc extends Bloc<BagEvent, BagState> {
     on<AddRacquet>(_onAddRacquet);
     on<DeleteRacquet>(_onDeleteRacquet);
     on<SetPrimaryRacquet>(_onSetPrimaryRacquet);
+    on<SeedSampleBag>(_onSeedSampleBag);
   }
 
   Future<void> _onLoadBag(LoadBag event, Emitter<BagState> emit) async {
@@ -93,5 +94,12 @@ class BagBloc extends Bloc<BagEvent, BagState> {
     } catch (e) {
       emit(BagError('Failed to set primary racquet: $e'));
     }
+  }
+
+  Future<void> _onSeedSampleBag(
+    SeedSampleBag event,
+    Emitter<BagState> emit,
+  ) async {
+    // Red-phase stub pending Story 1.5 implementation
   }
 }

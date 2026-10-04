@@ -69,3 +69,7 @@ class SetPrimaryRacquet extends BagEvent {
   @override
   List<Object?> get props => [racquetId];
 }
+
+class SeedSampleBag extends BagEvent {
+  const SeedSampleBag();
+}
