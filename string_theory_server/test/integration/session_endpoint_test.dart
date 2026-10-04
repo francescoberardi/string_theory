@@ -710,4 +710,64 @@ void main() {
       );
     },
   );
+
+  // Concurrent transactions require real commits, so rollbacks are disabled.
+  withServerpod(
+    'Given concurrent SessionEndpoint calls for the same external workout',
+    (sessionBuilder, endpoints) {
+      final userSession = sessionBuilder.copyWith(
+        authentication:
+            serverpod_test.AuthenticationOverride.authenticationInfo(
+              '3101',
+              {},
+            ),
+      );
+
+      test(
+        '[P0] should return the same SessionLog for concurrent duplicate syncs without double-counting hours',
+        () async {
+          final racquet = await endpoints.bag.createRacquet(
+            userSession,
+            racquetName: 'Yonex Ezone 98',
+            materialCategory: StringMaterialCategory.coPoly,
+            maxRatedHours: 20.0,
+          );
+          final racquetId = racquet.id!;
+          final externalId = 'hk-race-${DateTime.now().microsecondsSinceEpoch}';
+
+          try {
+            final logInput = SessionLog(
+              userId: 3101,
+              racquetId: racquetId,
+              startTime: DateTime.now().toUtc(),
+              durationMinutes: 90,
+              source: 'HealthKit',
+              externalWorkoutId: externalId,
+            );
+
+            final results = await Future.wait([
+              endpoints.session.logSession(userSession, logInput),
+              endpoints.session.logSession(userSession, logInput),
+            ]);
+
+            expect(results[0].id, isNotNull);
+            expect(results[1].id, equals(results[0].id));
+
+            final bag = await endpoints.bag.getVirtualBag(userSession);
+            final updatedRacquet = bag.firstWhere((r) => r.id == racquetId);
+            expect(
+              updatedRacquet.activeStringJob!.totalCourtHours,
+              closeTo(1.5, 0.001),
+            );
+          } finally {
+            await endpoints.bag.deleteRacquet(
+              userSession,
+              racquetId: racquetId,
+            );
+          }
+        },
+      );
+    },
+    rollbackDatabase: RollbackDatabase.disabled,
+  );
 }

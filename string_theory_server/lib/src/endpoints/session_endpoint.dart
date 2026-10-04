@@ -55,6 +55,54 @@ class SessionEndpoint extends Endpoint {
         ? log.externalWorkoutId!.trim()
         : null;
 
+    try {
+      return await _insertSession(session, log, userId, trimmedExternalId);
+    } on DatabaseUniqueViolationException catch (e) {
+      // A concurrent sync of the same workout committed first. This
+      // transaction rolled back, so no hours were counted: return the winner.
+      if (trimmedExternalId == null ||
+          e.constraintName != 'session_log_external_id_idx') {
+        rethrow;
+      }
+      final existing = await _findByExternalWorkoutId(
+        session,
+        trimmedExternalId,
+        userId,
+      );
+      if (existing == null) rethrow;
+      return existing;
+    }
+  }
+
+  /// Returns the session already logged under [externalWorkoutId] for
+  /// [userId], or null if none exists. Throws a 409 [BagException] if the
+  /// workout is registered to another account.
+  Future<SessionLog?> _findByExternalWorkoutId(
+    Session session,
+    String externalWorkoutId,
+    int userId, {
+    Transaction? transaction,
+  }) async {
+    final existing = await SessionLog.db.findFirstRow(
+      session,
+      where: (t) => t.externalWorkoutId.equals(externalWorkoutId),
+      transaction: transaction,
+    );
+    if (existing != null && existing.userId != userId) {
+      throw BagException(
+        message: 'Workout already registered to another account',
+        statusCode: 409,
+      );
+    }
+    return existing;
+  }
+
+  Future<SessionLog> _insertSession(
+    Session session,
+    SessionLog log,
+    int userId,
+    String? trimmedExternalId,
+  ) async {
     return await session.db.transaction((tx) async {
       // 1. Validate racquet ownership and existence
       final racquet = await Racquet.db.findById(
@@ -75,20 +123,13 @@ class SessionEndpoint extends Endpoint {
 
       // 2. Check idempotency right after validating racquet ownership
       if (trimmedExternalId != null) {
-        final existing = await SessionLog.db.findFirstRow(
+        final existing = await _findByExternalWorkoutId(
           session,
-          where: (t) => t.externalWorkoutId.equals(trimmedExternalId),
+          trimmedExternalId,
+          userId,
           transaction: tx,
         );
-        if (existing != null) {
-          if (existing.userId == userId) {
-            return existing;
-          }
-          throw BagException(
-            message: 'Workout already registered to another account',
-            statusCode: 409,
-          );
-        }
+        if (existing != null) return existing;
       }
 
       // 3. Only check activeStringJob if inserting a new session
