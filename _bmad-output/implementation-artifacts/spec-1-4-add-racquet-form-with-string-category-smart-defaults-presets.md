@@ -2,7 +2,7 @@
 title: 'Story 1.4: Add Racquet Form with String Category Smart Defaults & Presets'
 type: 'feature'
 created: '2026-10-04'
-status: 'in-review'
+status: 'done'
 baseline_commit: 'c8f970868f0c2a26532822ca0010077884d622f9'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -87,6 +87,13 @@ context:
 - None (implemented strictly within frozen intent).
 
 ## Review Triage Log
+
+- `medium` -- DropdownButtonFormField used initialValue rather than value, preventing reactive update upon preset selection. Verified and patched.
+- `medium` -- Date picker allowed selecting future dates up to 365 days and lacked !mounted check. Verified and patched with DateTime.now() ceiling and mount guard.
+- `low` -- Numeric validators for tension and max hours lacked !parsed.isFinite check. Verified and patched.
+- `low` -- Modal bottom sheet lacked responsive maxWidth constraint on wide viewports. Verified and patched with 560dp constraint.
+- `medium` -- Verification gaps for date picker interaction, non-numeric validation, and hybrid/kevlar defaults. Verified and patched with 4 new tests.
+- `false` -- Finding claimed _submit() pops modal without waiting for BagBloc; BLoC event dispatch is fire-and-stream, and immediate dismissal matches reactive pattern. Refuted.
 
 ## Verification
 
