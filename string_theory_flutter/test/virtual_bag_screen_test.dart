@@ -1,28 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart' as flutter_test;
-import 'package:flutter_test/flutter_test.dart' hide test;
+import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:string_theory_client/string_theory_client.dart';
 import 'package:string_theory_flutter/bloc/bag_bloc.dart';
 import 'package:string_theory_flutter/screens/virtual_bag_screen.dart';
 import 'package:string_theory_flutter/theme/court_midnight_theme.dart';
 import 'package:string_theory_flutter/widgets/add_racquet_modal.dart';
-
-/// ATDD Red-Phase test runner helper allowing `test.skip(...)` syntax in Dart.
-// ignore: camel_case_types
-class test {
-  static void skipWidgets(
-    String description,
-    flutter_test.WidgetTesterCallback callback, {
-    String? reason,
-  }) {
-    flutter_test.testWidgets(
-      description,
-      callback,
-      skip: true,
-    );
-  }
-}
 
 class MockBagBloc extends Mock implements BagBloc {}
 
@@ -117,7 +100,7 @@ void main() {
   });
 
   group('Story 1.5: Virtual Bag Responsive Screen & Demo Bag Seeder', () {
-    test.skipWidgets(
+    testWidgets(
       '[P0] AC-1 should render empty state with Add Racquet and Load Sample Bag buttons when bag is empty',
       (tester) async {
         when(() => mockBagBloc.state).thenReturn(const BagLoaded([]));
@@ -149,7 +132,7 @@ void main() {
       },
     );
 
-    test.skipWidgets(
+    testWidgets(
       '[P0] AC-2 should open AddRacquetModal when [+ Add Racquet] is tapped on empty state',
       (tester) async {
         when(() => mockBagBloc.state).thenReturn(const BagLoaded([]));
@@ -171,12 +154,13 @@ void main() {
         expect(
           find.byType(AddRacquetModal),
           findsOneWidget,
-          reason: 'Tapping Add Racquet on empty state must open AddRacquetModal',
+          reason:
+              'Tapping Add Racquet on empty state must open AddRacquetModal',
         );
       },
     );
 
-    test.skipWidgets(
+    testWidgets(
       '[P0] AC-3 should dispatch SeedSampleBag event to BagBloc when [⚡ Load Sample Bag] is tapped',
       (tester) async {
         when(() => mockBagBloc.state).thenReturn(const BagLoaded([]));
@@ -199,7 +183,7 @@ void main() {
       },
     );
 
-    test.skipWidgets(
+    testWidgets(
       '[P0] AC-4 should display single-column card list with bottom navigation bar on mobile screen width (<600dp)',
       (tester) async {
         // Configure mobile screen size (e.g. 400 x 800)
@@ -226,13 +210,16 @@ void main() {
           reason: 'Mobile screen must render racquets in a single-column list',
         );
 
+        expect(find.byType(RacquetCard), findsNWidgets(sampleRacquets.length));
+        expect(find.text('Wilson Blade 98'), findsOneWidget);
+
         // Bottom navigation bar is visible on mobile
         expect(find.byKey(VirtualBagScreen.keyBottomNav), findsOneWidget);
         expect(find.byKey(VirtualBagScreen.keyNavigationRail), findsNothing);
       },
     );
 
-    test.skipWidgets(
+    testWidgets(
       '[P0] AC-5 should display adaptive 2-column grid with NavigationRail on tablet/desktop screen width (>=600dp)',
       (tester) async {
         // Configure tablet screen size (e.g. 900 x 1200)
@@ -260,9 +247,92 @@ void main() {
               'Tablet/desktop screen must render racquets in a multi-column grid',
         );
 
+        expect(find.byType(RacquetCard), findsNWidgets(sampleRacquets.length));
+        expect(find.text('Wilson Blade 98'), findsOneWidget);
+
         // NavigationRail is visible on tablet/desktop
         expect(find.byKey(VirtualBagScreen.keyNavigationRail), findsOneWidget);
         expect(find.byKey(VirtualBagScreen.keyBottomNav), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'should display loading indicator when state is BagLoading',
+      (tester) async {
+        when(() => mockBagBloc.state).thenReturn(const BagLoading());
+        when(() => mockBagBloc.stream).thenAnswer((_) => const Stream.empty());
+
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: CourtMidnightTheme.themeData,
+            home: VirtualBagScreen(bagBloc: mockBagBloc),
+          ),
+        );
+
+        expect(
+          find.byKey(VirtualBagScreen.keyLoadingIndicator),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      'should display error message and reload button when state is BagError',
+      (tester) async {
+        when(() => mockBagBloc.state).thenReturn(
+          const BagError('Failed to load virtual bag: connection error'),
+        );
+        when(() => mockBagBloc.stream).thenAnswer((_) => const Stream.empty());
+
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: CourtMidnightTheme.themeData,
+            home: VirtualBagScreen(bagBloc: mockBagBloc),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text('Failed to load virtual bag: connection error'),
+          findsOneWidget,
+        );
+        expect(find.text('Reload Bag'), findsOneWidget);
+
+        await tester.tap(find.text('Reload Bag'));
+        verify(() => mockBagBloc.add(const LoadBag())).called(1);
+      },
+    );
+
+    testWidgets(
+      'should display UNSTRUNG status for racquet without active string job',
+      (tester) async {
+        final unstrungRacquet = Racquet(
+          id: 99,
+          userId: 1,
+          name: 'Pro Staff 97',
+          brand: 'Wilson',
+          model: 'Pro Staff',
+          isPrimary: false,
+          activeStringJob: null,
+          createdAt: DateTime.utc(2026, 9, 25),
+          updatedAt: DateTime.utc(2026, 9, 25),
+        );
+
+        when(() => mockBagBloc.state).thenReturn(BagLoaded([unstrungRacquet]));
+        when(() => mockBagBloc.stream).thenAnswer((_) => const Stream.empty());
+
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: CourtMidnightTheme.themeData,
+            home: VirtualBagScreen(bagBloc: mockBagBloc),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Pro Staff 97'), findsOneWidget);
+        expect(find.text('No string mounted'), findsOneWidget);
+        expect(find.text('UNSTRUNG'), findsOneWidget);
+        expect(find.text('--'), findsOneWidget);
       },
     );
   });

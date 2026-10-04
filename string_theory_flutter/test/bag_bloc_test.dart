@@ -271,5 +271,106 @@ void main() {
         await bloc.close();
       },
     );
+
+    test(
+      '[P0] AC-3 should create 3 demo racquets and emit BagLoaded when SeedSampleBag is dispatched',
+      () async {
+        when(
+          () => mockBagEndpoint.createRacquet(
+            racquetName: any(named: 'racquetName'),
+            brand: any(named: 'brand'),
+            model: any(named: 'model'),
+            isPrimary: any(named: 'isPrimary'),
+            materialCategory: any(named: 'materialCategory'),
+            stringBrand: any(named: 'stringBrand'),
+            stringModel: any(named: 'stringModel'),
+            tension: any(named: 'tension'),
+            maxRatedHours: any(named: 'maxRatedHours'),
+            stringingDate: any(named: 'stringingDate'),
+          ),
+        ).thenAnswer((_) async => sampleRacquet);
+
+        when(
+          () => mockBagEndpoint.getVirtualBag(),
+        ).thenAnswer((_) async => [sampleRacquet]);
+
+        final bloc = BagBloc(client: mockClient);
+
+        final states = <BagState>[];
+        final subscription = bloc.stream.listen(states.add);
+
+        bloc.add(const SeedSampleBag());
+        await pumpEventQueue();
+
+        expect(
+          states,
+          equals([
+            const BagLoading(),
+            BagLoaded([sampleRacquet]),
+          ]),
+          reason: 'SeedSampleBag must emit BagLoading then BagLoaded',
+        );
+
+        verify(
+          () => mockBagEndpoint.createRacquet(
+            racquetName: any(named: 'racquetName'),
+            brand: any(named: 'brand'),
+            model: any(named: 'model'),
+            isPrimary: any(named: 'isPrimary'),
+            materialCategory: any(named: 'materialCategory'),
+            stringBrand: any(named: 'stringBrand'),
+            stringModel: any(named: 'stringModel'),
+            tension: any(named: 'tension'),
+            maxRatedHours: any(named: 'maxRatedHours'),
+            stringingDate: any(named: 'stringingDate'),
+          ),
+        ).called(3);
+        verify(() => mockBagEndpoint.getVirtualBag()).called(1);
+
+        await subscription.cancel();
+        await bloc.close();
+      },
+    );
+
+    test(
+      'should emit [BagLoading, BagError] when SeedSampleBag encounters an RPC error',
+      () async {
+        when(
+          () => mockBagEndpoint.createRacquet(
+            racquetName: any(named: 'racquetName'),
+            brand: any(named: 'brand'),
+            model: any(named: 'model'),
+            isPrimary: any(named: 'isPrimary'),
+            materialCategory: any(named: 'materialCategory'),
+            stringBrand: any(named: 'stringBrand'),
+            stringModel: any(named: 'stringModel'),
+            tension: any(named: 'tension'),
+            maxRatedHours: any(named: 'maxRatedHours'),
+            stringingDate: any(named: 'stringingDate'),
+          ),
+        ).thenThrow(Exception('Network timeout'));
+
+        final bloc = BagBloc(client: mockClient);
+
+        final states = <BagState>[];
+        final subscription = bloc.stream.listen(states.add);
+
+        bloc.add(const SeedSampleBag());
+        await pumpEventQueue();
+
+        expect(
+          states,
+          equals([
+            const BagLoading(),
+            const BagError(
+              'Failed to seed sample bag: Exception: Network timeout',
+            ),
+          ]),
+        );
+
+        await subscription.cancel();
+        await bloc.close();
+      },
+    );
   });
 }

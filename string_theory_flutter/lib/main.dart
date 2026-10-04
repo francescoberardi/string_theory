@@ -4,8 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'bloc/bag_bloc.dart';
 import 'client.dart';
-import 'screens/greetings_screen.dart';
 import 'screens/settings_screen.dart';
+import 'screens/virtual_bag_screen.dart';
 import 'theme/court_midnight_theme.dart';
 
 void main() async {
@@ -148,7 +148,7 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
         ],
       ),
-      body: const GreetingsScreen(),
+      body: const VirtualBagScreen(),
     );
   }
 }

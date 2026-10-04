@@ -4,6 +4,7 @@ import 'package:serverpod_auth_idp_flutter/serverpod_auth_idp_flutter.dart';
 import 'package:string_theory_client/string_theory_client.dart';
 import 'package:string_theory_flutter/client.dart' as app_client;
 import 'package:string_theory_flutter/main.dart';
+import 'package:string_theory_flutter/screens/virtual_bag_screen.dart';
 import 'package:string_theory_flutter/services/auth_service.dart';
 
 class InMemoryAuthSuccessStorage implements ClientAuthSuccessStorage {
@@ -64,6 +65,7 @@ void main() {
       expect(find.text('STRING THEORY'), findsOneWidget);
       expect(find.text('GUEST'), findsOneWidget);
       expect(find.byIcon(Icons.settings_outlined), findsOneWidget);
+      expect(find.byType(VirtualBagScreen), findsOneWidget);
 
       await tester.tap(find.byIcon(Icons.settings_outlined));
       await tester.pumpAndSettle();
