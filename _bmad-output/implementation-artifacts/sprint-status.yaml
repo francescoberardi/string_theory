@@ -49,11 +49,11 @@ development_status:
   1-5-2-multi-package-automated-test-runner-github-actions: done
   epic-1-5-retrospective: done
 
-  epic-2: in-progress
+  epic-2: done
   2-1-pure-dart-decayengine-domain-calculation-unit-tests: done
   2-2-animated-radial-health-gauge-widget-racquet-card-integration: done
   2-3-serverpod-dailydecayfuturecall-on-demand-test-trigger: done
-  2-4-time-warp-aging-simulator-30-days-dev-control: review
+  2-4-time-warp-aging-simulator-30-days-dev-control: done
   epic-2-retrospective: optional
 
   epic-3: backlog
