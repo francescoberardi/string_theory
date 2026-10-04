@@ -8,6 +8,7 @@ import 'screens/settings_screen.dart';
 import 'screens/virtual_bag_screen.dart';
 import 'services/health/health_sync_resolver.dart';
 import 'services/health/health_sync_service.dart';
+import 'services/offline_session_queue.dart';
 import 'theme/court_midnight_theme.dart';
 
 void main() async {
@@ -33,7 +34,12 @@ class MyApp extends StatelessWidget {
     final Widget withBag = bagBloc != null
         ? BlocProvider<BagBloc>.value(value: bagBloc!, child: materialApp)
         : BlocProvider<BagBloc>(
-            create: (context) => BagBloc(client: client)..add(const LoadBag()),
+            create: (context) => BagBloc(
+              client: client,
+              offlineQueue: OfflineSessionQueue(
+                storage: SharedPreferencesSessionQueueStorage(),
+              ),
+            )..add(const LoadBag()),
             child: materialApp,
           );
 

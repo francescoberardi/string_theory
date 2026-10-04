@@ -39,6 +39,7 @@ class VirtualBagScreen extends StatefulWidget {
     'virtual_bag_simulate_workout_badge',
   );
   static const keyLogSessionFab = Key('virtual_bag_fab_log_session');
+  static const keyPendingSyncBanner = Key('virtual_bag_pending_sync_banner');
 
   /// Formats a workout duration as e.g. `1h 30m`, `2h` or `45m`.
   static String formatWorkoutDuration(int minutes) {
@@ -241,6 +242,37 @@ class _VirtualBagScreenState extends State<VirtualBagScreen> {
     return BlocConsumer<BagBloc, BagState>(
       bloc: effectiveBloc,
       listener: (context, state) {
+        if (state is BagLoaded && state.infoMessage != null) {
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(
+              SnackBar(
+                backgroundColor: CourtMidnightTheme.surface,
+                behavior: SnackBarBehavior.floating,
+                content: Row(
+                  children: [
+                    Icon(
+                      state.pendingSyncCount > 0
+                          ? Icons.cloud_off_outlined
+                          : Icons.cloud_done_outlined,
+                      color: CourtMidnightTheme.primaryVolt,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        state.infoMessage!,
+                        style: GoogleFonts.inter(
+                          color: CourtMidnightTheme.textPrimary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+        }
         if (state is BagLoaded && state.errorMessage != null) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -570,59 +602,106 @@ class _VirtualBagScreenState extends State<VirtualBagScreen> {
     }
 
     if (state is BagLoaded) {
-      if (state.racquets.isEmpty) {
-        return _buildEmptyState(context);
-      }
+      final body = _buildLoadedBody(context, state, isMobile);
+      if (state.pendingSyncCount <= 0) return body;
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildPendingSyncBanner(state.pendingSyncCount, isMobile),
+          Expanded(child: body),
+        ],
+      );
+    }
 
-      if (isMobile) {
-        return RefreshIndicator(
-          color: CourtMidnightTheme.primaryVolt,
-          backgroundColor: CourtMidnightTheme.surface,
-          onRefresh: () async {
-            _resolveBloc(context).add(const LoadBag());
-          },
-          child: ListView.separated(
-            key: VirtualBagScreen.keyRacquetList,
-            padding: const EdgeInsets.only(
-              left: 16,
-              right: 16,
-              top: 16,
-              bottom: 88,
+    // Default loading state for BagInitial
+    return const Center(
+      child: CircularProgressIndicator(
+        key: VirtualBagScreen.keyLoadingIndicator,
+        color: CourtMidnightTheme.primaryVolt,
+      ),
+    );
+  }
+
+  /// Indicator shown while sessions logged offline wait to reach the server.
+  Widget _buildPendingSyncBanner(int count, bool isMobile) {
+    final sessions = count == 1 ? '1 session' : '$count sessions';
+    final horizontal = isMobile ? 16.0 : 24.0;
+    return Semantics(
+      container: true,
+      liveRegion: true,
+      label: '$sessions saved offline, waiting to sync',
+      child: ExcludeSemantics(
+        child: Container(
+          key: VirtualBagScreen.keyPendingSyncBanner,
+          margin: EdgeInsets.fromLTRB(horizontal, 12, horizontal, 0),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: CourtMidnightTheme.healthDegraded.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: CourtMidnightTheme.healthDegraded.withValues(alpha: 0.4),
             ),
-            itemCount: state.racquets.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              return RacquetCard(
-                racquet: state.racquets[index],
-                bloc: _resolveBloc(context),
-              );
-            },
           ),
-        );
-      }
+          child: Row(
+            children: [
+              const Icon(
+                Icons.cloud_off_outlined,
+                color: CourtMidnightTheme.healthDegraded,
+                size: 20,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  '$sessions waiting to sync',
+                  style: GoogleFonts.inter(
+                    color: CourtMidnightTheme.textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              Text(
+                'OFFLINE',
+                style: GoogleFonts.barlowCondensed(
+                  color: CourtMidnightTheme.healthDegraded,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.6,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
-      // Tablet / Desktop multi-column grid (>=600dp)
+  Widget _buildLoadedBody(
+    BuildContext context,
+    BagLoaded state,
+    bool isMobile,
+  ) {
+    if (state.racquets.isEmpty) {
+      return _buildEmptyState(context);
+    }
+
+    if (isMobile) {
       return RefreshIndicator(
         color: CourtMidnightTheme.primaryVolt,
         backgroundColor: CourtMidnightTheme.surface,
         onRefresh: () async {
           _resolveBloc(context).add(const LoadBag());
         },
-        child: GridView.builder(
-          key: VirtualBagScreen.keyRacquetGrid,
+        child: ListView.separated(
+          key: VirtualBagScreen.keyRacquetList,
           padding: const EdgeInsets.only(
-            left: 24,
-            right: 24,
-            top: 24,
+            left: 16,
+            right: 16,
+            top: 16,
             bottom: 88,
           ),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-            mainAxisExtent: 140,
-          ),
           itemCount: state.racquets.length,
+          separatorBuilder: (_, _) => const SizedBox(height: 12),
           itemBuilder: (context, index) {
             return RacquetCard(
               racquet: state.racquets[index],
@@ -633,11 +712,34 @@ class _VirtualBagScreenState extends State<VirtualBagScreen> {
       );
     }
 
-    // Default loading state for BagInitial
-    return const Center(
-      child: CircularProgressIndicator(
-        key: VirtualBagScreen.keyLoadingIndicator,
-        color: CourtMidnightTheme.primaryVolt,
+    // Tablet / Desktop multi-column grid (>=600dp)
+    return RefreshIndicator(
+      color: CourtMidnightTheme.primaryVolt,
+      backgroundColor: CourtMidnightTheme.surface,
+      onRefresh: () async {
+        _resolveBloc(context).add(const LoadBag());
+      },
+      child: GridView.builder(
+        key: VirtualBagScreen.keyRacquetGrid,
+        padding: const EdgeInsets.only(
+          left: 24,
+          right: 24,
+          top: 24,
+          bottom: 88,
+        ),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
+          mainAxisExtent: 140,
+        ),
+        itemCount: state.racquets.length,
+        itemBuilder: (context, index) {
+          return RacquetCard(
+            racquet: state.racquets[index],
+            bloc: _resolveBloc(context),
+          );
+        },
       ),
     );
   }

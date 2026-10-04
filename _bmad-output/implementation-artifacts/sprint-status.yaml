@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-02-2026 17:45
-last_updated: 10-04-2026 21:23
+last_updated: 10-04-2026 21:53
 project: string_theory
 project_key: NOKEY
 tracking_system: file-system
@@ -61,7 +61,7 @@ development_status:
   3-2-serverpod-real-time-websocket-streaming-bagstreammessage: done
   3-3-healthsyncservice-strategy-pattern-judge-simulation-generato: done
   3-4-progressive-disclosure-workout-assignment-sheet-3-tap-quick: done
-  3-5-offline-session-queue-with-auto-reconnection-sync: backlog
+  3-5-offline-session-queue-with-auto-reconnection-sync: review
   epic-3-retrospective: optional
 
   epic-4: backlog

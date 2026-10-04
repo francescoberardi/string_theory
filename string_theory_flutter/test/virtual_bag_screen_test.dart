@@ -765,6 +765,146 @@ void main() {
     );
   });
 
+  group('Story 3.5: Offline session feedback & pending sync indicator', () {
+    Future<StreamController<BagState>> pumpWithStream(
+      WidgetTester tester,
+      BagState initial, {
+      Size size = const Size(400, 800),
+    }) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      final controller = StreamController<BagState>.broadcast();
+      addTearDown(controller.close);
+      when(() => mockBagBloc.state).thenReturn(initial);
+      when(() => mockBagBloc.stream).thenAnswer((_) => controller.stream);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: CourtMidnightTheme.themeData,
+          home: VirtualBagScreen(
+            bagBloc: mockBagBloc,
+            healthSyncService: fakeHealth,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      return controller;
+    }
+
+    testWidgets(
+      'shows an informational SnackBar when a session is saved offline',
+      (tester) async {
+        final controller = await pumpWithStream(
+          tester,
+          BagLoaded(sampleRacquets),
+        );
+
+        final offlineState = BagLoaded(
+          sampleRacquets,
+          infoMessage: BagBloc.offlineSavedMessage,
+          pendingSyncCount: 1,
+        );
+        when(() => mockBagBloc.state).thenReturn(offlineState);
+        controller.add(offlineState);
+        await tester.pumpAndSettle();
+
+        final snackBar = tester.widget<SnackBar>(find.byType(SnackBar));
+        expect(snackBar.backgroundColor, CourtMidnightTheme.surface);
+        expect(
+          find.descendant(
+            of: find.byType(SnackBar),
+            matching: find.text(
+              'Session saved offline. Will sync when back online.',
+            ),
+          ),
+          findsOneWidget,
+        );
+        // Not treated as a failure.
+        expect(find.byIcon(Icons.error_outline), findsNothing);
+        expect(find.text('Wilson Blade 98'), findsOneWidget);
+      },
+    );
+
+    testWidgets('shows a confirmation SnackBar after syncing', (tester) async {
+      final controller = await pumpWithStream(
+        tester,
+        BagLoaded(sampleRacquets, pendingSyncCount: 2),
+      );
+
+      final synced = BagLoaded(
+        sampleRacquets,
+        infoMessage: 'Synced 2 offline sessions',
+      );
+      when(() => mockBagBloc.state).thenReturn(synced);
+      controller.add(synced);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Synced 2 offline sessions'), findsOneWidget);
+      expect(find.byKey(VirtualBagScreen.keyPendingSyncBanner), findsNothing);
+    });
+
+    testWidgets(
+      'displays the pending sync banner while sessions are queued',
+      (tester) async {
+        await pumpWithStream(
+          tester,
+          BagLoaded(sampleRacquets, pendingSyncCount: 2),
+        );
+
+        final banner = find.byKey(VirtualBagScreen.keyPendingSyncBanner);
+        expect(banner, findsOneWidget);
+        expect(
+          find.descendant(
+            of: banner,
+            matching: find.text('2 sessions waiting to sync'),
+          ),
+          findsOneWidget,
+        );
+        expect(find.byIcon(Icons.cloud_off_outlined), findsOneWidget);
+        expect(
+          find.bySemanticsLabel(
+            RegExp('2 sessions saved offline, waiting to sync'),
+          ),
+          findsOneWidget,
+        );
+        expect(find.text('Wilson Blade 98'), findsOneWidget);
+      },
+    );
+
+    testWidgets('uses singular wording for one queued session', (
+      tester,
+    ) async {
+      await pumpWithStream(
+        tester,
+        BagLoaded(sampleRacquets, pendingSyncCount: 1),
+      );
+
+      expect(find.text('1 session waiting to sync'), findsOneWidget);
+    });
+
+    testWidgets('displays the banner on the tablet grid layout', (
+      tester,
+    ) async {
+      await pumpWithStream(
+        tester,
+        BagLoaded(sampleRacquets, pendingSyncCount: 1),
+        size: const Size(1024, 800),
+      );
+
+      expect(find.byKey(VirtualBagScreen.keyRacquetGrid), findsOneWidget);
+      expect(
+        find.byKey(VirtualBagScreen.keyPendingSyncBanner),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('hides the banner when nothing is queued', (tester) async {
+      await pumpWithStream(tester, BagLoaded(sampleRacquets));
+
+      expect(find.byKey(VirtualBagScreen.keyPendingSyncBanner), findsNothing);
+    });
+  });
+
   group('formatWorkoutDuration', () {
     const cases = {
       45: '45m',

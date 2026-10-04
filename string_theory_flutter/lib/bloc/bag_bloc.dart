@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:string_theory_client/string_theory_client.dart';
 
+import '../domain/decay_engine.dart';
+import '../services/offline_session_queue.dart';
 import 'bag_event.dart';
 import 'bag_state.dart';
 
@@ -11,10 +13,28 @@ export 'bag_event.dart';
 export 'bag_state.dart';
 
 class BagBloc extends Bloc<BagEvent, BagState> {
-  final Client client;
-  StreamSubscription<BagStreamMessage>? _bagUpdatesSubscription;
+  /// Shown when a session is queued locally instead of reaching the server.
+  static const offlineSavedMessage =
+      'Session saved offline. Will sync when back online.';
 
-  BagBloc({required this.client}) : super(const BagInitial()) {
+  final Client client;
+
+  /// Sessions logged while the server is unreachable.
+  final OfflineSessionQueue offlineQueue;
+
+  StreamSubscription<BagStreamMessage>? _bagUpdatesSubscription;
+  ConnectivityMonitor? _connectivityMonitor;
+
+  /// Last status reported by the connectivity monitor; null until reported.
+  bool? _isOnline;
+
+  /// [offlineQueue] defaults to a volatile in-memory queue; the app passes one
+  /// backed by `SharedPreferences`.
+  BagBloc({required this.client, OfflineSessionQueue? offlineQueue})
+    : offlineQueue =
+          offlineQueue ??
+          OfflineSessionQueue(storage: InMemorySessionQueueStorage()),
+      super(const BagInitial()) {
     on<LoadBag>(_onLoadBag);
     on<AddRacquet>(_onAddRacquet);
     on<DeleteRacquet>(_onDeleteRacquet);
@@ -23,10 +43,98 @@ class BagBloc extends Bloc<BagEvent, BagState> {
     on<FastForwardRacquetAge>(_onFastForwardRacquetAge);
     on<BagStreamReceived>(_onBagStreamReceived);
     on<LogSession>(_onLogSession);
+    on<SyncOfflineSessions>(_onSyncOfflineSessions);
+    _listenToConnectivity();
+  }
+
+  /// Message for the toast shown after [count] queued sessions synced.
+  static String syncedMessage(int count) =>
+      'Synced $count offline session${count == 1 ? '' : 's'}';
+
+  /// Returns [racquets] with a [durationMinutes] session applied to the
+  /// active stringbed of [racquetId]: court hours incremented and health
+  /// recalculated with the shared [DecayEngine], mirroring the server.
+  static List<Racquet> applyOptimisticSession(
+    List<Racquet> racquets, {
+    required int racquetId,
+    required int durationMinutes,
+    DateTime? now,
+  }) {
+    return racquets.map((r) {
+      final job = r.activeStringJob;
+      if (r.id != racquetId || job == null) return r;
+      final updatedHours = job.totalCourtHours + durationMinutes / 60.0;
+      final optimisticHealth = DecayEngine.calculateHealth(
+        hoursPlayed: updatedHours,
+        maxRatedHours: job.maxRatedHours,
+        stringingDate: job.stringingDate,
+        materialCategory: job.materialCategory,
+        now: now,
+      );
+      return r.copyWith(
+        activeStringJob: job.copyWith(
+          totalCourtHours: updatedHours,
+          currentHealthScore: optimisticHealth,
+        ),
+      );
+    }).toList();
+  }
+
+  /// Builds a [BagLoaded] carrying the current offline queue size.
+  BagLoaded _loaded(
+    List<Racquet> racquets, {
+    String? errorMessage,
+    String? infoMessage,
+  }) {
+    return BagLoaded(
+      racquets,
+      errorMessage: errorMessage,
+      infoMessage: infoMessage,
+      pendingSyncCount: offlineQueue.pendingCount,
+    );
+  }
+
+  /// Applies still-queued sessions on top of authoritative server
+  /// [racquets], so gauges keep reflecting play not yet synced.
+  List<Racquet> _withPending(List<Racquet> racquets) {
+    var result = racquets;
+    for (final log in offlineQueue.pending) {
+      result = applyOptimisticSession(
+        result,
+        racquetId: log.racquetId,
+        durationMinutes: log.durationMinutes,
+      );
+    }
+    return result;
+  }
+
+  Future<void> _loadQueue() async {
+    try {
+      await offlineQueue.load();
+    } catch (e) {
+      debugPrint('BagBloc: failed to load offline session queue: $e');
+    }
+  }
+
+  void _listenToConnectivity() {
+    try {
+      _connectivityMonitor = client.connectivityMonitor;
+      _connectivityMonitor?.addListener(_onConnectivityChanged);
+    } catch (e) {
+      debugPrint('BagBloc: connectivity monitor unavailable: $e');
+      _connectivityMonitor = null;
+    }
+  }
+
+  void _onConnectivityChanged(bool connected) {
+    _isOnline = connected;
+    if (connected && !isClosed) add(const SyncOfflineSessions());
   }
 
   @override
   Future<void> close() async {
+    _connectivityMonitor?.removeListener(_onConnectivityChanged);
+    _connectivityMonitor = null;
     await _bagUpdatesSubscription?.cancel();
     _bagUpdatesSubscription = null;
     return super.close();
@@ -82,15 +190,21 @@ class BagBloc extends Bloc<BagEvent, BagState> {
         ),
       );
     }).toList();
-    emit(BagLoaded(newRacquets));
+    emit(_loaded(newRacquets));
   }
 
   Future<void> _onLoadBag(LoadBag event, Emitter<BagState> emit) async {
     emit(const BagLoading());
     try {
       final racquets = await client.bag.getVirtualBag();
-      emit(BagLoaded(racquets));
+      await _loadQueue();
+      emit(_loaded(_withPending(racquets)));
       _subscribeToBagUpdates();
+      // Drain sessions queued in a previous run (e.g. logged offline before
+      // the app was closed) in the background.
+      if (offlineQueue.pendingCount > 0 && !isClosed) {
+        add(const SyncOfflineSessions());
+      }
     } catch (e) {
       emit(BagError('Failed to load virtual bag: $e'));
     }
@@ -111,7 +225,7 @@ class BagBloc extends Bloc<BagEvent, BagState> {
         stringingDate: event.stringingDate,
       );
       final racquets = await client.bag.getVirtualBag();
-      emit(BagLoaded(racquets));
+      emit(_loaded(_withPending(racquets)));
     } catch (e) {
       emit(BagError('Failed to add racquet: $e'));
     }
@@ -128,10 +242,10 @@ class BagBloc extends Bloc<BagEvent, BagState> {
         final newRacquets = currentRacquets
             .where((r) => r.id != event.racquetId)
             .toList();
-        emit(BagLoaded(newRacquets));
+        emit(_loaded(newRacquets));
       } else {
         final racquets = await client.bag.getVirtualBag();
-        emit(BagLoaded(racquets));
+        emit(_loaded(_withPending(racquets)));
       }
     } catch (e) {
       emit(BagError('Failed to delete racquet: $e'));
@@ -154,10 +268,10 @@ class BagBloc extends Bloc<BagEvent, BagState> {
           }
           return r;
         }).toList();
-        emit(BagLoaded(newRacquets));
+        emit(_loaded(newRacquets));
       } else {
         final racquets = await client.bag.getVirtualBag();
-        emit(BagLoaded(racquets));
+        emit(_loaded(_withPending(racquets)));
       }
     } catch (e) {
       emit(BagError('Failed to set primary racquet: $e'));
@@ -233,7 +347,7 @@ class BagBloc extends Bloc<BagEvent, BagState> {
         }
         return r;
       }).toList();
-      emit(BagLoaded(seededRacquets));
+      emit(_loaded(seededRacquets));
     } catch (e) {
       emit(BagError('Failed to seed sample bag: $e'));
     }
@@ -253,10 +367,10 @@ class BagBloc extends Bloc<BagEvent, BagState> {
         final newRacquets = currentRacquets.map((r) {
           return r.id == event.racquetId ? updated : r;
         }).toList();
-        emit(BagLoaded(newRacquets));
+        emit(_loaded(newRacquets));
       } else {
         final racquets = await client.bag.getVirtualBag();
-        emit(BagLoaded(racquets));
+        emit(_loaded(_withPending(racquets)));
       }
     } catch (e) {
       emit(BagError('Failed to fast-forward racquet age: $e'));
@@ -267,33 +381,47 @@ class BagBloc extends Bloc<BagEvent, BagState> {
     LogSession event,
     Emitter<BagState> emit,
   ) async {
-    try {
-      await client.session.logSession(
-        SessionLog(
-          userId: 0,
-          racquetId: event.racquetId,
-          startTime: event.startTime,
-          durationMinutes: event.durationMinutes,
-          courtSurface: event.courtSurface,
-          notes: event.notes,
-          source: event.source,
-          externalWorkoutId: event.externalWorkoutId,
-        ),
+    final externalId =
+        event.externalWorkoutId ??
+        'client_offline_${DateTime.now().microsecondsSinceEpoch}_${event.racquetId}';
+    final log = SessionLog(
+      userId: 0,
+      racquetId: event.racquetId,
+      startTime: event.startTime,
+      durationMinutes: event.durationMinutes,
+      courtSurface: event.courtSurface,
+      notes: event.notes,
+      source: event.source,
+      externalWorkoutId: externalId,
+    );
+
+    // Optimistic gauge decay, applied before any network round trip.
+    final current = state;
+    List<Racquet>? optimistic;
+    if (current is BagLoaded) {
+      optimistic = applyOptimisticSession(
+        current.racquets,
+        racquetId: event.racquetId,
+        durationMinutes: event.durationMinutes,
       );
-    } catch (e) {
-      final current = state;
-      if (current is BagLoaded) {
-        // Clear first so a repeated identical error is still a new state.
-        emit(BagLoaded(current.racquets));
-        emit(
-          BagLoaded(
-            current.racquets,
-            errorMessage: 'Failed to log session: $e',
-          ),
-        );
-      } else {
-        emit(BagError('Failed to log session: $e'));
+      emit(_loaded(optimistic));
+    }
+
+    // Skip the round trip when the device is known to be offline.
+    if (_isOnline != false) {
+      try {
+        await client.session.logSession(log);
+      } catch (e) {
+        if (isPermanentSessionRejection(e)) {
+          _emitLogFailure(current, e, emit);
+          return;
+        }
+        debugPrint('BagBloc: logSession unreachable, queueing offline: $e');
+        await _queueOffline(log, event, current, optimistic, emit);
+        return;
       }
+    } else {
+      await _queueOffline(log, event, current, optimistic, emit);
       return;
     }
 
@@ -303,9 +431,82 @@ class BagBloc extends Bloc<BagEvent, BagState> {
     // log. The bag stream still delivers the updated health.
     try {
       final racquets = await client.bag.getVirtualBag();
-      emit(BagLoaded(racquets));
+      emit(_loaded(_withPending(racquets)));
     } catch (e) {
       debugPrint('BagBloc: bag refresh after logSession failed: $e');
+    }
+  }
+
+  /// Reverts the optimistic gauge and surfaces a failed log.
+  void _emitLogFailure(
+    BagState previous,
+    Object error,
+    Emitter<BagState> emit,
+  ) {
+    final message = 'Failed to log session: $error';
+    if (previous is BagLoaded) {
+      // Clear first so a repeated identical error is still a new state.
+      emit(_loaded(previous.racquets));
+      emit(_loaded(previous.racquets, errorMessage: message));
+    } else {
+      emit(BagError(message));
+    }
+  }
+
+  /// Persists [log] in the offline queue, keeping the optimistic gauge and
+  /// releasing the caller via [LogSession.onLogged].
+  Future<void> _queueOffline(
+    SessionLog log,
+    LogSession event,
+    BagState previous,
+    List<Racquet>? optimistic,
+    Emitter<BagState> emit,
+  ) async {
+    try {
+      await offlineQueue.enqueue(log);
+    } catch (e) {
+      debugPrint('BagBloc: failed to queue session offline: $e');
+      _emitLogFailure(previous, e, emit);
+      return;
+    }
+
+    event.onLogged?.call();
+
+    final latest = state;
+    final racquets =
+        optimistic ?? (latest is BagLoaded ? latest.racquets : null);
+    if (racquets != null) {
+      emit(_loaded(racquets, infoMessage: offlineSavedMessage));
+    }
+  }
+
+  Future<void> _onSyncOfflineSessions(
+    SyncOfflineSessions event,
+    Emitter<BagState> emit,
+  ) async {
+    await _loadQueue();
+    if (offlineQueue.pendingCount == 0) return;
+
+    final SessionSyncResult result;
+    try {
+      result = await offlineQueue.sync(client.session.logSession);
+    } catch (e) {
+      debugPrint('BagBloc: offline session sync failed: $e');
+      return;
+    }
+    if (result.synced == 0 && result.discarded == 0) return;
+
+    final infoMessage = result.synced > 0 ? syncedMessage(result.synced) : null;
+    try {
+      final racquets = await client.bag.getVirtualBag();
+      emit(_loaded(_withPending(racquets), infoMessage: infoMessage));
+      _subscribeToBagUpdates();
+    } catch (e) {
+      debugPrint('BagBloc: bag refresh after offline sync failed: $e');
+      final latest = state;
+      if (latest is BagLoaded) {
+        emit(_loaded(latest.racquets, infoMessage: infoMessage));
+      }
     }
   }
 }

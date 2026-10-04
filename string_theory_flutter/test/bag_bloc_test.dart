@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:string_theory_client/string_theory_client.dart';
 import 'package:string_theory_flutter/bloc/bag_bloc.dart';
+import 'package:string_theory_flutter/domain/decay_engine.dart';
+import 'package:string_theory_flutter/services/offline_session_queue.dart';
 
 class MockClient extends Mock implements Client {}
 
@@ -13,6 +15,11 @@ class MockEndpointBag extends Mock implements EndpointBag {}
 class MockEndpointSession extends Mock implements EndpointSession {}
 
 class FakeSessionLog extends Fake implements SessionLog {}
+
+/// Connectivity monitor whose status is driven by the test.
+class TestConnectivityMonitor extends ConnectivityMonitor {
+  void setConnected(bool connected) => notifyListeners(connected);
+}
 
 void main() {
   late MockClient mockClient;
@@ -709,6 +716,13 @@ void main() {
   });
 
   group('Story 3.4: LogSession', () {
+    // A permanent server rejection; network failures are queued offline
+    // instead (Story 3.5).
+    final rejection = BagException(
+      message: 'Racquet not found or unauthorized',
+      statusCode: 404,
+    );
+
     test(
       'dispatches client.session.logSession and emits BagLoaded with updated racquets',
       () async {
@@ -782,14 +796,14 @@ void main() {
     );
 
     test(
-      'retains loaded racquets with transient errorMessage when client.session.logSession fails while BagLoaded',
+      'retains loaded racquets with transient errorMessage when the server rejects the session while BagLoaded',
       () async {
         when(
           () => mockBagEndpoint.getVirtualBag(),
         ).thenAnswer((_) async => [sampleRacquet]);
         when(
           () => mockSessionEndpoint.logSession(any()),
-        ).thenThrow(Exception('RPC timeout'));
+        ).thenThrow(rejection);
 
         final bloc = BagBloc(client: mockClient);
         bloc.add(const LoadBag());
@@ -815,7 +829,7 @@ void main() {
           equals([
             BagLoaded(
               [sampleRacquet],
-              errorMessage: 'Failed to log session: Exception: RPC timeout',
+              errorMessage: 'Failed to log session: $rejection',
             ),
           ]),
         );
@@ -827,11 +841,11 @@ void main() {
     );
 
     test(
-      'emits BagError when client.session.logSession fails without BagLoaded',
+      'emits BagError when the server rejects the session without BagLoaded',
       () async {
         when(
           () => mockSessionEndpoint.logSession(any()),
-        ).thenThrow(Exception('RPC timeout'));
+        ).thenThrow(rejection);
 
         final bloc = BagBloc(client: mockClient);
         final states = <BagState>[];
@@ -850,7 +864,7 @@ void main() {
         expect(
           states,
           equals([
-            const BagError('Failed to log session: Exception: RPC timeout'),
+            BagError('Failed to log session: $rejection'),
           ]),
         );
 
@@ -866,7 +880,7 @@ void main() {
         ).thenAnswer((_) async => [sampleRacquet]);
         when(
           () => mockSessionEndpoint.logSession(any()),
-        ).thenThrow(Exception('RPC timeout'));
+        ).thenThrow(rejection);
 
         final bloc = BagBloc(client: mockClient);
         bloc.add(const LoadBag());
@@ -888,7 +902,7 @@ void main() {
 
         final errorState = BagLoaded(
           [sampleRacquet],
-          errorMessage: 'Failed to log session: Exception: RPC timeout',
+          errorMessage: 'Failed to log session: $rejection',
         );
         expect(
           states,
@@ -947,5 +961,478 @@ void main() {
         await bloc.close();
       },
     );
+  });
+
+  group('Story 3.5: Offline session queue & auto-reconnection sync', () {
+    final stringingDate = DateTime.now().toUtc().subtract(
+      const Duration(days: 10),
+    );
+    Racquet racquetWithJob({double hours = 5.0, int health = 76}) => Racquet(
+      id: 1,
+      userId: 1,
+      name: 'Wilson Blade 98',
+      isPrimary: true,
+      activeStringJob: StringJob(
+        id: 10,
+        userId: 1,
+        racquetId: 1,
+        materialCategory: StringMaterialCategory.coPoly,
+        brand: 'Luxilon',
+        model: 'ALU Power',
+        stringingDate: stringingDate,
+        installedTension: 52.0,
+        maxRatedHours: 20.0,
+        totalCourtHours: hours,
+        currentHealthScore: health,
+        isActive: true,
+        createdAt: stringingDate,
+      ),
+      createdAt: stringingDate,
+      updatedAt: stringingDate,
+    );
+
+    int expectedHealth(double hours) => DecayEngine.calculateHealth(
+      hoursPlayed: hours,
+      maxRatedHours: 20.0,
+      stringingDate: stringingDate,
+      materialCategory: StringMaterialCategory.coPoly,
+    );
+
+    late OfflineSessionQueue queue;
+
+    setUp(() {
+      queue = OfflineSessionQueue(storage: InMemorySessionQueueStorage());
+    });
+
+    Future<BagBloc> loadedBloc(List<Racquet> racquets) async {
+      when(
+        () => mockBagEndpoint.getVirtualBag(),
+      ).thenAnswer((_) async => racquets);
+      final bloc = BagBloc(client: mockClient, offlineQueue: queue);
+      bloc.add(const LoadBag());
+      await pumpEventQueue();
+      return bloc;
+    }
+
+    test('applyOptimisticSession recalculates health with DecayEngine', () {
+      final other = sampleRacquet.copyWith(id: 2);
+      final updated = BagBloc.applyOptimisticSession(
+        [racquetWithJob(), other],
+        racquetId: 1,
+        durationMinutes: 90,
+      );
+
+      final job = updated.first.activeStringJob!;
+      expect(job.totalCourtHours, 6.5);
+      expect(job.currentHealthScore, expectedHealth(6.5));
+      expect(updated.last, same(other));
+    });
+
+    test(
+      'queues the session with optimistic decay when the RPC fails with a network error',
+      () async {
+        final bloc = await loadedBloc([racquetWithJob()]);
+        when(() => mockSessionEndpoint.logSession(any())).thenThrow(
+          const ServerpodClientNetworkException('Failed host lookup'),
+        );
+        var loggedCalls = 0;
+
+        bloc.add(
+          LogSession(
+            racquetId: 1,
+            startTime: DateTime.utc(2026, 10, 4, 17, 0),
+            durationMinutes: 60,
+            source: 'manual',
+            onLogged: () => loggedCalls++,
+          ),
+        );
+        await pumpEventQueue();
+
+        final state = bloc.state as BagLoaded;
+        final job = state.racquets.single.activeStringJob!;
+        expect(job.totalCourtHours, 6.0);
+        expect(job.currentHealthScore, expectedHealth(6.0));
+        expect(state.pendingSyncCount, 1);
+        expect(state.infoMessage, BagBloc.offlineSavedMessage);
+        expect(state.errorMessage, isNull);
+        expect(loggedCalls, 1);
+        expect(
+          queue.pending.single.externalWorkoutId,
+          startsWith('client_offline_'),
+        );
+
+        await bloc.close();
+      },
+    );
+
+    test('emits the optimistic gauge before the RPC completes', () async {
+      final bloc = await loadedBloc([racquetWithJob()]);
+      final gate = Completer<SessionLog>();
+      when(
+        () => mockSessionEndpoint.logSession(any()),
+      ).thenAnswer((_) => gate.future);
+
+      bloc.add(
+        LogSession(
+          racquetId: 1,
+          startTime: DateTime.utc(2026, 10, 4, 17, 0),
+          durationMinutes: 120,
+          source: 'manual',
+        ),
+      );
+      await pumpEventQueue();
+
+      final job = (bloc.state as BagLoaded).racquets.single.activeStringJob!;
+      expect(job.totalCourtHours, 7.0);
+      expect(job.currentHealthScore, expectedHealth(7.0));
+
+      gate.complete(FakeSessionLog());
+      await pumpEventQueue();
+      await bloc.close();
+    });
+
+    test(
+      'preserves the externalWorkoutId of a detected workout when queued',
+      () async {
+        final bloc = await loadedBloc([racquetWithJob()]);
+        when(
+          () => mockSessionEndpoint.logSession(any()),
+        ).thenThrow(TimeoutException('no response'));
+
+        bloc.add(
+          LogSession(
+            racquetId: 1,
+            startTime: DateTime.utc(2026, 10, 4, 17, 0),
+            durationMinutes: 90,
+            source: 'healthkit',
+            externalWorkoutId: 'hk-abc',
+          ),
+        );
+        await pumpEventQueue();
+
+        expect(queue.pending.single.externalWorkoutId, 'hk-abc');
+        expect(queue.pending.single.source, 'healthkit');
+        await bloc.close();
+      },
+    );
+
+    test(
+      'reverts the optimistic gauge when the server rejects the session',
+      () async {
+        final original = racquetWithJob();
+        final bloc = await loadedBloc([original]);
+        final rejection = BagException(
+          message: 'Racquet has no active string job',
+          statusCode: 400,
+        );
+        when(() => mockSessionEndpoint.logSession(any())).thenThrow(rejection);
+
+        bloc.add(
+          LogSession(
+            racquetId: 1,
+            startTime: DateTime.utc(2026, 10, 4, 17, 0),
+            durationMinutes: 60,
+            source: 'manual',
+          ),
+        );
+        await pumpEventQueue();
+
+        expect(
+          bloc.state,
+          BagLoaded(
+            [original],
+            errorMessage: 'Failed to log session: $rejection',
+          ),
+        );
+        expect(queue.pendingCount, 0);
+        await bloc.close();
+      },
+    );
+
+    test(
+      'queues without calling the server while the monitor reports offline',
+      () async {
+        final monitor = TestConnectivityMonitor();
+        when(() => mockClient.connectivityMonitor).thenReturn(monitor);
+        final bloc = await loadedBloc([racquetWithJob()]);
+        monitor.setConnected(false);
+
+        bloc.add(
+          LogSession(
+            racquetId: 1,
+            startTime: DateTime.utc(2026, 10, 4, 17, 0),
+            durationMinutes: 60,
+            source: 'manual',
+          ),
+        );
+        await pumpEventQueue();
+
+        verifyNever(() => mockSessionEndpoint.logSession(any()));
+        expect((bloc.state as BagLoaded).pendingSyncCount, 1);
+        await bloc.close();
+      },
+    );
+
+    test(
+      'SyncOfflineSessions drains the queue, reconciles with getVirtualBag and reports the count',
+      () async {
+        await queue.enqueue(
+          SessionLog(
+            userId: 0,
+            racquetId: 1,
+            startTime: DateTime.utc(2026, 10, 4, 15, 0),
+            durationMinutes: 60,
+            source: 'manual',
+          ),
+        );
+        await queue.enqueue(
+          SessionLog(
+            userId: 0,
+            racquetId: 1,
+            startTime: DateTime.utc(2026, 10, 4, 17, 0),
+            durationMinutes: 60,
+            source: 'healthkit',
+            externalWorkoutId: 'hk-2',
+          ),
+        );
+        when(() => mockSessionEndpoint.logSession(any())).thenThrow(
+          const ServerpodClientNetworkException('offline'),
+        );
+        final bloc = await loadedBloc([racquetWithJob()]);
+        expect((bloc.state as BagLoaded).pendingSyncCount, 2);
+
+        final authoritative = racquetWithJob(hours: 7.0, health: 60);
+        when(() => mockSessionEndpoint.logSession(any())).thenAnswer(
+          (invocation) async =>
+              invocation.positionalArguments.first as SessionLog,
+        );
+        when(
+          () => mockBagEndpoint.getVirtualBag(),
+        ).thenAnswer((_) async => [authoritative]);
+
+        bloc.add(const SyncOfflineSessions());
+        await pumpEventQueue();
+
+        expect(queue.pendingCount, 0);
+        expect(
+          bloc.state,
+          BagLoaded(
+            [authoritative],
+            infoMessage: 'Synced 2 offline sessions',
+          ),
+        );
+        await bloc.close();
+      },
+    );
+
+    test(
+      'LoadBag drains a pending queue in the background on launch',
+      () async {
+        await queue.enqueue(
+          SessionLog(
+            userId: 0,
+            racquetId: 1,
+            startTime: DateTime.utc(2026, 10, 4, 17, 0),
+            durationMinutes: 60,
+            source: 'manual',
+          ),
+        );
+        when(() => mockSessionEndpoint.logSession(any())).thenAnswer(
+          (invocation) async =>
+              invocation.positionalArguments.first as SessionLog,
+        );
+
+        final bloc = await loadedBloc([racquetWithJob()]);
+
+        verify(() => mockSessionEndpoint.logSession(any())).called(1);
+        expect(queue.pendingCount, 0);
+        final state = bloc.state as BagLoaded;
+        expect(state.pendingSyncCount, 0);
+        expect(state.infoMessage, 'Synced 1 offline session');
+        await bloc.close();
+      },
+    );
+
+    test(
+      'keeps unsynced sessions and their optimistic decay when connectivity drops mid-sync',
+      () async {
+        when(() => mockSessionEndpoint.logSession(any())).thenThrow(
+          const ServerpodClientNetworkException('offline'),
+        );
+        final bloc = await loadedBloc([racquetWithJob()]);
+        for (final id in ['hk-1', 'hk-2']) {
+          bloc.add(
+            LogSession(
+              racquetId: 1,
+              startTime: DateTime.utc(2026, 10, 4, 17, 0),
+              durationMinutes: 60,
+              source: 'healthkit',
+              externalWorkoutId: id,
+            ),
+          );
+          await pumpEventQueue();
+        }
+        expect(queue.pendingCount, 2);
+
+        var calls = 0;
+        when(() => mockSessionEndpoint.logSession(any())).thenAnswer((
+          invocation,
+        ) async {
+          calls++;
+          if (calls == 2) {
+            throw const ServerpodClientNetworkException('dropped');
+          }
+          return invocation.positionalArguments.first as SessionLog;
+        });
+        // Server has counted the first session only.
+        when(
+          () => mockBagEndpoint.getVirtualBag(),
+        ).thenAnswer((_) async => [racquetWithJob(hours: 6.0, health: 70)]);
+
+        bloc.add(const SyncOfflineSessions());
+        await pumpEventQueue();
+
+        expect(queue.pending.single.externalWorkoutId, 'hk-2');
+        final state = bloc.state as BagLoaded;
+        expect(state.pendingSyncCount, 1);
+        // The still-queued hour stays applied on top of the server state.
+        final job = state.racquets.single.activeStringJob!;
+        expect(job.totalCourtHours, 7.0);
+        expect(job.currentHealthScore, expectedHealth(7.0));
+        await bloc.close();
+      },
+    );
+
+    test('reconnection triggers an automatic sync of the queue', () async {
+      final monitor = TestConnectivityMonitor();
+      when(() => mockClient.connectivityMonitor).thenReturn(monitor);
+      when(() => mockSessionEndpoint.logSession(any())).thenThrow(
+        const ServerpodClientNetworkException('offline'),
+      );
+      final bloc = await loadedBloc([racquetWithJob()]);
+      monitor.setConnected(false);
+      bloc.add(
+        LogSession(
+          racquetId: 1,
+          startTime: DateTime.utc(2026, 10, 4, 17, 0),
+          durationMinutes: 60,
+          source: 'manual',
+        ),
+      );
+      await pumpEventQueue();
+      expect(queue.pendingCount, 1);
+
+      when(() => mockSessionEndpoint.logSession(any())).thenAnswer(
+        (invocation) async =>
+            invocation.positionalArguments.first as SessionLog,
+      );
+      monitor.setConnected(true);
+      await pumpEventQueue();
+
+      verify(() => mockSessionEndpoint.logSession(any())).called(1);
+      expect(queue.pendingCount, 0);
+      expect(
+        (bloc.state as BagLoaded).infoMessage,
+        'Synced 1 offline session',
+      );
+      await bloc.close();
+    });
+
+    test(
+      're-sending a session the server already stored drains it once',
+      () async {
+        when(() => mockSessionEndpoint.logSession(any())).thenThrow(
+          const ServerpodClientNetworkException('offline'),
+        );
+        final bloc = await loadedBloc([racquetWithJob()]);
+        bloc.add(
+          LogSession(
+            racquetId: 1,
+            startTime: DateTime.utc(2026, 10, 4, 17, 0),
+            durationMinutes: 60,
+            source: 'healthkit',
+            externalWorkoutId: 'hk-dup',
+          ),
+        );
+        await pumpEventQueue();
+
+        final sentKeys = <String?>[];
+        final stored = <String>{};
+        when(() => mockSessionEndpoint.logSession(any())).thenAnswer((
+          invocation,
+        ) async {
+          final log = invocation.positionalArguments.first as SessionLog;
+          sentKeys.add(log.externalWorkoutId);
+          stored.add(log.externalWorkoutId!);
+          return log.copyWith(id: 1);
+        });
+
+        bloc.add(const SyncOfflineSessions());
+        bloc.add(const SyncOfflineSessions());
+        await pumpEventQueue();
+
+        expect(sentKeys, ['hk-dup']);
+        expect(stored, {'hk-dup'});
+        expect(queue.pendingCount, 0);
+        await bloc.close();
+      },
+    );
+
+    test(
+      'SyncOfflineSessions discards permanently rejected sessions, reconciles bag, and leaves infoMessage null',
+      () async {
+        await queue.enqueue(
+          SessionLog(
+            userId: 0,
+            racquetId: 1,
+            startTime: DateTime.utc(2026, 10, 4, 17, 0),
+            durationMinutes: 60,
+            source: 'manual',
+            externalWorkoutId: 'hk-bad',
+          ),
+        );
+        when(() => mockSessionEndpoint.logSession(any())).thenThrow(
+          const ServerpodClientNetworkException('offline'),
+        );
+        final initial = racquetWithJob();
+        final bloc = await loadedBloc([initial]);
+        expect((bloc.state as BagLoaded).pendingSyncCount, 1);
+
+        // Server permanently rejects the session on sync
+        when(() => mockSessionEndpoint.logSession(any())).thenThrow(
+          BagException(
+            message: 'Racquet not found or unauthorized',
+            statusCode: 404,
+          ),
+        );
+        when(
+          () => mockBagEndpoint.getVirtualBag(),
+        ).thenAnswer((_) async => [initial]);
+
+        bloc.add(const SyncOfflineSessions());
+        await pumpEventQueue();
+
+        expect(queue.pendingCount, 0);
+        final state = bloc.state as BagLoaded;
+        expect(state.pendingSyncCount, 0);
+        expect(state.infoMessage, isNull);
+        expect(
+          state.racquets.single.activeStringJob!.totalCourtHours,
+          initial.activeStringJob!.totalCourtHours,
+        );
+        await bloc.close();
+      },
+    );
+
+    test('removes the connectivity listener on close', () async {
+      final monitor = TestConnectivityMonitor();
+      when(() => mockClient.connectivityMonitor).thenReturn(monitor);
+      final bloc = BagBloc(client: mockClient, offlineQueue: queue);
+      await bloc.close();
+
+      // Would throw "Cannot add new events after calling close" if still
+      // registered.
+      monitor.setConnected(true);
+    });
   });
 }

@@ -106,8 +106,9 @@ class LogSession extends BagEvent {
   final String source;
   final String? externalWorkoutId;
 
-  /// Called once the server has accepted the session, even if the bag
-  /// refresh that follows fails. Not part of [props].
+  /// Called once the server has accepted the session (even if the bag
+  /// refresh that follows fails) or once it is safely queued offline.
+  /// Not part of [props].
   final void Function()? onLogged;
 
   const LogSession({
@@ -131,4 +132,10 @@ class LogSession extends BagEvent {
     source,
     externalWorkoutId,
   ];
+}
+
+/// Drains the offline session queue to the server and reconciles the bag with
+/// the authoritative server state.
+class SyncOfflineSessions extends BagEvent {
+  const SyncOfflineSessions();
 }

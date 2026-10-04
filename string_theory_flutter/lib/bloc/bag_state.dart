@@ -18,12 +18,31 @@ class BagLoading extends BagState {
 
 class BagLoaded extends BagState {
   final List<Racquet> racquets;
+
+  /// Transient failure to surface once as an error SnackBar.
   final String? errorMessage;
 
-  const BagLoaded(this.racquets, {this.errorMessage});
+  /// Transient, non-blocking notice (e.g. offline save or sync result) to
+  /// surface once as an informational SnackBar.
+  final String? infoMessage;
+
+  /// Sessions logged offline that are still waiting to reach the server.
+  final int pendingSyncCount;
+
+  const BagLoaded(
+    this.racquets, {
+    this.errorMessage,
+    this.infoMessage,
+    this.pendingSyncCount = 0,
+  });
 
   @override
-  List<Object?> get props => [racquets, errorMessage];
+  List<Object?> get props => [
+    racquets,
+    errorMessage,
+    infoMessage,
+    pendingSyncCount,
+  ];
 }
 
 class BagError extends BagState {
