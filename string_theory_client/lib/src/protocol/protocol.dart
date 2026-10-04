@@ -17,14 +17,18 @@ import 'package:serverpod_auth_idp_client/serverpod_auth_idp_client.dart'
     as _iaic;
 import 'package:serverpod_client/serverpod_client.dart' as _isc;
 import 'package:string_theory_client/src/protocol/racquet.dart' as _ib48ci23;
+import 'package:string_theory_client/src/protocol/session_log.dart'
+    as _iz65gy0p;
 import 'bag_exception.dart' as _ik2s0sst;
 import 'greetings/greeting.dart' as _izw8z7ou;
 import 'racquet.dart' as _iiy1gsnd;
+import 'session_log.dart' as _ijme2vd8;
 import 'string_job.dart' as _ipf7mlcg;
 import 'string_material_category.dart' as _i5v32zda;
 export 'bag_exception.dart';
 export 'greetings/greeting.dart';
 export 'racquet.dart';
+export 'session_log.dart';
 export 'string_job.dart';
 export 'string_material_category.dart';
 export 'client.dart';
@@ -72,6 +76,9 @@ class Protocol extends _isc.SerializationManager {
     if (t == _iiy1gsnd.Racquet) {
       return _iiy1gsnd.Racquet.fromJson(data) as T;
     }
+    if (t == _ijme2vd8.SessionLog) {
+      return _ijme2vd8.SessionLog.fromJson(data) as T;
+    }
     if (t == _ipf7mlcg.StringJob) {
       return _ipf7mlcg.StringJob.fromJson(data) as T;
     }
@@ -87,6 +94,9 @@ class Protocol extends _isc.SerializationManager {
     if (t == _isc.getType<_iiy1gsnd.Racquet?>()) {
       return (data != null ? _iiy1gsnd.Racquet.fromJson(data) : null) as T;
     }
+    if (t == _isc.getType<_ijme2vd8.SessionLog?>()) {
+      return (data != null ? _ijme2vd8.SessionLog.fromJson(data) : null) as T;
+    }
     if (t == _isc.getType<_ipf7mlcg.StringJob?>()) {
       return (data != null ? _ipf7mlcg.StringJob.fromJson(data) : null) as T;
     }
@@ -99,6 +109,12 @@ class Protocol extends _isc.SerializationManager {
     if (t == List<_ib48ci23.Racquet>) {
       return (data as List)
               .map((e) => deserialize<_ib48ci23.Racquet>(e))
+              .toList()
+          as T;
+    }
+    if (t == List<_iz65gy0p.SessionLog>) {
+      return (data as List)
+              .map((e) => deserialize<_iz65gy0p.SessionLog>(e))
               .toList()
           as T;
     }
@@ -116,6 +132,7 @@ class Protocol extends _isc.SerializationManager {
       _ik2s0sst.BagException => 'BagException',
       _izw8z7ou.Greeting => 'Greeting',
       _iiy1gsnd.Racquet => 'Racquet',
+      _ijme2vd8.SessionLog => 'SessionLog',
       _ipf7mlcg.StringJob => 'StringJob',
       _i5v32zda.StringMaterialCategory => 'StringMaterialCategory',
       _ => null,
@@ -141,6 +158,8 @@ class Protocol extends _isc.SerializationManager {
         return 'Greeting';
       case _iiy1gsnd.Racquet():
         return 'Racquet';
+      case _ijme2vd8.SessionLog():
+        return 'SessionLog';
       case _ipf7mlcg.StringJob():
         return 'StringJob';
       case _i5v32zda.StringMaterialCategory():
@@ -175,6 +194,9 @@ class Protocol extends _isc.SerializationManager {
     }
     if (dataClassName == 'Racquet') {
       return deserialize<_iiy1gsnd.Racquet>(data['data']);
+    }
+    if (dataClassName == 'SessionLog') {
+      return deserialize<_ijme2vd8.SessionLog>(data['data']);
     }
     if (dataClassName == 'StringJob') {
       return deserialize<_ipf7mlcg.StringJob>(data['data']);

@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-02-2026 17:45
-last_updated: 10-04-2026 16:57
+last_updated: 10-04-2026 17:06
 project: string_theory
 project_key: NOKEY
 tracking_system: file-system
@@ -56,8 +56,8 @@ development_status:
   2-4-time-warp-aging-simulator-30-days-dev-control: done
   epic-2-retrospective: done
 
-  epic-3: backlog
-  3-1-serverpod-sessionlog-schema-sessionendpoint-idempotency: backlog
+  epic-3: in-progress
+  3-1-serverpod-sessionlog-schema-sessionendpoint-idempotency: in-progress
   3-2-serverpod-real-time-websocket-streaming-bagstreammessage: backlog
   3-3-healthsyncservice-strategy-pattern-judge-simulation-generato: backlog
   3-4-progressive-disclosure-workout-assignment-sheet-3-tap-quick: backlog

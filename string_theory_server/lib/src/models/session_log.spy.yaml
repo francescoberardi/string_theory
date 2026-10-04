@@ -1,0 +1,20 @@
+class: SessionLog
+table: session_log
+fields:
+  userId: int
+  racquetId: int, relation(parent=racquet, onDelete=Cascade)
+  startTime: DateTime
+  durationMinutes: int
+  courtSurface: String?
+  notes: String?
+  source: String
+  externalWorkoutId: String?
+  createdAt: DateTime, default=now
+indexes:
+  session_log_user_id_idx:
+    fields: userId
+  session_log_racquet_id_idx:
+    fields: racquetId
+  session_log_external_id_idx:
+    fields: externalWorkoutId
+    unique: true

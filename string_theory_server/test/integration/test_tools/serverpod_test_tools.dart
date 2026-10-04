@@ -22,6 +22,8 @@ import 'package:string_theory_server/src/generated/future_calls.dart'
 import 'package:string_theory_server/src/generated/greetings/greeting.dart'
     as _i6qn1rsc;
 import 'package:string_theory_server/src/generated/racquet.dart' as _iwugozzn;
+import 'package:string_theory_server/src/generated/session_log.dart'
+    as _iyc5nsr4;
 import 'package:string_theory_server/src/generated/string_material_category.dart'
     as _iqkmcx65;
 import 'package:string_theory_server/src/generated/protocol.dart';
@@ -167,6 +169,8 @@ class TestEndpoints {
 
   late final _BagEndpoint bag;
 
+  late final _SessionEndpoint session;
+
   late final _GreetingEndpoint greeting;
 }
 
@@ -190,6 +194,10 @@ class _InternalTestEndpoints extends TestEndpoints
       serializationManager,
     );
     bag = _BagEndpoint(
+      endpoints,
+      serializationManager,
+    );
+    session = _SessionEndpoint(
       endpoints,
       serializationManager,
     );
@@ -775,6 +783,85 @@ class _BagEndpoint {
                   _localCallContext.arguments,
                 )
                 as _ida.Future<_iwugozzn.Racquet>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+}
+
+class _SessionEndpoint {
+  _SessionEndpoint(
+    this._endpointDispatch,
+    this._serializationManager,
+  );
+
+  final _is.EndpointDispatch _endpointDispatch;
+
+  final _is.SerializationManager _serializationManager;
+
+  _ida.Future<_iyc5nsr4.SessionLog> logSession(
+    _ist.TestSessionBuilder sessionBuilder,
+    _iyc5nsr4.SessionLog log,
+  ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'session',
+            method: 'logSession',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'session',
+          methodName: 'logSession',
+          parameters: _ist.testObjectToJson({'log': log}),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<_iyc5nsr4.SessionLog>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _ida.Future<List<_iyc5nsr4.SessionLog>> getSessionLogs(
+    _ist.TestSessionBuilder sessionBuilder, {
+    int? racquetId,
+    int? limit,
+    int? offset,
+  }) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'session',
+            method: 'getSessionLogs',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'session',
+          methodName: 'getSessionLogs',
+          parameters: _ist.testObjectToJson({
+            'racquetId': racquetId,
+            'limit': limit,
+            'offset': offset,
+          }),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<List<_iyc5nsr4.SessionLog>>);
         return _localReturnValue;
       } finally {
         await _localUniqueSession.close();

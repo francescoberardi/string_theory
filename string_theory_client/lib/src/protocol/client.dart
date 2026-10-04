@@ -20,6 +20,8 @@ import 'package:serverpod_client/serverpod_client.dart' as _isc;
 import 'package:string_theory_client/src/protocol/greetings/greeting.dart'
     as _iowftvok;
 import 'package:string_theory_client/src/protocol/racquet.dart' as _ib48ci23;
+import 'package:string_theory_client/src/protocol/session_log.dart'
+    as _iz65gy0p;
 import 'package:string_theory_client/src/protocol/string_material_category.dart'
     as _iwafl9xb;
 import 'protocol.dart' as _il2as5qe;
@@ -366,6 +368,41 @@ class EndpointBag extends _isc.EndpointRef {
   );
 }
 
+/// Endpoint for recording tennis match/practice sessions,
+/// incrementing stringbed court hours, and recalculating health scores.
+/// {@category Endpoint}
+class EndpointSession extends _isc.EndpointRef {
+  EndpointSession(_isc.EndpointCaller caller) : super(caller);
+
+  @override
+  String get name => 'session';
+
+  /// Records a new playing session, updating the active stringbed court hours
+  /// and health score idempotently.
+  _ida.Future<_iz65gy0p.SessionLog> logSession(_iz65gy0p.SessionLog log) =>
+      caller.callServerEndpoint<_iz65gy0p.SessionLog>(
+        'session',
+        'logSession',
+        {'log': log},
+      );
+
+  /// Retrieves session logs for the authenticated user, optionally filtered
+  /// by racquet ID, with optional pagination.
+  _ida.Future<List<_iz65gy0p.SessionLog>> getSessionLogs({
+    int? racquetId,
+    int? limit,
+    int? offset,
+  }) => caller.callServerEndpoint<List<_iz65gy0p.SessionLog>>(
+    'session',
+    'getSessionLogs',
+    {
+      'racquetId': racquetId,
+      'limit': limit,
+      'offset': offset,
+    },
+  );
+}
+
 /// This is an example endpoint that returns a greeting message through
 /// its [hello] method.
 /// {@category Endpoint}
@@ -426,6 +463,7 @@ class Client extends _isc.ServerpodClientShared {
     emailIdp = EndpointEmailIdp(this);
     jwtRefresh = EndpointJwtRefresh(this);
     bag = EndpointBag(this);
+    session = EndpointSession(this);
     greeting = EndpointGreeting(this);
     modules = Modules(this);
   }
@@ -438,6 +476,8 @@ class Client extends _isc.ServerpodClientShared {
 
   late final EndpointBag bag;
 
+  late final EndpointSession session;
+
   late final EndpointGreeting greeting;
 
   late final Modules modules;
@@ -448,6 +488,7 @@ class Client extends _isc.ServerpodClientShared {
     'emailIdp': emailIdp,
     'jwtRefresh': jwtRefresh,
     'bag': bag,
+    'session': session,
     'greeting': greeting,
   };
 

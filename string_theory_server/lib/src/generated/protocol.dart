@@ -18,14 +18,18 @@ import 'package:serverpod_auth_core_server/serverpod_auth_core_server.dart'
 import 'package:serverpod_auth_idp_server/serverpod_auth_idp_server.dart'
     as _iais;
 import 'package:string_theory_server/src/generated/racquet.dart' as _iwugozzn;
+import 'package:string_theory_server/src/generated/session_log.dart'
+    as _iyc5nsr4;
 import 'bag_exception.dart' as _ik2s0sst;
 import 'greetings/greeting.dart' as _izw8z7ou;
 import 'racquet.dart' as _iiy1gsnd;
+import 'session_log.dart' as _ijme2vd8;
 import 'string_job.dart' as _ipf7mlcg;
 import 'string_material_category.dart' as _i5v32zda;
 export 'bag_exception.dart';
 export 'greetings/greeting.dart';
 export 'racquet.dart';
+export 'session_log.dart';
 export 'string_job.dart';
 export 'string_material_category.dart';
 
@@ -126,6 +130,130 @@ class Protocol extends _is.DatabaseSerializationManager {
           ],
           type: 'btree',
           isUnique: false,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'session_log',
+      dartName: 'SessionLog',
+      schema: 'public',
+      module: 'string_theory',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int?',
+          columnDefault: 'serial',
+        ),
+        _isp.ColumnDefinition(
+          name: 'userId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'racquetId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'startTime',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+        _isp.ColumnDefinition(
+          name: 'durationMinutes',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'courtSurface',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'notes',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'source',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'externalWorkoutId',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+          columnDefault: 'now',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'session_log_fk_0',
+          columns: ['racquetId'],
+          referenceTable: 'racquet',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+      ],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'session_log_user_id_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'userId',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'session_log_racquet_id_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'racquetId',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'session_log_external_id_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'externalWorkoutId',
+            ),
+          ],
+          type: 'btree',
+          isUnique: true,
           isPrimary: false,
         ),
       ],
@@ -306,6 +434,9 @@ class Protocol extends _is.DatabaseSerializationManager {
     if (t == _iiy1gsnd.Racquet) {
       return _iiy1gsnd.Racquet.fromJson(data) as T;
     }
+    if (t == _ijme2vd8.SessionLog) {
+      return _ijme2vd8.SessionLog.fromJson(data) as T;
+    }
     if (t == _ipf7mlcg.StringJob) {
       return _ipf7mlcg.StringJob.fromJson(data) as T;
     }
@@ -321,6 +452,9 @@ class Protocol extends _is.DatabaseSerializationManager {
     if (t == _is.getType<_iiy1gsnd.Racquet?>()) {
       return (data != null ? _iiy1gsnd.Racquet.fromJson(data) : null) as T;
     }
+    if (t == _is.getType<_ijme2vd8.SessionLog?>()) {
+      return (data != null ? _ijme2vd8.SessionLog.fromJson(data) : null) as T;
+    }
     if (t == _is.getType<_ipf7mlcg.StringJob?>()) {
       return (data != null ? _ipf7mlcg.StringJob.fromJson(data) : null) as T;
     }
@@ -333,6 +467,12 @@ class Protocol extends _is.DatabaseSerializationManager {
     if (t == List<_iwugozzn.Racquet>) {
       return (data as List)
               .map((e) => deserialize<_iwugozzn.Racquet>(e))
+              .toList()
+          as T;
+    }
+    if (t == List<_iyc5nsr4.SessionLog>) {
+      return (data as List)
+              .map((e) => deserialize<_iyc5nsr4.SessionLog>(e))
               .toList()
           as T;
     }
@@ -353,6 +493,7 @@ class Protocol extends _is.DatabaseSerializationManager {
       _ik2s0sst.BagException => 'BagException',
       _izw8z7ou.Greeting => 'Greeting',
       _iiy1gsnd.Racquet => 'Racquet',
+      _ijme2vd8.SessionLog => 'SessionLog',
       _ipf7mlcg.StringJob => 'StringJob',
       _i5v32zda.StringMaterialCategory => 'StringMaterialCategory',
       _ => null,
@@ -378,6 +519,8 @@ class Protocol extends _is.DatabaseSerializationManager {
         return 'Greeting';
       case _iiy1gsnd.Racquet():
         return 'Racquet';
+      case _ijme2vd8.SessionLog():
+        return 'SessionLog';
       case _ipf7mlcg.StringJob():
         return 'StringJob';
       case _i5v32zda.StringMaterialCategory():
@@ -416,6 +559,9 @@ class Protocol extends _is.DatabaseSerializationManager {
     }
     if (dataClassName == 'Racquet') {
       return deserialize<_iiy1gsnd.Racquet>(data['data']);
+    }
+    if (dataClassName == 'SessionLog') {
+      return deserialize<_ijme2vd8.SessionLog>(data['data']);
     }
     if (dataClassName == 'StringJob') {
       return deserialize<_ipf7mlcg.StringJob>(data['data']);
@@ -466,6 +612,8 @@ class Protocol extends _is.DatabaseSerializationManager {
     switch (t) {
       case _iiy1gsnd.Racquet:
         return _iiy1gsnd.Racquet.t;
+      case _ijme2vd8.SessionLog:
+        return _ijme2vd8.SessionLog.t;
       case _ipf7mlcg.StringJob:
         return _ipf7mlcg.StringJob.t;
     }

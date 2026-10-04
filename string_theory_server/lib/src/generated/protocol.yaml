@@ -18,5 +18,8 @@ bag:
   - deleteRacquet:
   - triggerDailyDecayNow:
   - fastForwardRacquetAge:
+session:
+  - logSession:
+  - getSessionLogs:
 greeting:
   - hello:

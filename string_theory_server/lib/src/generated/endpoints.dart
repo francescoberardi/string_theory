@@ -17,12 +17,15 @@ import 'package:serverpod_auth_idp_server/serverpod_auth_idp_server.dart'
     as _iais;
 import 'package:string_theory_server/src/generated/future_calls.dart'
     as _ireyqaq4;
+import 'package:string_theory_server/src/generated/session_log.dart'
+    as _iyc5nsr4;
 import 'package:string_theory_server/src/generated/string_material_category.dart'
     as _iqkmcx65;
 import '../auth/anonymous_idp_endpoint.dart' as _in0zita6;
 import '../auth/email_idp_endpoint.dart' as _iuc1hd5t;
 import '../auth/jwt_refresh_endpoint.dart' as _inwq3ztq;
 import '../endpoints/bag_endpoint.dart' as _i30u42n8;
+import '../endpoints/session_endpoint.dart' as _ih5ivktc;
 import '../greetings/greeting_endpoint.dart' as _il624ik7;
 export 'future_calls.dart' show ServerpodFutureCallsGetter;
 
@@ -52,6 +55,12 @@ class Endpoints extends _is.EndpointDispatch {
         ..initialize(
           server,
           'bag',
+          null,
+        ),
+      'session': _ih5ivktc.SessionEndpoint()
+        ..initialize(
+          server,
+          'session',
           null,
         ),
       'greeting': _il624ik7.GreetingEndpoint()
@@ -450,6 +459,62 @@ class Endpoints extends _is.EndpointDispatch {
                     session,
                     racquetId: params['racquetId'],
                     days: params['days'],
+                  ),
+        ),
+      },
+    );
+    connectors['session'] = _is.EndpointConnector(
+      name: 'session',
+      endpoint: endpoints['session']!,
+      methodConnectors: {
+        'logSession': _is.MethodConnector(
+          name: 'logSession',
+          params: {
+            'log': _is.ParameterDescription(
+              name: 'log',
+              type: _is.getType<_iyc5nsr4.SessionLog>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['session'] as _ih5ivktc.SessionEndpoint)
+                  .logSession(
+                    session,
+                    params['log'],
+                  ),
+        ),
+        'getSessionLogs': _is.MethodConnector(
+          name: 'getSessionLogs',
+          params: {
+            'racquetId': _is.ParameterDescription(
+              name: 'racquetId',
+              type: _is.getType<int?>(),
+              nullable: true,
+            ),
+            'limit': _is.ParameterDescription(
+              name: 'limit',
+              type: _is.getType<int?>(),
+              nullable: true,
+            ),
+            'offset': _is.ParameterDescription(
+              name: 'offset',
+              type: _is.getType<int?>(),
+              nullable: true,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['session'] as _ih5ivktc.SessionEndpoint)
+                  .getSessionLogs(
+                    session,
+                    racquetId: params['racquetId'],
+                    limit: params['limit'],
+                    offset: params['offset'],
                   ),
         ),
       },
