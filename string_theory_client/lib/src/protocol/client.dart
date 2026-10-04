@@ -347,6 +347,23 @@ class EndpointBag extends _isc.EndpointRef {
     'triggerDailyDecayNow',
     {},
   );
+
+  /// Shifts the active string job's stringingDate for the given racquet by [days]
+  /// into the past (defaulting to 30 days) and immediately recalculates the health score.
+  ///
+  /// Intended for developer/judge demonstration of stringbed aging and decay thresholds.
+  /// Returns the updated [Racquet] with its active string job.
+  _ida.Future<_ib48ci23.Racquet> fastForwardRacquetAge({
+    required int racquetId,
+    int? days,
+  }) => caller.callServerEndpoint<_ib48ci23.Racquet>(
+    'bag',
+    'fastForwardRacquetAge',
+    {
+      'racquetId': racquetId,
+      'days': days,
+    },
+  );
 }
 
 /// This is an example endpoint that returns a greeting message through

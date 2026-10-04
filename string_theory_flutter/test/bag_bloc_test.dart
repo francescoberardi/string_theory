@@ -372,5 +372,130 @@ void main() {
         await bloc.close();
       },
     );
+
+    test(
+      '[Story 2.4] should call client.bag.fastForwardRacquetAge and emit BagLoaded with updated racquet',
+      () async {
+        final agedJob = StringJob(
+          id: 1,
+          userId: 1,
+          racquetId: 1,
+          materialCategory: StringMaterialCategory.coPoly,
+          stringingDate: DateTime.utc(2026, 9, 1),
+          currentHealthScore: 88,
+          createdAt: DateTime.utc(2026, 10, 1),
+        );
+        final agedRacquet = sampleRacquet.copyWith(activeStringJob: agedJob);
+
+        when(
+          () => mockBagEndpoint.getVirtualBag(),
+        ).thenAnswer((_) async => [sampleRacquet]);
+
+        when(
+          () => mockBagEndpoint.fastForwardRacquetAge(
+            racquetId: 1,
+            days: 30,
+          ),
+        ).thenAnswer((_) async => agedRacquet);
+
+        final bloc = BagBloc(client: mockClient);
+        bloc.add(const LoadBag());
+        await pumpEventQueue();
+
+        bloc.add(const FastForwardRacquetAge(1, days: 30));
+        await pumpEventQueue();
+
+        expect(bloc.state, isA<BagLoaded>());
+        final currentRacquets = (bloc.state as BagLoaded).racquets;
+        expect(
+          currentRacquets
+              .firstWhere((r) => r.id == 1)
+              .activeStringJob
+              ?.currentHealthScore,
+          equals(88),
+        );
+
+        verify(
+          () => mockBagEndpoint.fastForwardRacquetAge(
+            racquetId: 1,
+            days: 30,
+          ),
+        ).called(1);
+
+        await bloc.close();
+      },
+    );
+
+    test(
+      '[Story 2.4] should emit BagError when fastForwardRacquetAge encounters an RPC error',
+      () async {
+        when(
+          () => mockBagEndpoint.fastForwardRacquetAge(
+            racquetId: 1,
+            days: 30,
+          ),
+        ).thenThrow(Exception('RPC failed'));
+
+        final bloc = BagBloc(client: mockClient);
+        bloc.add(const FastForwardRacquetAge(1, days: 30));
+        await pumpEventQueue();
+
+        expect(
+          bloc.state,
+          equals(
+            const BagError(
+              'Failed to fast-forward racquet age: Exception: RPC failed',
+            ),
+          ),
+        );
+
+        await bloc.close();
+      },
+    );
+
+    test(
+      '[Story 2.4] should fetch virtual bag and emit BagLoaded when FastForwardRacquetAge dispatched from unloaded state',
+      () async {
+        final agedJob = StringJob(
+          id: 1,
+          userId: 1,
+          racquetId: 1,
+          materialCategory: StringMaterialCategory.coPoly,
+          stringingDate: DateTime.utc(2026, 9, 1),
+          currentHealthScore: 88,
+          createdAt: DateTime.utc(2026, 10, 1),
+        );
+        final agedRacquet = sampleRacquet.copyWith(activeStringJob: agedJob);
+
+        when(
+          () => mockBagEndpoint.fastForwardRacquetAge(
+            racquetId: 1,
+            days: 30,
+          ),
+        ).thenAnswer((_) async => agedRacquet);
+
+        when(
+          () => mockBagEndpoint.getVirtualBag(),
+        ).thenAnswer((_) async => [agedRacquet]);
+
+        final bloc = BagBloc(client: mockClient);
+        bloc.add(const FastForwardRacquetAge(1, days: 30));
+        await pumpEventQueue();
+
+        expect(bloc.state, isA<BagLoaded>());
+        expect(
+          (bloc.state as BagLoaded)
+              .racquets
+              .first
+              .activeStringJob
+              ?.currentHealthScore,
+          equals(88),
+        );
+
+        verify(() => mockBagEndpoint.getVirtualBag()).called(1);
+
+        await bloc.close();
+      },
+    );
   });
 }

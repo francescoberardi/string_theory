@@ -746,6 +746,41 @@ class _BagEndpoint {
       }
     });
   }
+
+  _ida.Future<_iwugozzn.Racquet> fastForwardRacquetAge(
+    _ist.TestSessionBuilder sessionBuilder, {
+    required int racquetId,
+    int? days,
+  }) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'bag',
+            method: 'fastForwardRacquetAge',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'bag',
+          methodName: 'fastForwardRacquetAge',
+          parameters: _ist.testObjectToJson({
+            'racquetId': racquetId,
+            'days': days,
+          }),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<_iwugozzn.Racquet>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
 }
 
 class _GreetingEndpoint {

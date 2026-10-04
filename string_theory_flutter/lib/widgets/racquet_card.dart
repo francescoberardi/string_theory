@@ -207,7 +207,22 @@ class RacquetCard extends StatelessWidget {
                 ),
                 color: CourtMidnightTheme.surfaceElevated,
                 onSelected: (value) async {
-                  if (value == 'primary' && racquet.id != null) {
+                  if (value == 'fast_forward' && racquet.id != null) {
+                    bloc.add(FastForwardRacquetAge(racquet.id!, days: 30));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Aged "${racquet.name}" by 30 days',
+                          style: GoogleFonts.inter(
+                            color: Colors.black,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        backgroundColor: CourtMidnightTheme.primaryVolt,
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  } else if (value == 'primary' && racquet.id != null) {
                     bloc.add(SetPrimaryRacquet(racquet.id!));
                   } else if (value == 'delete' && racquet.id != null) {
                     final confirmed = await showDialog<bool>(
@@ -257,6 +272,27 @@ class RacquetCard extends StatelessWidget {
                   }
                 },
                 itemBuilder: (context) => [
+                  if (racquet.activeStringJob != null && racquet.id != null)
+                    const PopupMenuItem(
+                      value: 'fast_forward',
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.fast_forward,
+                            size: 16,
+                            color: CourtMidnightTheme.primaryVolt,
+                          ),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Fast-Forward 30 Days',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   if (!racquet.isPrimary && racquet.id != null)
                     const PopupMenuItem(
                       value: 'primary',

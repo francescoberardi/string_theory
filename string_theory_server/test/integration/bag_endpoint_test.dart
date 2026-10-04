@@ -229,6 +229,171 @@ void main() {
           );
         },
       );
+
+      test(
+        '[Story 2.4] should shift stringingDate 30 days into the past and recalculate health score',
+        () async {
+          final now = DateTime.now().toUtc();
+          final createdRacquet = await endpoints.bag.createRacquet(
+            user1Session,
+            racquetName: 'Head Speed MP',
+            materialCategory: StringMaterialCategory.coPoly,
+            stringingDate: now,
+          );
+
+          expect(createdRacquet.activeStringJob, isNotNull);
+          expect(
+            createdRacquet.activeStringJob!.currentHealthScore,
+            equals(100),
+          );
+
+          final updatedRacquet = await endpoints.bag.fastForwardRacquetAge(
+            user1Session,
+            racquetId: createdRacquet.id!,
+            days: 30,
+          );
+
+          expect(updatedRacquet.activeStringJob, isNotNull);
+          // Co-poly shelf life = 75 days.
+          // 30 days penalty = (30 / 75) * 30 = 12% drop => health score = 88%
+          expect(
+            updatedRacquet.activeStringJob!.currentHealthScore,
+            equals(88),
+          );
+          expect(
+            updatedRacquet.activeStringJob!.stringingDate.isBefore(
+              now.subtract(const Duration(days: 29)),
+            ),
+            isTrue,
+          );
+        },
+      );
+
+      test(
+        '[Story 2.4] should drop health score below 40% when aged excessively',
+        () async {
+          final now = DateTime.now().toUtc();
+          final racquet = await endpoints.bag.createRacquet(
+            user1Session,
+            racquetName: 'Wilson Clash',
+            materialCategory: StringMaterialCategory.coPoly,
+            stringingDate: now,
+          );
+
+          // Fast forward 160 days: CalendarPenalty = (160/75)*30 = 64% penalty => 36% health (< 40% critical)
+          final agedRacquet = await endpoints.bag.fastForwardRacquetAge(
+            user1Session,
+            racquetId: racquet.id!,
+            days: 160,
+          );
+
+          expect(agedRacquet.activeStringJob!.currentHealthScore, lessThan(40));
+        },
+      );
+
+      test(
+        '[Story 2.4] should reject unauthorized user fastForwardRacquetAge attempt',
+        () async {
+          final user1Racquet = await endpoints.bag.createRacquet(
+            user1Session,
+            racquetName: 'User 1 Private Racquet',
+          );
+
+          await expectLater(
+            endpoints.bag.fastForwardRacquetAge(
+              user2Session,
+              racquetId: user1Racquet.id!,
+            ),
+            throwsA(isA<BagException>()),
+          );
+        },
+      );
+
+      test(
+        '[Story 2.4] should reject fastForwardRacquetAge on non-existent racquet',
+        () async {
+          await expectLater(
+            endpoints.bag.fastForwardRacquetAge(
+              user1Session,
+              racquetId: 999999,
+            ),
+            throwsA(isA<BagException>()),
+          );
+        },
+      );
+
+      test(
+        '[Story 2.4] should default to 30 days when days parameter is omitted',
+        () async {
+          final now = DateTime.now().toUtc();
+          final racquet = await endpoints.bag.createRacquet(
+            user1Session,
+            racquetName: 'Default 30 Days Racquet',
+            materialCategory: StringMaterialCategory.coPoly,
+            stringingDate: now,
+          );
+
+          final agedRacquet = await endpoints.bag.fastForwardRacquetAge(
+            user1Session,
+            racquetId: racquet.id!,
+          );
+
+          expect(agedRacquet.activeStringJob!.currentHealthScore, equals(88));
+        },
+      );
+
+      test(
+        '[Story 2.4] should reject non-positive days parameter',
+        () async {
+          final racquet = await endpoints.bag.createRacquet(
+            user1Session,
+            racquetName: 'Non Positive Days Racquet',
+          );
+
+          await expectLater(
+            endpoints.bag.fastForwardRacquetAge(
+              user1Session,
+              racquetId: racquet.id!,
+              days: 0,
+            ),
+            throwsA(isA<BagException>()),
+          );
+
+          await expectLater(
+            endpoints.bag.fastForwardRacquetAge(
+              user1Session,
+              racquetId: racquet.id!,
+              days: -15,
+            ),
+            throwsA(isA<BagException>()),
+          );
+        },
+      );
+
+      test(
+        '[Story 2.4] should reject fastForwardRacquetAge on racquet with no active string job',
+        () async {
+          final session = sessionBuilder.build();
+          final now = DateTime.now().toUtc();
+          final unstrungRacquet = await Racquet.db.insertRow(
+            session,
+            Racquet(
+              userId: 1,
+              name: 'Unstrung Frame',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+          await expectLater(
+            endpoints.bag.fastForwardRacquetAge(
+              user1Session,
+              racquetId: unstrungRacquet.id!,
+            ),
+            throwsA(isA<BagException>()),
+          );
+        },
+      );
     },
     rollbackDatabase: RollbackDatabase.disabled,
   );

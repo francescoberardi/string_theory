@@ -22,6 +22,7 @@ class SettingsScreen extends StatefulWidget {
   });
 
   static const keyDevTriggerDecayButton = Key('dev_trigger_decay_button');
+  static const keyDevFastForwardButton = Key('dev_fast_forward_30_days_button');
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -29,6 +30,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _isDecaying = false;
+  bool _isFastForwarding = false;
 
   AuthService get _authService => widget.authService ?? app_client.authService;
   Client get _client => widget.client ?? app_client.client;
@@ -276,6 +278,88 @@ class _SettingsScreenState extends State<SettingsScreen> {
     } finally {
       if (mounted) {
         setState(() => _isDecaying = false);
+      }
+    }
+  }
+
+  Future<void> _fastForwardAging(BuildContext context) async {
+    if (_isFastForwarding) return;
+    setState(() => _isFastForwarding = true);
+    try {
+      int? targetRacquetId;
+      String? targetRacquetName;
+
+      BagBloc? bloc = widget.bagBloc;
+      if (bloc == null && context.mounted) {
+        try {
+          bloc = context.read<BagBloc>();
+        } catch (_) {}
+      }
+
+      final isLoaded = bloc != null && bloc.state is BagLoaded;
+      if (isLoaded) {
+        final racquets = (bloc.state as BagLoaded).racquets;
+        final candidate =
+            racquets
+                .where((r) => r.isPrimary && r.activeStringJob != null)
+                .firstOrNull ??
+            racquets.where((r) => r.activeStringJob != null).firstOrNull;
+        if (candidate != null) {
+          targetRacquetId = candidate.id;
+          targetRacquetName = candidate.name;
+        }
+      } else {
+        // Fallback only if BagBloc is not available or not loaded yet
+        final racquets = await _client.bag.getVirtualBag();
+        final candidate =
+            racquets
+                .where((r) => r.isPrimary && r.activeStringJob != null)
+                .firstOrNull ??
+            racquets.where((r) => r.activeStringJob != null).firstOrNull;
+        if (candidate != null) {
+          targetRacquetId = candidate.id;
+          targetRacquetName = candidate.name;
+        }
+      }
+
+      if (targetRacquetId == null) {
+        if (context.mounted) {
+          _showErrorFeedback(
+            context,
+            'No racquet with an active string job found. Add or string a racquet first.',
+          );
+        }
+        return;
+      }
+
+      final updated = await _client.bag.fastForwardRacquetAge(
+        racquetId: targetRacquetId,
+        days: 30,
+      );
+
+      final newHealth = updated.activeStringJob?.currentHealthScore ?? 0;
+      debugPrint(
+        '[DevControl] fastForwardRacquetAge executed on "$targetRacquetName": new health score $newHealth%',
+      );
+
+      if (context.mounted) {
+        _showLinkFeedback(
+          context,
+          'Aged "$targetRacquetName" by 30 days (Health: $newHealth%)',
+        );
+      }
+
+      if (bloc != null) {
+        bloc.add(FastForwardRacquetAge(targetRacquetId, days: 30));
+      }
+    } catch (e) {
+      debugPrint('[DevControl] Error executing fastForwardRacquetAge: $e');
+      if (context.mounted) {
+        _showErrorFeedback(context, 'Error fast-forwarding age: $e');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isFastForwarding = false);
       }
     }
   }
@@ -621,6 +705,69 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             _isDecaying
                                 ? 'Calculating Decay...'
                                 : '⚡ Trigger FutureCall Decay',
+                            style: GoogleFonts.inter(
+                              color: Colors.black,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFC6F10E),
+                            disabledBackgroundColor: const Color(
+                              0xFFC6F10E,
+                            ).withValues(alpha: 0.6),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      const Divider(color: Color(0xFF2A3034), height: 1),
+                      const SizedBox(height: 20),
+                      Text(
+                        'Time-Warp Aging Simulator',
+                        style: GoogleFonts.inter(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Fast-forwards string age by 30 days on your active gear to immediately observe static relaxation, radial gauge transitions, and critical shock risk warnings.',
+                        style: GoogleFonts.inter(
+                          color: Colors.white60,
+                          fontSize: 13,
+                          height: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 46,
+                        child: ElevatedButton.icon(
+                          key: SettingsScreen.keyDevFastForwardButton,
+                          onPressed: _isFastForwarding
+                              ? null
+                              : () => _fastForwardAging(context),
+                          icon: _isFastForwarding
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.black,
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.fast_forward,
+                                  color: Colors.black,
+                                ),
+                          label: Text(
+                            _isFastForwarding
+                                ? 'Aging Stringbed...'
+                                : 'Fast-Forward 30 Days',
                             style: GoogleFonts.inter(
                               color: Colors.black,
                               fontWeight: FontWeight.bold,

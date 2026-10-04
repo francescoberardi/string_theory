@@ -16,6 +16,7 @@ class BagBloc extends Bloc<BagEvent, BagState> {
     on<DeleteRacquet>(_onDeleteRacquet);
     on<SetPrimaryRacquet>(_onSetPrimaryRacquet);
     on<SeedSampleBag>(_onSeedSampleBag);
+    on<FastForwardRacquetAge>(_onFastForwardRacquetAge);
   }
 
   Future<void> _onLoadBag(LoadBag event, Emitter<BagState> emit) async {
@@ -168,6 +169,30 @@ class BagBloc extends Bloc<BagEvent, BagState> {
       emit(BagLoaded(seededRacquets));
     } catch (e) {
       emit(BagError('Failed to seed sample bag: $e'));
+    }
+  }
+
+  Future<void> _onFastForwardRacquetAge(
+    FastForwardRacquetAge event,
+    Emitter<BagState> emit,
+  ) async {
+    try {
+      final updated = await client.bag.fastForwardRacquetAge(
+        racquetId: event.racquetId,
+        days: event.days,
+      );
+      if (state is BagLoaded) {
+        final currentRacquets = (state as BagLoaded).racquets;
+        final newRacquets = currentRacquets.map((r) {
+          return r.id == event.racquetId ? updated : r;
+        }).toList();
+        emit(BagLoaded(newRacquets));
+      } else {
+        final racquets = await client.bag.getVirtualBag();
+        emit(BagLoaded(racquets));
+      }
+    } catch (e) {
+      emit(BagError('Failed to fast-forward racquet age: $e'));
     }
   }
 }

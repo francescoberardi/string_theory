@@ -17,5 +17,6 @@ bag:
   - setPrimary:
   - deleteRacquet:
   - triggerDailyDecayNow:
+  - fastForwardRacquetAge:
 greeting:
   - hello:

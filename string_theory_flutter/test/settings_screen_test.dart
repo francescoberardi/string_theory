@@ -349,5 +349,231 @@ void main() {
         );
       },
     );
+
+    testWidgets(
+      'Story 2.4: given settings screen, renders [⏩ Fast-Forward 30 Days] button under DEVELOPER & JUDGE CONTROLS',
+      (tester) async {
+        final storage = InMemoryAuthSuccessStorage(sampleAuthSuccess);
+        final client = Client('http://localhost:8080/')
+          ..authSessionManager = FlutterAuthSessionManager(storage: storage);
+        final authService = AuthService(
+          client: client,
+          anonymousEndpoint: FakeEndpointAnonymousIdp(),
+        );
+        await authService.initialize();
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: SettingsScreen(authService: authService),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.ensureVisible(
+          find.byKey(SettingsScreen.keyDevFastForwardButton),
+        );
+        expect(
+          find.byKey(SettingsScreen.keyDevFastForwardButton),
+          findsOneWidget,
+        );
+        expect(find.text('Fast-Forward 30 Days'), findsOneWidget);
+        expect(find.text('Time-Warp Aging Simulator'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Story 2.4: given settings screen with primary racquet in bag, when [⏩ Fast-Forward 30 Days] tapped, calls fastForwardRacquetAge and reloads bag',
+      (tester) async {
+        final storage = InMemoryAuthSuccessStorage(sampleAuthSuccess);
+        final client = Client('http://localhost:8080/')
+          ..authSessionManager = FlutterAuthSessionManager(storage: storage);
+        final authService = AuthService(
+          client: client,
+          anonymousEndpoint: FakeEndpointAnonymousIdp(),
+        );
+        await authService.initialize();
+
+        final mockClient = MockClient();
+        final mockEndpointBag = MockEndpointBag();
+        final mockBagBloc = MockBagBloc();
+
+        final targetJob = StringJob(
+          id: 1,
+          userId: 1,
+          racquetId: 1,
+          materialCategory: StringMaterialCategory.coPoly,
+          stringingDate: DateTime.utc(2026, 9, 20),
+          currentHealthScore: 76,
+          createdAt: DateTime.utc(2026, 9, 20),
+        );
+        final targetRacquet = Racquet(
+          id: 1,
+          userId: 1,
+          name: 'Wilson Blade 98',
+          isPrimary: true,
+          activeStringJob: targetJob,
+          createdAt: DateTime.utc(2026, 9, 20),
+          updatedAt: DateTime.utc(2026, 9, 20),
+        );
+
+        final agedJob = targetJob.copyWith(currentHealthScore: 64);
+        final agedRacquet = targetRacquet.copyWith(activeStringJob: agedJob);
+
+        when(() => mockClient.bag).thenReturn(mockEndpointBag);
+        when(() => mockBagBloc.state).thenReturn(BagLoaded([targetRacquet]));
+        when(
+          () => mockEndpointBag.fastForwardRacquetAge(
+            racquetId: 1,
+            days: 30,
+          ),
+        ).thenAnswer((_) async => agedRacquet);
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: SettingsScreen(
+              authService: authService,
+              client: mockClient,
+              bagBloc: mockBagBloc,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.ensureVisible(
+          find.byKey(SettingsScreen.keyDevFastForwardButton),
+        );
+        await tester.tap(find.byKey(SettingsScreen.keyDevFastForwardButton));
+        await tester.pumpAndSettle();
+
+        verify(
+          () => mockEndpointBag.fastForwardRacquetAge(
+            racquetId: 1,
+            days: 30,
+          ),
+        ).called(1);
+        verify(
+          () => mockBagBloc.add(const FastForwardRacquetAge(1, days: 30)),
+        ).called(1);
+        expect(
+          find.text('Aged "Wilson Blade 98" by 30 days (Health: 64%)'),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      'Story 2.4: given settings screen without racquets, when [Fast-Forward 30 Days] tapped, shows error feedback snackbar',
+      (tester) async {
+        final storage = InMemoryAuthSuccessStorage(sampleAuthSuccess);
+        final client = Client('http://localhost:8080/')
+          ..authSessionManager = FlutterAuthSessionManager(storage: storage);
+        final authService = AuthService(
+          client: client,
+          anonymousEndpoint: FakeEndpointAnonymousIdp(),
+        );
+        await authService.initialize();
+
+        final mockClient = MockClient();
+        final mockEndpointBag = MockEndpointBag();
+        final mockBagBloc = MockBagBloc();
+
+        when(() => mockClient.bag).thenReturn(mockEndpointBag);
+        when(() => mockBagBloc.state).thenReturn(const BagLoaded([]));
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: SettingsScreen(
+              authService: authService,
+              client: mockClient,
+              bagBloc: mockBagBloc,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.ensureVisible(
+          find.byKey(SettingsScreen.keyDevFastForwardButton),
+        );
+        await tester.tap(find.byKey(SettingsScreen.keyDevFastForwardButton));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text(
+            'No racquet with an active string job found. Add or string a racquet first.',
+          ),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      'Story 2.4: given settings screen, when fastForwardRacquetAge fails via RPC, shows error snackbar',
+      (tester) async {
+        final storage = InMemoryAuthSuccessStorage(sampleAuthSuccess);
+        final client = Client('http://localhost:8080/')
+          ..authSessionManager = FlutterAuthSessionManager(storage: storage);
+        final authService = AuthService(
+          client: client,
+          anonymousEndpoint: FakeEndpointAnonymousIdp(),
+        );
+        await authService.initialize();
+
+        final mockClient = MockClient();
+        final mockEndpointBag = MockEndpointBag();
+        final mockBagBloc = MockBagBloc();
+
+        final targetJob = StringJob(
+          id: 1,
+          userId: 1,
+          racquetId: 1,
+          materialCategory: StringMaterialCategory.coPoly,
+          stringingDate: DateTime.utc(2026, 9, 20),
+          currentHealthScore: 76,
+          createdAt: DateTime.utc(2026, 9, 20),
+        );
+        final targetRacquet = Racquet(
+          id: 1,
+          userId: 1,
+          name: 'Wilson Blade 98',
+          isPrimary: true,
+          activeStringJob: targetJob,
+          createdAt: DateTime.utc(2026, 9, 20),
+          updatedAt: DateTime.utc(2026, 9, 20),
+        );
+
+        when(() => mockClient.bag).thenReturn(mockEndpointBag);
+        when(() => mockBagBloc.state).thenReturn(BagLoaded([targetRacquet]));
+        when(
+          () => mockEndpointBag.fastForwardRacquetAge(
+            racquetId: 1,
+            days: 30,
+          ),
+        ).thenThrow(Exception('RPC timeout'));
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: SettingsScreen(
+              authService: authService,
+              client: mockClient,
+              bagBloc: mockBagBloc,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.ensureVisible(
+          find.byKey(SettingsScreen.keyDevFastForwardButton),
+        );
+        await tester.tap(find.byKey(SettingsScreen.keyDevFastForwardButton));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.textContaining(
+            'Error fast-forwarding age: Exception: RPC timeout',
+          ),
+          findsOneWidget,
+        );
+      },
+    );
   });
 }

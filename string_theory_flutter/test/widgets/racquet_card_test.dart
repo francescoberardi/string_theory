@@ -257,5 +257,73 @@ void main() {
         expect(tapped, isTrue);
       },
     );
+
+    testWidgets(
+      '[Story 2.4] Tapping Fast-Forward 30 Days in popup menu dispatches FastForwardRacquetAge to bloc',
+      (tester) async {
+        final racquet = createRacquet(
+          id: 9,
+          name: 'Fast Forward Racquet',
+          healthScore: 75,
+        );
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: RacquetCard(
+                racquet: racquet,
+                bloc: mockBagBloc,
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Open popup menu
+        await tester.tap(find.byIcon(Icons.more_vert));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Fast-Forward 30 Days'), findsOneWidget);
+
+        await tester.tap(find.text('Fast-Forward 30 Days'));
+        await tester.pumpAndSettle();
+
+        verify(
+          () => mockBagBloc.add(const FastForwardRacquetAge(9, days: 30)),
+        ).called(1);
+        expect(
+          find.text('Aged "Fast Forward Racquet" by 30 days'),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      '[Story 2.4] Unstrung racquet does NOT show Fast-Forward option in popup menu',
+      (tester) async {
+        final unstrungRacquet = createRacquet(
+          id: 10,
+          name: 'Unstrung Frame',
+          healthScore: null,
+        );
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: RacquetCard(
+                racquet: unstrungRacquet,
+                bloc: mockBagBloc,
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byIcon(Icons.more_vert));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Fast-Forward 30 Days'), findsNothing);
+      },
+    );
   });
 }

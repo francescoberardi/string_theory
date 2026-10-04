@@ -1,4 +1,5 @@
 import 'package:serverpod/serverpod.dart';
+import '../domain/decay_engine.dart';
 import '../future_calls/daily_decay_future_call.dart';
 import '../generated/protocol.dart';
 
@@ -234,5 +235,72 @@ class BagEndpoint extends Endpoint {
   Future<int> triggerDailyDecayNow(Session session) async {
     _resolveUserId(session);
     return await DailyDecayService.performDecayCalculation(session);
+  }
+
+  /// Shifts the active string job's stringingDate for the given racquet by [days]
+  /// into the past (defaulting to 30 days) and immediately recalculates the health score.
+  ///
+  /// Intended for developer/judge demonstration of stringbed aging and decay thresholds.
+  /// Returns the updated [Racquet] with its active string job.
+  Future<Racquet> fastForwardRacquetAge(
+    Session session, {
+    required int racquetId,
+    int? days,
+  }) async {
+    final userId = _resolveUserId(session);
+    final effectiveDays = days ?? 30;
+    if (effectiveDays <= 0) {
+      throw BagException(
+        message: 'Days must be a positive integer',
+        statusCode: 400,
+      );
+    }
+
+    return await session.db.transaction((tx) async {
+      final racquet = await Racquet.db.findById(
+        session,
+        racquetId,
+        include: Racquet.include(
+          activeStringJob: StringJob.include(),
+        ),
+        transaction: tx,
+      );
+
+      if (racquet == null || racquet.userId != userId) {
+        throw BagException(
+          message: 'Racquet not found or unauthorized',
+          statusCode: 404,
+        );
+      }
+
+      final stringJob = racquet.activeStringJob;
+      if (stringJob == null) {
+        throw BagException(
+          message: 'Racquet has no active string job',
+          statusCode: 400,
+        );
+      }
+
+      final shiftedDate = stringJob.stringingDate.subtract(
+        Duration(days: effectiveDays),
+      );
+      final newHealthScore = DecayEngine.calculateHealth(
+        hoursPlayed: stringJob.totalCourtHours,
+        maxRatedHours: stringJob.maxRatedHours,
+        stringingDate: shiftedDate,
+        materialCategory: stringJob.materialCategory,
+      );
+
+      final updatedJob = await StringJob.db.updateRow(
+        session,
+        stringJob.copyWith(
+          stringingDate: shiftedDate,
+          currentHealthScore: newHealthScore,
+        ),
+        transaction: tx,
+      );
+
+      return racquet.copyWith(activeStringJob: updatedJob);
+    });
   }
 }

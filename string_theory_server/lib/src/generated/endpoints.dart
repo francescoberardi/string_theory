@@ -427,6 +427,31 @@ class Endpoints extends _is.EndpointDispatch {
               ) async => (endpoints['bag'] as _i30u42n8.BagEndpoint)
                   .triggerDailyDecayNow(session),
         ),
+        'fastForwardRacquetAge': _is.MethodConnector(
+          name: 'fastForwardRacquetAge',
+          params: {
+            'racquetId': _is.ParameterDescription(
+              name: 'racquetId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+            'days': _is.ParameterDescription(
+              name: 'days',
+              type: _is.getType<int?>(),
+              nullable: true,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['bag'] as _i30u42n8.BagEndpoint)
+                  .fastForwardRacquetAge(
+                    session,
+                    racquetId: params['racquetId'],
+                    days: params['days'],
+                  ),
+        ),
       },
     );
     connectors['greeting'] = _is.EndpointConnector(

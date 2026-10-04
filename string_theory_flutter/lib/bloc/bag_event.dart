@@ -73,3 +73,13 @@ class SetPrimaryRacquet extends BagEvent {
 class SeedSampleBag extends BagEvent {
   const SeedSampleBag();
 }
+
+class FastForwardRacquetAge extends BagEvent {
+  final int racquetId;
+  final int days;
+
+  const FastForwardRacquetAge(this.racquetId, {this.days = 30});
+
+  @override
+  List<Object?> get props => [racquetId, days];
+}
