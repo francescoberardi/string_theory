@@ -47,7 +47,7 @@ development_status:
   epic-1-5: done
   1-5-1-multi-package-linting-workspace-formatting-github-actions: done
   1-5-2-multi-package-automated-test-runner-github-actions: done
-  epic-1-5-retrospective: optional
+  epic-1-5-retrospective: done
 
   epic-2: backlog
   2-1-pure-dart-decayengine-domain-calculation-unit-tests: backlog
@@ -96,3 +96,15 @@ action_items:
     owner: "Amelia (Developer)"
     status: open
     ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-10-04.md"
+  - id: "epic-1-5-retro-item-1-maintain-auth-secret-parity-in-ci"
+    epic: 1.5
+    action: "Maintain Serverpod auth and IDP password environment variable parity in CI tests"
+    owner: "Amelia (Developer)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1.5-retro-2026-10-04.md"
+  - id: "epic-1-5-retro-item-2-scoped-drift-checks-in-multi-package-workspaces"
+    epic: 1.5
+    action: "Maintain directory scoping on git diff --exit-code checks for code generation in CI"
+    owner: "Amelia (Developer)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1.5-retro-2026-10-04.md"
