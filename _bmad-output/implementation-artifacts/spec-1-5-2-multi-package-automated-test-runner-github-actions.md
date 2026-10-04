@@ -20,7 +20,7 @@ review_loop_iteration: 0
 ## Implementation Notes
 
 - Updated `.github/workflows/tests.yml` to split test execution into two dedicated parallel jobs: `server-tests` (Serverpod Backend Tests) and `flutter-tests` (Flutter Frontend Tests).
-- Configured `server-tests` to install dependencies via `flutter pub get`, cache embedded PostgreSQL binaries at `~/.cache/serverpod/pg-binaries`, install `serverpod_cli@4.0.3`, verify code generation via `serverpod generate` and `git diff --exit-code` in `string_theory_server`, and run `dart test` in `string_theory_server`.
+- Configured `server-tests` to install dependencies via `flutter pub get`, cache embedded PostgreSQL binaries at `~/.cache/serverpod/pg-binaries`, install `serverpod_cli@4.0.3`, verify code generation via `serverpod generate` with drift checks scoped to `lib/src/generated/` and `../string_theory_client`, and run `dart test` in `string_theory_server`.
 - Configured `flutter-tests` to install dependencies via `flutter pub get` and execute unit and widget tests via `flutter test` in `string_theory_flutter`.
 - Integrated GitHub Actions best practices across the workflow: workflow-level concurrency cancellation for branches (`cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}`), least-privilege permissions (`contents: read`), action caching (`cache: true` for `subosito/flutter-action@v2`), and job timeouts (15m for backend, 10m for frontend).
 - Validated locally: `flutter test string_theory_flutter` (40/40 tests passed), `cd string_theory_server && dart test` (12/12 integration tests passed), `dart format --output=none --set-exit-if-changed .` (51 files formatted, 0 changes), and `flutter analyze --fatal-infos` (0 issues).
@@ -28,6 +28,7 @@ review_loop_iteration: 0
 ## Review Triage Log
 
 - finding: "Missing code generation drift check in server-tests" | verdict: medium | evidence: Added `git diff --exit-code` following `serverpod generate` in `server-tests` to ensure model or endpoint changes without committed generated code cause CI to fail.
+- finding: "Unscoped git diff --exit-code flagged root pubspec.lock in CI" | verdict: high | evidence: Linux GitHub Actions runner Flutter SDK resolved different transitive package versions during `flutter pub get`, creating benign diffs in root `pubspec.lock`; scoped drift check explicitly to `lib/src/generated/` and `../string_theory_client` to prevent false positive failures.
 - finding: "Unconditional cancel-in-progress: true cancels in-flight test runs on main" | verdict: medium | evidence: Patched concurrency block to `cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}` ensuring all pushes to `main` complete CI test verification.
 - finding: "Missing PR head ref scoping in concurrency group" | verdict: low | evidence: Updated concurrency group to `${{ github.workflow }}-${{ github.head_ref || github.ref }}` for proper PR branch deduplication.
 - finding: "Missing .gitignore entry for root build/ directory" | verdict: low | evidence: Workspace subpackages manage their own build outputs and root worktree remains clean; not relevant to CI workflow changes.

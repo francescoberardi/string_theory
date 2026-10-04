@@ -55,7 +55,12 @@ jobs:
         working-directory: string_theory_server
         run: |
           serverpod generate
-          git diff --exit-code
+          git diff --exit-code lib/src/generated/ ../string_theory_client
+          if [ -n "$(git status --porcelain lib/src/generated/ ../string_theory_client)" ]; then
+            echo "::error::Uncommitted or untracked Serverpod generated files detected."
+            git status --porcelain lib/src/generated/ ../string_theory_client
+            exit 1
+          fi
 
       - name: Run tests
         working-directory: string_theory_server
