@@ -124,3 +124,37 @@ The `WorkoutAssignmentSheet` uses `CourtMidnightTheme` styling:
 - `dart format --set-exit-if-changed .` in `string_theory_flutter` -- expected: no formatting diffs
 - `flutter test` in `string_theory_flutter` -- expected: all unit and widget tests pass
 - `flutter build web` in `string_theory_flutter` -- expected: web build succeeds
+
+### Review Findings
+
+_Code review 2026-10-04 (Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor) of `8b3a081..b938c23`._
+
+- [x] [Review][Patch] Pending workout dismissed before the server confirms the log — resolved: `LogSession` carries a completion signal (Completer/onSuccess) completed by `BagBloc` after `logSession` + refresh; sheet dismisses only on success [string_theory_flutter/lib/widgets/workout_assignment_sheet.dart:181]
+- [x] [Review][Defer] Detected workouts that cannot be opened immediately become unreachable (batch beyond first, detection while a sheet is open, detection while bag loading) [string_theory_flutter/lib/screens/virtual_bag_screen.dart:167] — deferred: out of scope for 3-4, handle in story 3.5
+- [x] [Review][Patch] Manual log `startTime` should be `now - duration` (resolved by user; supersedes I/O row `startTime: now`) [string_theory_flutter/lib/widgets/workout_assignment_sheet.dart:186]
+- [x] [Review][Patch] Repeated identical log failure shows no SnackBar (Equatable dedupe of `BagLoaded(errorMessage)`; error never cleared) [string_theory_flutter/lib/bloc/bag_bloc.dart:290]
+- [x] [Review][Patch] Bag refresh failure after a successful `logSession` is reported as "Failed to log session", inviting a duplicate manual log [string_theory_flutter/lib/bloc/bag_bloc.dart:283]
+- [x] [Review][Patch] All-unstrung bag opens a dead-end sheet (Confirm permanently disabled, no explanation); guard in `showFor*` with a "string a racquet first" message [string_theory_flutter/lib/widgets/workout_assignment_sheet.dart:43]
+- [x] [Review][Patch] Auto-open ignores the active tab and covering routes (Sessions tab, Add Racquet modal) — check `_navIndex == 0` and `ModalRoute.of(context)?.isCurrent` [string_theory_flutter/lib/screens/virtual_bag_screen.dart:166]
+- [x] [Review][Patch] Assign SnackBar action lacks a `mounted` guard; root ScaffoldMessenger SnackBar can outlive the screen [string_theory_flutter/lib/screens/virtual_bag_screen.dart:182]
+- [x] [Review][Patch] Empty-bag SnackBar duplicated three times and `NO RACQUETS IN BAG` branch in `build()` is unreachable — extract one helper, delete dead branch [string_theory_flutter/lib/widgets/workout_assignment_sheet.dart:257]
+- [x] [Review][Patch] Racquet tiles and duration/surface chips lack `Semantics(selected:, button:)`; selection conveyed by border color only [string_theory_flutter/lib/widgets/workout_assignment_sheet.dart:487]
+- [x] [Review][Patch] `LogSession` success test does not assert `startTime` in the `SessionLog` payload [string_theory_flutter/test/bag_bloc_test.dart:713]
+- [x] [Review][Patch] "displays formatted workout start time" test only asserts the source line, never the `_formatStartTime` output [string_theory_flutter/test/widgets/workout_assignment_sheet_test.dart:505]
+- [x] [Review][Patch] No screen test that confirming an auto-opened sheet clears `pendingWorkouts` and dispatches `LogSession` (dropping `healthSyncService:` at the call site passes all tests) [string_theory_flutter/test/virtual_bag_screen_test.dart]
+- [x] [Review][Patch] No test for the `_isAssignmentSheetOpen` re-entry guard (second detection while a sheet is open) [string_theory_flutter/test/virtual_bag_screen_test.dart]
+- [x] [Review][Patch] No screen test for the empty-bag branch of the Assign SnackBar action [string_theory_flutter/test/virtual_bag_screen_test.dart]
+- [x] [Review][Patch] Unstrung-racquet test never taps the unstrung tile to prove it cannot be selected [string_theory_flutter/test/widgets/workout_assignment_sheet_test.dart]
+- [x] [Review][Defer] Raw exception text (`$e`) shown in user-facing SnackBars [string_theory_flutter/lib/bloc/bag_bloc.dart:290] — deferred: pre-existing pattern across all `BagBloc` handlers
+
+**Rejected:**
+- `low` BagError replaces UI if LogSession fails during a concurrent LoadBag — narrow race, guard adds a branch; matches other handlers.
+- `low` Sheet holds a stale racquets snapshot — modal sheet blocks delete/restring UI; stream updates only touch health fields.
+- `false` Duplicate tile keys when `racquet.id` is null — racquets come from `getVirtualBag`, persisted rows always have ids.
+- `false` Double refresh (stream + `getVirtualBag`) — refresh is spec-mandated; stream patch applies the same health fields, ordering harmless.
+- `low` `_isSubmitting` spinner never visible / no success toast — cosmetic.
+- `low` `_formatStartTime` ignores locale/24h — app is English-only.
+- `low` Magic strings for `'manual'` and surfaces — no concrete divergence named.
+- Unstrung primary skipped in pre-selection — intentional (unstrung racquets cannot log); fix would edit the spec.
+- LogSession tests in `test/bag_bloc_test.dart` vs Code Map path — fix would edit the spec.
+- Spec `status: 'done'` vs sprint `review`, `Carpet` missing from AC, empty Change Log, "3-tap" slug — fixes would edit the spec.

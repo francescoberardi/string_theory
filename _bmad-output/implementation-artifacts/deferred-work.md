@@ -64,3 +64,8 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-3-healthsyncservice-strategy-pattern-judge-simulation-generator.md`
   summary: Reconcile detected workouts against already-logged SessionLogs (or persist seen ids) so each cold start does not re-detect the last 7 days as new.
   evidence: _seenIds and _lastSync are in-memory by Story 3.3 decision; every launch re-emits workouts the server already holds under the unique externalWorkoutId index. Story 3.4 consumes pendingWorkouts and must filter them.
+
+## Deferred from: code review of spec-3-4-progressive-disclosure-workout-assignment-sheet-3-tap-quick-logger.md (2026-10-04)
+
+- Raw exception text (`'Failed to ...: $e'`) is surfaced verbatim in user-facing SnackBars/BagError across all `BagBloc` handlers (`string_theory_flutter/lib/bloc/bag_bloc.dart`). Map known failures (unstrung racquet, invalid duration, offline) to friendly messages and log the rest. Pre-existing pattern.
+- Detected workouts that cannot be opened immediately become unreachable: only `batch.first` of a multi-workout sync gets the sheet/Assign; detections arriving while an assignment sheet is open are skipped (Assign SnackBar expires under the modal barrier); detections arriving while the bag is loading never auto-open and Assign wrongly says "add a racquet" (`string_theory_flutter/lib/screens/virtual_bag_screen.dart:167`). Options: sequential queue drained on sheet close / bag load, or a pending-workouts list. Reason: out of scope for 3-4, handle in story 3.5.
