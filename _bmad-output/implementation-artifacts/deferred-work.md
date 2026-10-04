@@ -24,3 +24,15 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-3-serverpod-dailydecayfuturecall-on-demand-test-trigger.md`
   summary: Implement rate limiting or distributed lock on on-demand triggerDailyDecayNow RPC endpoint.
   evidence: FutureCalls cron already uses Serverpod claim tables, but dev RPC endpoint allows unconstrained concurrent calls in multi-tenant environments.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-1-serverpod-sessionlog-schema-sessionendpoint-idempotency.md`
+  summary: Scope the SessionLog externalWorkoutId unique index per user with a composite (userId, externalWorkoutId) index.
+  evidence: The global index makes the 409 at session_endpoint.dart reveal that another account owns an ID, and whoever claims an ID first blocks every other user; low risk with random HealthKit/Health Connect UUIDs, but needs a schema migration beyond Story 3.1.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-1-serverpod-sessionlog-schema-sessionendpoint-idempotency.md`
+  summary: Extract the duplicated _resolveUserId tenant resolver from BagEndpoint and SessionEndpoint into one shared helper.
+  evidence: The two copies are identical; if they drift, the same user resolves to a different userId in one endpoint and every scoped query returns 404.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-1-serverpod-sessionlog-schema-sessionendpoint-idempotency.md`
+  summary: Tighten logSession input validation for startTime, durationMinutes upper bound, and racquetId mismatch on dedup hits.
+  evidence: Only durationMinutes > 0 is checked; future startTime and unbounded durations are accepted (one huge session drives health to 0), and a duplicate externalWorkoutId sent for a different racquet silently returns the original row.

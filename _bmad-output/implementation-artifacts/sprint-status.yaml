@@ -57,7 +57,7 @@ development_status:
   epic-2-retrospective: done
 
   epic-3: in-progress
-  3-1-serverpod-sessionlog-schema-sessionendpoint-idempotency: review
+  3-1-serverpod-sessionlog-schema-sessionendpoint-idempotency: done
   3-2-serverpod-real-time-websocket-streaming-bagstreammessage: backlog
   3-3-healthsyncservice-strategy-pattern-judge-simulation-generato: backlog
   3-4-progressive-disclosure-workout-assignment-sheet-3-tap-quick: backlog
