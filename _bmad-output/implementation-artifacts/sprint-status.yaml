@@ -45,7 +45,7 @@ development_status:
   epic-1-retrospective: done
 
   epic-1-5: in-progress
-  1-5-1-multi-package-linting-workspace-formatting-github-actions: review
+  1-5-1-multi-package-linting-workspace-formatting-github-actions: done
   1-5-2-multi-package-automated-test-runner-github-actions: backlog
   epic-1-5-retrospective: optional
 
