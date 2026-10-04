@@ -2,7 +2,7 @@
 title: 'Story 3.1: Serverpod SessionLog Schema, SessionEndpoint & Idempotency'
 type: 'feature'
 created: '2026-10-04'
-status: 'in-progress'
+status: 'in-review'
 baseline_commit: '2869857582d04cced63089ecadd237d1cd297d91'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -76,6 +76,22 @@ context:
 ## Spec Change Log
 
 ## Review Triage Log
+
+| Finding | Verdict | Route | Evidence |
+|---------|---------|-------|----------|
+| Empty/whitespace externalWorkoutId inserts empty string and breaks unique index | medium | patch | Whitespace was not normalized to null, causing "" to collide in unique index on subsequent inserts. |
+| Idempotency check evaluated after activeStringJob check | medium | patch | Re-syncing an existing workout on an unstrung or retired racquet failed with 400 instead of returning existing session. |
+| Cross-user externalWorkoutId collision triggers DB 500 error | medium | patch | Table-wide unique index with user-scoped query caused unhandled DB exception instead of 409 error. |
+| Negative limit/offset in getSessionLogs causes DB error | low | patch | Missing non-negative validation allowed negative limit/offset to cause DB syntax exception. |
+| Client-spoofed createdAt timestamp | low | patch | sessionToInsert preserved client createdAt instead of server authoritative timestamp. |
+| Missing test for 404 in getSessionLogs with foreign/invalid racquetId | medium | patch | Verification gap pre-verified; missing test for unauthorized racquet query in getSessionLogs. |
+| Missing test for inactive StringJob session rejection | medium | patch | Verification gap pre-verified; missing test where activeStringJob.isActive is false. |
+| Missing test for cascading deletion of SessionLog on deleteRacquet | medium | patch | Verification gap pre-verified; missing test ensuring SessionLog rows cascade delete with racquet. |
+| Missing assertion for descending sort order in getSessionLogs | low | patch | Verification gap pre-verified; missing assertion that first session is after last session. |
+| Missing stringJobId on SessionLog | false | rejected | Architecture spine and PRD intentionally model SessionLog attached to Racquet; not an error. |
+| Freeform strings for courtSurface and source | false | rejected | Data models specify nullable String and String per design; not constrained enums. |
+| Missing composite index on (userId, startTime) | low | rejected | MVP query volume is small; single column userId index is sufficient for current requirements. |
+| Concurrent session race condition on StringJob totalCourtHours | low | rejected | Single-user tennis session logging volume does not have concurrent write contention. |
 
 ## Design Notes
 

@@ -160,7 +160,7 @@ void main() {
       );
 
       test(
-        '[P0] AC-4 should allow multiple manual logs without externalWorkoutId',
+        '[P0] AC-4 should normalize whitespace and empty externalWorkoutId to null and allow multiple sessions',
         () async {
           final racquet = await endpoints.bag.createRacquet(
             user1Session,
@@ -176,7 +176,7 @@ void main() {
             startTime: DateTime.now().toUtc().subtract(const Duration(days: 1)),
             durationMinutes: 60,
             source: 'Manual',
-            externalWorkoutId: null,
+            externalWorkoutId: '',
           );
           final manual2 = SessionLog(
             userId: 1,
@@ -184,7 +184,7 @@ void main() {
             startTime: DateTime.now().toUtc(),
             durationMinutes: 60,
             source: 'Manual',
-            externalWorkoutId: null,
+            externalWorkoutId: '   ',
           );
 
           final result1 = await endpoints.session.logSession(
@@ -199,6 +199,8 @@ void main() {
           expect(result1.id, isNotNull);
           expect(result2.id, isNotNull);
           expect(result1.id, isNot(equals(result2.id)));
+          expect(result1.externalWorkoutId, isNull);
+          expect(result2.externalWorkoutId, isNull);
 
           final bag = await endpoints.bag.getVirtualBag(user1Session);
           final updatedRacquet = bag.firstWhere((r) => r.id == racquetId);
@@ -456,6 +458,254 @@ void main() {
           );
           expect(user2Logs.length, equals(1));
           expect(user2Logs.first.userId, equals(2));
+        },
+      );
+
+      test(
+        '[P0] should return existing SessionLog when re-syncing duplicate external workout on racquet with inactive string job',
+        () async {
+          final racquet = await endpoints.bag.createRacquet(
+            user1Session,
+            racquetName: 'Wilson Clash 100',
+            materialCategory: StringMaterialCategory.coPoly,
+          );
+          final racquetId = racquet.id!;
+
+          final logInput = SessionLog(
+            userId: 1,
+            racquetId: racquetId,
+            startTime: DateTime.now().toUtc(),
+            durationMinutes: 60,
+            source: 'HealthKit',
+            externalWorkoutId: 'hk-inactive-resync',
+          );
+
+          // Initial log
+          final first = await endpoints.session.logSession(
+            user1Session,
+            logInput,
+          );
+          expect(first.id, isNotNull);
+
+          // Mark string job as inactive
+          final session = sessionBuilder.build();
+          await session.db.unsafeExecute(
+            'UPDATE string_job SET "isActive" = false WHERE "racquetId" = $racquetId;',
+          );
+
+          // Re-sync duplicate external workout
+          final resynced = await endpoints.session.logSession(
+            user1Session,
+            logInput,
+          );
+          expect(resynced.id, equals(first.id));
+        },
+      );
+
+      test(
+        '[P1] should throw 409 when externalWorkoutId is already registered by another user',
+        () async {
+          final rUser1 = await endpoints.bag.createRacquet(
+            user1Session,
+            racquetName: "User 1's Racquet",
+          );
+          final rUser2 = await endpoints.bag.createRacquet(
+            user2Session,
+            racquetName: "User 2's Racquet",
+          );
+
+          // User 1 logs workout
+          await endpoints.session.logSession(
+            user1Session,
+            SessionLog(
+              userId: 1,
+              racquetId: rUser1.id!,
+              startTime: DateTime.now().toUtc(),
+              durationMinutes: 60,
+              source: 'HealthKit',
+              externalWorkoutId: 'shared-device-workout-id',
+            ),
+          );
+
+          // User 2 tries to log same external workout ID
+          await expectLater(
+            endpoints.session.logSession(
+              user2Session,
+              SessionLog(
+                userId: 2,
+                racquetId: rUser2.id!,
+                startTime: DateTime.now().toUtc(),
+                durationMinutes: 60,
+                source: 'HealthKit',
+                externalWorkoutId: 'shared-device-workout-id',
+              ),
+            ),
+            throwsA(
+              isA<BagException>().having(
+                (e) => e.statusCode,
+                'statusCode',
+                equals(409),
+              ),
+            ),
+          );
+        },
+      );
+
+      test(
+        '[P1] getSessionLogs should throw 404 for foreign or non-existent racquetId',
+        () async {
+          final user2Racquet = await endpoints.bag.createRacquet(
+            user2Session,
+            racquetName: "User 2's Frame",
+          );
+
+          // Foreign racquet
+          await expectLater(
+            endpoints.session.getSessionLogs(
+              user1Session,
+              racquetId: user2Racquet.id!,
+            ),
+            throwsA(
+              isA<BagException>().having(
+                (e) => e.statusCode,
+                'statusCode',
+                equals(404),
+              ),
+            ),
+          );
+
+          // Non-existent racquet
+          await expectLater(
+            endpoints.session.getSessionLogs(
+              user1Session,
+              racquetId: 999999,
+            ),
+            throwsA(
+              isA<BagException>().having(
+                (e) => e.statusCode,
+                'statusCode',
+                equals(404),
+              ),
+            ),
+          );
+        },
+      );
+
+      test(
+        '[P1] getSessionLogs should throw 400 for negative limit or offset',
+        () async {
+          await expectLater(
+            endpoints.session.getSessionLogs(
+              user1Session,
+              limit: -1,
+            ),
+            throwsA(
+              isA<BagException>().having(
+                (e) => e.statusCode,
+                'statusCode',
+                equals(400),
+              ),
+            ),
+          );
+
+          await expectLater(
+            endpoints.session.getSessionLogs(
+              user1Session,
+              offset: -5,
+            ),
+            throwsA(
+              isA<BagException>().having(
+                (e) => e.statusCode,
+                'statusCode',
+                equals(400),
+              ),
+            ),
+          );
+        },
+      );
+
+      test(
+        '[P0] getSessionLogs should return sessions ordered newest first by startTime',
+        () async {
+          final racquet = await endpoints.bag.createRacquet(
+            user1Session,
+            racquetName: 'Order Test Racquet',
+          );
+          final now = DateTime.now().toUtc();
+
+          final oldest = SessionLog(
+            userId: 1,
+            racquetId: racquet.id!,
+            startTime: now.subtract(const Duration(hours: 3)),
+            durationMinutes: 30,
+            source: 'Manual',
+          );
+          final middle = SessionLog(
+            userId: 1,
+            racquetId: racquet.id!,
+            startTime: now.subtract(const Duration(hours: 1)),
+            durationMinutes: 45,
+            source: 'Manual',
+          );
+          final newest = SessionLog(
+            userId: 1,
+            racquetId: racquet.id!,
+            startTime: now,
+            durationMinutes: 60,
+            source: 'Manual',
+          );
+
+          // Insert in arbitrary order
+          await endpoints.session.logSession(user1Session, middle);
+          await endpoints.session.logSession(user1Session, oldest);
+          await endpoints.session.logSession(user1Session, newest);
+
+          final logs = await endpoints.session.getSessionLogs(
+            user1Session,
+            racquetId: racquet.id!,
+          );
+
+          expect(logs.length, equals(3));
+          expect(logs[0].startTime.isAfter(logs[1].startTime), isTrue);
+          expect(logs[1].startTime.isAfter(logs[2].startTime), isTrue);
+        },
+      );
+
+      test(
+        '[P0] should cascade delete SessionLog records when racquet is deleted',
+        () async {
+          final racquet = await endpoints.bag.createRacquet(
+            user1Session,
+            racquetName: 'Cascade Test Racquet',
+          );
+          final racquetId = racquet.id!;
+
+          final log = await endpoints.session.logSession(
+            user1Session,
+            SessionLog(
+              userId: 1,
+              racquetId: racquetId,
+              startTime: DateTime.now().toUtc(),
+              durationMinutes: 60,
+              source: 'Manual',
+            ),
+          );
+          final logId = log.id!;
+
+          final session = sessionBuilder.build();
+          final beforeDelete = await SessionLog.db.findById(session, logId);
+          expect(beforeDelete, isNotNull);
+
+          // Delete racquet via BagEndpoint
+          final deleted = await endpoints.bag.deleteRacquet(
+            user1Session,
+            racquetId: racquetId,
+          );
+          expect(deleted, isTrue);
+
+          // SessionLog must be cascade deleted
+          final afterDelete = await SessionLog.db.findById(session, logId);
+          expect(afterDelete, isNull);
         },
       );
     },

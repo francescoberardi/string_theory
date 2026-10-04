@@ -49,6 +49,11 @@ class SessionEndpoint extends Endpoint {
       );
     }
 
+    final trimmedExternalId = (log.externalWorkoutId != null &&
+            log.externalWorkoutId!.trim().isNotEmpty)
+        ? log.externalWorkoutId!.trim()
+        : null;
+
     return await session.db.transaction((tx) async {
       // 1. Validate racquet ownership and existence
       final racquet = await Racquet.db.findById(
@@ -67,6 +72,25 @@ class SessionEndpoint extends Endpoint {
         );
       }
 
+      // 2. Check idempotency right after validating racquet ownership
+      if (trimmedExternalId != null) {
+        final existing = await SessionLog.db.findFirstRow(
+          session,
+          where: (t) => t.externalWorkoutId.equals(trimmedExternalId),
+          transaction: tx,
+        );
+        if (existing != null) {
+          if (existing.userId == userId) {
+            return existing;
+          }
+          throw BagException(
+            message: 'Workout already registered to another account',
+            statusCode: 409,
+          );
+        }
+      }
+
+      // 3. Only check activeStringJob if inserting a new session
       StringJob? stringJob = racquet.activeStringJob;
       if (stringJob == null && racquet.activeStringJobId != null) {
         stringJob = await StringJob.db.findById(
@@ -83,26 +107,12 @@ class SessionEndpoint extends Endpoint {
         );
       }
 
-      // 2. Check idempotency: if externalWorkoutId already exists for this user, return existing record
-      if (log.externalWorkoutId != null &&
-          log.externalWorkoutId!.trim().isNotEmpty) {
-        final existing = await SessionLog.db.findFirstRow(
-          session,
-          where: (t) =>
-              t.externalWorkoutId.equals(log.externalWorkoutId!.trim()) &
-              t.userId.equals(userId),
-          transaction: tx,
-        );
-        if (existing != null) {
-          return existing;
-        }
-      }
-
-      // 3. Insert new SessionLog
+      // 4. Insert new SessionLog
       final sessionToInsert = log.copyWith(
         id: null,
         userId: userId,
-        externalWorkoutId: log.externalWorkoutId?.trim(),
+        externalWorkoutId: trimmedExternalId,
+        createdAt: DateTime.now().toUtc(),
       );
       final insertedSession = await SessionLog.db.insertRow(
         session,
@@ -110,11 +120,11 @@ class SessionEndpoint extends Endpoint {
         transaction: tx,
       );
 
-      // 4. Increment active string job's totalCourtHours
+      // 5. Increment active string job's totalCourtHours
       final sessionHours = log.durationMinutes / 60.0;
       final newTotalHours = stringJob.totalCourtHours + sessionHours;
 
-      // 5. Recalculate health score using pure Dart DecayEngine
+      // 6. Recalculate health score using pure Dart DecayEngine
       final newHealthScore = DecayEngine.calculateHealth(
         hoursPlayed: newTotalHours,
         maxRatedHours: stringJob.maxRatedHours,
@@ -122,7 +132,7 @@ class SessionEndpoint extends Endpoint {
         materialCategory: stringJob.materialCategory,
       );
 
-      // 6. Persist updated StringJob
+      // 7. Persist updated StringJob
       await StringJob.db.updateRow(
         session,
         stringJob.copyWith(
@@ -145,6 +155,13 @@ class SessionEndpoint extends Endpoint {
     int? offset,
   }) async {
     final userId = _resolveUserId(session);
+
+    if ((limit != null && limit < 0) || (offset != null && offset < 0)) {
+      throw BagException(
+        message: 'Limit and offset must be non-negative',
+        statusCode: 400,
+      );
+    }
 
     if (racquetId != null) {
       final racquet = await Racquet.db.findById(session, racquetId);
