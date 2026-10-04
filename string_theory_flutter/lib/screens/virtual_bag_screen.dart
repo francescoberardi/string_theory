@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../bloc/bag_bloc.dart';
+import '../services/health/health_sync_service.dart';
 import '../theme/court_midnight_theme.dart';
 import '../widgets/add_racquet_modal.dart';
 import '../widgets/racquet_card.dart';
@@ -15,7 +18,10 @@ export '../widgets/racquet_card.dart';
 class VirtualBagScreen extends StatefulWidget {
   final BagBloc? bagBloc;
 
-  const VirtualBagScreen({super.key, this.bagBloc});
+  /// Overrides the [HealthSyncService] otherwise read from the context.
+  final HealthSyncService? healthSyncService;
+
+  const VirtualBagScreen({super.key, this.bagBloc, this.healthSyncService});
 
   static const keyEmptyState = Key('virtual_bag_empty_state');
   static const keyEmptyAddButton = Key('virtual_bag_empty_add_button');
@@ -27,6 +33,18 @@ class VirtualBagScreen extends StatefulWidget {
   static const keyBottomNav = Key('virtual_bag_bottom_nav');
   static const keyNavigationRail = Key('virtual_bag_navigation_rail');
   static const keyLoadingIndicator = Key('virtual_bag_loading_indicator');
+  static const keySimulateWorkoutBadge = Key(
+    'virtual_bag_simulate_workout_badge',
+  );
+
+  /// Formats a workout duration as e.g. `1h 30m`, `2h` or `45m`.
+  static String formatWorkoutDuration(int minutes) {
+    final hours = minutes ~/ 60;
+    final rest = minutes % 60;
+    if (hours == 0) return '${rest}m';
+    if (rest == 0) return '${hours}h';
+    return '${hours}h ${rest}m';
+  }
 
   @override
   State<VirtualBagScreen> createState() => _VirtualBagScreenState();
@@ -34,10 +52,98 @@ class VirtualBagScreen extends StatefulWidget {
 
 class _VirtualBagScreenState extends State<VirtualBagScreen> {
   int _navIndex = 0;
+  HealthSyncService? _healthSyncService;
+  StreamSubscription<DetectedWorkout>? _workoutSubscription;
+
+  /// Detections received since the last frame, surfaced as one SnackBar.
+  final _detectionBuffer = <DetectedWorkout>[];
+  bool _detectionFlushScheduled = false;
 
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _bindHealthSyncService(
+      widget.healthSyncService ?? context.read<HealthSyncService>(),
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant VirtualBagScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.healthSyncService != oldWidget.healthSyncService) {
+      _bindHealthSyncService(
+        widget.healthSyncService ?? context.read<HealthSyncService>(),
+      );
+    }
+  }
+
+  void _bindHealthSyncService(HealthSyncService service) {
+    if (identical(service, _healthSyncService)) return;
+    _workoutSubscription?.cancel();
+    _healthSyncService = service;
+    _workoutSubscription = service.workouts.listen(_onWorkoutDetected);
+    // Pull recently completed workouts (no-op when simulated).
+    unawaited(service.syncWorkouts());
+  }
+
+  /// Buffers detections arriving within the same frame (e.g. one sync that
+  /// finds several workouts) so each batch yields a single SnackBar.
+  void _onWorkoutDetected(DetectedWorkout workout) {
+    if (!mounted) return;
+    _detectionBuffer.add(workout);
+    if (_detectionFlushScheduled) return;
+    _detectionFlushScheduled = true;
+    final binding = WidgetsBinding.instance;
+    binding.addPostFrameCallback((_) => _flushDetections());
+    binding.ensureVisualUpdate();
+  }
+
+  void _flushDetections() {
+    _detectionFlushScheduled = false;
+    final batch = List.of(_detectionBuffer);
+    _detectionBuffer.clear();
+    if (!mounted || batch.isEmpty) return;
+
+    final message = switch (batch) {
+      [final workout] =>
+        '${VirtualBagScreen.formatWorkoutDuration(workout.durationMinutes)} '
+            'Tennis Match Detected',
+      _ => '${batch.length} Tennis Matches Detected',
+    };
+    // Replace any detection still on screen instead of queueing behind it.
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          backgroundColor: CourtMidnightTheme.surface,
+          behavior: SnackBarBehavior.floating,
+          content: Row(
+            children: [
+              const Icon(
+                Icons.sports_tennis,
+                color: CourtMidnightTheme.primaryVolt,
+                size: 20,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  message,
+                  style: GoogleFonts.inter(
+                    color: CourtMidnightTheme.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+  }
+
+  @override
+  void dispose() {
+    _workoutSubscription?.cancel();
+    super.dispose();
   }
 
   BagBloc _resolveBloc(BuildContext context) {
@@ -211,6 +317,50 @@ class _VirtualBagScreenState extends State<VirtualBagScreen> {
 
   Widget? _buildFab(BuildContext context, BagState state) {
     if (_navIndex != 0) return null;
+    final addFab = _buildAddRacquetFab(context, state);
+    final showBadge = _healthSyncService?.supportsSimulation ?? false;
+    if (!showBadge) return addFab;
+
+    // Stack the judge badge above the Add Racquet FAB so they never collide.
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        _buildSimulateWorkoutBadge(),
+        if (addFab != null) ...[const SizedBox(height: 12), addFab],
+      ],
+    );
+  }
+
+  Widget _buildSimulateWorkoutBadge() {
+    return Material(
+      color: CourtMidnightTheme.surface,
+      shape: StadiumBorder(
+        side: BorderSide(
+          color: CourtMidnightTheme.primaryVolt.withValues(alpha: 0.6),
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        key: VirtualBagScreen.keySimulateWorkoutBadge,
+        onTap: () => _healthSyncService?.simulateWorkout(),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          child: Text(
+            '🧪 Simulate Workout',
+            style: GoogleFonts.barlowCondensed(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.4,
+              color: CourtMidnightTheme.primaryVolt,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget? _buildAddRacquetFab(BuildContext context, BagState state) {
     if (state is BagLoaded && state.racquets.isNotEmpty) {
       return FloatingActionButton.extended(
         key: const Key('virtual_bag_fab_add'),

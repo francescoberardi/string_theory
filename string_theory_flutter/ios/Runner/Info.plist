@@ -24,6 +24,10 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>String Theory reads your tennis workouts from Apple Health to track court hours and string decay. Workout data stays on your device.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>String Theory only reads your tennis workouts and never writes data to Apple Health.</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>

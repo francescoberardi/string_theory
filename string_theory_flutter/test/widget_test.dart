@@ -7,6 +7,8 @@ import 'package:string_theory_flutter/main.dart';
 import 'package:string_theory_flutter/screens/virtual_bag_screen.dart';
 import 'package:string_theory_flutter/services/auth_service.dart';
 
+import 'helpers/fake_health_sync_service.dart';
+
 class InMemoryAuthSuccessStorage implements ClientAuthSuccessStorage {
   AuthSuccess? _stored;
 
@@ -35,7 +37,11 @@ class FakeEndpointAnonymousIdp implements EndpointAnonymousIdp {
 }
 
 void main() {
+  late FakeHealthSyncService fakeHealth;
+
   setUp(() {
+    fakeHealth = FakeHealthSyncService();
+    addTearDown(fakeHealth.dispose);
     final storage = InMemoryAuthSuccessStorage(
       AuthSuccess(
         authStrategy: 'session',
@@ -59,7 +65,7 @@ void main() {
     (tester) async {
       await app_client.authService.initialize();
 
-      await tester.pumpWidget(const MyApp());
+      await tester.pumpWidget(MyApp(healthSyncService: fakeHealth));
       await tester.pumpAndSettle();
 
       expect(find.text('STRING THEORY'), findsOneWidget);
@@ -76,6 +82,29 @@ void main() {
   );
 
   testWidgets(
+    'MyApp binds the platform HealthSyncService by default (desktop shows '
+    'the simulate badge)',
+    (tester) async {
+      await app_client.authService.initialize();
+
+      await tester.pumpWidget(const MyApp());
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(VirtualBagScreen.keySimulateWorkoutBadge),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(VirtualBagScreen.keySimulateWorkoutBadge));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 750));
+
+      expect(find.text('1h 30m Tennis Match Detected'), findsOneWidget);
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.macOS),
+  );
+
+  testWidgets(
     'given unauthenticated state, MyHomePage displays OFFLINE badge and retry snackbar',
     (tester) async {
       final storage = InMemoryAuthSuccessStorage();
@@ -86,7 +115,7 @@ void main() {
         anonymousEndpoint: FakeEndpointAnonymousIdp(),
       );
 
-      await tester.pumpWidget(const MyApp());
+      await tester.pumpWidget(MyApp(healthSyncService: fakeHealth));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 750));
 

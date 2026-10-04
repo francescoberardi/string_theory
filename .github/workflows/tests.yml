@@ -88,3 +88,13 @@ jobs:
       - name: Run tests
         working-directory: string_theory_flutter
         run: flutter test
+
+      # dart2js integer semantics differ from the VM (e.g. `1 << 32` is 0), so
+      # the simulated workout id generator is also tested on the web compiler.
+      - name: Run web-sensitive tests on Chrome
+        working-directory: string_theory_flutter
+        run: flutter test --platform chrome test/services/health/simulated_health_sync_service_test.dart
+
+      - name: Build web
+        working-directory: string_theory_flutter
+        run: flutter build web

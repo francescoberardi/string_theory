@@ -36,6 +36,7 @@ dependencies:
   serverpod_auth_idp_flutter: 4.0.3
   flutter_bloc: ^9.1.1
   equatable: ^3.0.0
+  health: 13.3.2
 
 dev_dependencies:
   # Used for agents to drive the app through the Dart MCP

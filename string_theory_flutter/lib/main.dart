@@ -6,6 +6,8 @@ import 'bloc/bag_bloc.dart';
 import 'client.dart';
 import 'screens/settings_screen.dart';
 import 'screens/virtual_bag_screen.dart';
+import 'services/health/health_sync_resolver.dart';
+import 'services/health/health_sync_service.dart';
 import 'theme/court_midnight_theme.dart';
 
 void main() async {
@@ -16,8 +18,9 @@ void main() async {
 
 class MyApp extends StatelessWidget {
   final BagBloc? bagBloc;
+  final HealthSyncService? healthSyncService;
 
-  const MyApp({super.key, this.bagBloc});
+  const MyApp({super.key, this.bagBloc, this.healthSyncService});
 
   @override
   Widget build(BuildContext context) {
@@ -27,16 +30,27 @@ class MyApp extends StatelessWidget {
       home: const MyHomePage(title: 'STRING THEORY'),
     );
 
-    if (bagBloc != null) {
-      return BlocProvider<BagBloc>.value(
-        value: bagBloc!,
-        child: materialApp,
+    final Widget withBag = bagBloc != null
+        ? BlocProvider<BagBloc>.value(value: bagBloc!, child: materialApp)
+        : BlocProvider<BagBloc>(
+            create: (context) => BagBloc(client: client)..add(const LoadBag()),
+            child: materialApp,
+          );
+
+    if (healthSyncService != null) {
+      return RepositoryProvider<HealthSyncService>.value(
+        value: healthSyncService!,
+        child: withBag,
       );
     }
 
-    return BlocProvider<BagBloc>(
-      create: (context) => BagBloc(client: client)..add(const LoadBag()),
-      child: materialApp,
+    // The resolver binds SimulatedHealthSyncService off-mobile, and
+    // NativeHealthSyncService creates its plugin gateway lazily on first sync,
+    // so the native health plugin is never touched on web / desktop.
+    return RepositoryProvider<HealthSyncService>(
+      create: (_) => createHealthSyncService(),
+      dispose: (service) => service.dispose(),
+      child: withBag,
     );
   }
 }
