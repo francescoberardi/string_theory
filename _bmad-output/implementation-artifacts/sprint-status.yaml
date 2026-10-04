@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-02-2026 17:45
-last_updated: 10-04-2026 16:44
+last_updated: 10-04-2026 16:57
 project: string_theory
 project_key: NOKEY
 tracking_system: file-system
@@ -54,7 +54,7 @@ development_status:
   2-2-animated-radial-health-gauge-widget-racquet-card-integration: done
   2-3-serverpod-dailydecayfuturecall-on-demand-test-trigger: done
   2-4-time-warp-aging-simulator-30-days-dev-control: done
-  epic-2-retrospective: optional
+  epic-2-retrospective: done
 
   epic-3: backlog
   3-1-serverpod-sessionlog-schema-sessionendpoint-idempotency: backlog
@@ -88,13 +88,13 @@ action_items:
     epic: 1
     action: "Implement authoritative pure Dart DecayEngine shared calculation"
     owner: "Winston (Architect)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-10-04.md"
   - id: "epic-1-retro-item-3-implement-dailydecayfuturecall-for-sched"
     epic: 1
     action: "Implement DailyDecayFutureCall for scheduled backend decay updates"
     owner: "Amelia (Developer)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-10-04.md"
   - id: "epic-1-5-retro-item-1-maintain-auth-secret-parity-in-ci"
     epic: 1.5
@@ -108,3 +108,15 @@ action_items:
     owner: "Amelia (Developer)"
     status: open
     ref: "_bmad-output/implementation-artifacts/epic-1.5-retro-2026-10-04.md"
+  - id: "epic-2-retro-item-1-extract-shared-pure-dart-domain-pack"
+    epic: 2
+    action: "Extract shared pure Dart domain calculation logic into a shared package or client extension"
+    owner: "Winston (Architect)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-2-retro-2026-10-04.md"
+  - id: "epic-2-retro-item-2-add-batch-pagination-dailydecayfuture"
+    epic: 2
+    action: "Add keyset/offset pagination and batch chunking to DailyDecayFutureCall"
+    owner: "Amelia (Developer)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-2-retro-2026-10-04.md"
