@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -7,6 +9,7 @@ import 'package:string_theory_flutter/screens/virtual_bag_screen.dart';
 import 'package:string_theory_flutter/services/health/health_sync_service.dart';
 import 'package:string_theory_flutter/theme/court_midnight_theme.dart';
 import 'package:string_theory_flutter/widgets/add_racquet_modal.dart';
+import 'package:string_theory_flutter/widgets/workout_assignment_sheet.dart';
 
 import 'helpers/fake_health_sync_service.dart';
 
@@ -401,7 +404,8 @@ void main() {
           findsOneWidget,
         );
         expect(find.text('🧪 Simulate Workout'), findsOneWidget);
-        // Coexists with the Add Racquet FAB.
+        // Coexists with the Add Racquet FAB and Log Session FAB.
+        expect(find.byKey(VirtualBagScreen.keyLogSessionFab), findsOneWidget);
         expect(find.byKey(const Key('virtual_bag_fab_add')), findsOneWidget);
       },
     );
@@ -487,6 +491,168 @@ void main() {
         expect(find.text('1h Tennis Match Detected'), findsNothing);
         expect(find.text('45m Tennis Match Detected'), findsOneWidget);
         expect(find.byType(SnackBar), findsOneWidget);
+      },
+    );
+  });
+
+  group('Story 3.4: Quick Logger FAB & Workout Assignment Sheet Launch', () {
+    Future<void> pumpBag(
+      WidgetTester tester,
+      FakeHealthSyncService service, {
+      BagState state = const BagLoaded([]),
+    }) async {
+      when(() => mockBagBloc.state).thenReturn(state);
+      when(() => mockBagBloc.stream).thenAnswer((_) => const Stream.empty());
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: CourtMidnightTheme.themeData,
+          home: VirtualBagScreen(
+            bagBloc: mockBagBloc,
+            healthSyncService: service,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets(
+      'renders [+ Log Session] FAB when racquets exist and coexists with Add Racquet FAB',
+      (tester) async {
+        await pumpBag(tester, fakeHealth, state: BagLoaded(sampleRacquets));
+
+        expect(find.byKey(VirtualBagScreen.keyLogSessionFab), findsOneWidget);
+        expect(find.text('+ Log Session'), findsOneWidget);
+        expect(find.byKey(const Key('virtual_bag_fab_add')), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'does not render [+ Log Session] FAB when bag is empty',
+      (tester) async {
+        await pumpBag(tester, fakeHealth, state: const BagLoaded([]));
+
+        expect(find.byKey(VirtualBagScreen.keyLogSessionFab), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'tapping [+ Log Session] FAB opens WorkoutAssignmentSheet in manual mode',
+      (tester) async {
+        await pumpBag(tester, fakeHealth, state: BagLoaded(sampleRacquets));
+
+        await tester.tap(find.byKey(VirtualBagScreen.keyLogSessionFab));
+        await tester.pumpAndSettle();
+
+        expect(find.text('LOG COURT SESSION'), findsOneWidget);
+        expect(
+          find.byKey(WorkoutAssignmentSheet.keyDurationChip('1h')),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(WorkoutAssignmentSheet.keyConfirmButton),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      'when workout is detected and racquets exist, automatically opens assignment sheet with Assign action on SnackBar',
+      (tester) async {
+        await pumpBag(tester, fakeHealth, state: BagLoaded(sampleRacquets));
+
+        fakeHealth.emit(
+          DetectedWorkout(
+            externalWorkoutId: 'sim-auto-1',
+            startTime: DateTime.utc(2026, 10, 4, 17, 0),
+            durationMinutes: 90,
+            source: DetectedWorkout.sourceSimulated,
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('1h 30m Tennis Match Detected'), findsOneWidget);
+        expect(find.text('Assign'), findsOneWidget);
+        expect(find.text('ASSIGN WORKOUT'), findsOneWidget);
+        expect(
+          find.byKey(WorkoutAssignmentSheet.keyConfirmButton),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      'tapping Assign SnackBar action launches workout assignment sheet and dismisses SnackBar',
+      (tester) async {
+        await pumpBag(tester, fakeHealth, state: BagLoaded(sampleRacquets));
+
+        fakeHealth.emit(
+          DetectedWorkout(
+            externalWorkoutId: 'sim-auto-2',
+            startTime: DateTime.utc(2026, 10, 4, 17, 0),
+            durationMinutes: 60,
+            source: DetectedWorkout.sourceSimulated,
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Dismiss the auto-opened sheet by tapping barrier
+        await tester.tapAt(const Offset(20, 20));
+        await tester.pumpAndSettle();
+
+        expect(find.text('ASSIGN WORKOUT'), findsNothing);
+        expect(find.text('Assign'), findsOneWidget);
+
+        // Tap Assign in SnackBar
+        await tester.tap(find.text('Assign'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('ASSIGN WORKOUT'), findsOneWidget);
+        expect(
+          find.byKey(WorkoutAssignmentSheet.keyConfirmButton),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      'surfaces transient errorMessage in BagLoaded via SnackBar without fatal error screen',
+      (tester) async {
+        final stateController = StreamController<BagState>.broadcast();
+        when(() => mockBagBloc.state).thenReturn(BagLoaded(sampleRacquets));
+        when(
+          () => mockBagBloc.stream,
+        ).thenAnswer((_) => stateController.stream);
+
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: CourtMidnightTheme.themeData,
+            home: VirtualBagScreen(
+              bagBloc: mockBagBloc,
+              healthSyncService: fakeHealth,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Emit failure with transient errorMessage while retaining racquets
+        stateController.add(
+          BagLoaded(
+            sampleRacquets,
+            errorMessage: 'Failed to log session: network timeout',
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text('Failed to log session: network timeout'),
+          findsOneWidget,
+        );
+        // Racquets are still displayed
+        expect(find.text('Wilson Blade 98'), findsOneWidget);
+        // Fatal error screen is NOT displayed
+        expect(find.byIcon(Icons.error_outline), findsNothing);
+
+        await stateController.close();
       },
     );
   });

@@ -3,12 +3,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:string_theory_client/string_theory_client.dart';
 
 import '../bloc/bag_bloc.dart';
 import '../services/health/health_sync_service.dart';
 import '../theme/court_midnight_theme.dart';
 import '../widgets/add_racquet_modal.dart';
 import '../widgets/racquet_card.dart';
+import '../widgets/workout_assignment_sheet.dart';
 import 'settings_screen.dart';
 
 export '../widgets/racquet_card.dart';
@@ -36,6 +38,7 @@ class VirtualBagScreen extends StatefulWidget {
   static const keySimulateWorkoutBadge = Key(
     'virtual_bag_simulate_workout_badge',
   );
+  static const keyLogSessionFab = Key('virtual_bag_fab_log_session');
 
   /// Formats a workout duration as e.g. `1h 30m`, `2h` or `45m`.
   static String formatWorkoutDuration(int minutes) {
@@ -58,6 +61,49 @@ class _VirtualBagScreenState extends State<VirtualBagScreen> {
   /// Detections received since the last frame, surfaced as one SnackBar.
   final _detectionBuffer = <DetectedWorkout>[];
   bool _detectionFlushScheduled = false;
+  bool _isAssignmentSheetOpen = false;
+
+  Future<void> _openDetectedAssignmentSheet(
+    DetectedWorkout workout,
+    List<Racquet> racquets,
+    BagBloc bloc,
+  ) async {
+    if (_isAssignmentSheetOpen) return;
+    _isAssignmentSheetOpen = true;
+    try {
+      await WorkoutAssignmentSheet.showForDetected(
+        context,
+        workout: workout,
+        racquets: racquets,
+        bagBloc: bloc,
+        healthSyncService: _healthSyncService,
+      );
+    } finally {
+      if (mounted) {
+        _isAssignmentSheetOpen = false;
+      }
+    }
+  }
+
+  Future<void> _openManualAssignmentSheet(
+    List<Racquet> racquets,
+    BagBloc bloc,
+  ) async {
+    if (_isAssignmentSheetOpen) return;
+    _isAssignmentSheetOpen = true;
+    try {
+      await WorkoutAssignmentSheet.showForManual(
+        context,
+        racquets: racquets,
+        bagBloc: bloc,
+        healthSyncService: _healthSyncService,
+      );
+    } finally {
+      if (mounted) {
+        _isAssignmentSheetOpen = false;
+      }
+    }
+  }
 
   @override
   void didChangeDependencies() {
@@ -110,6 +156,17 @@ class _VirtualBagScreenState extends State<VirtualBagScreen> {
             'Tennis Match Detected',
       _ => '${batch.length} Tennis Matches Detected',
     };
+
+    final bloc = _resolveBloc(context);
+    final currentState = bloc.state;
+    final racquets = (currentState is BagLoaded)
+        ? currentState.racquets
+        : <Racquet>[];
+
+    if (racquets.isNotEmpty) {
+      _openDetectedAssignmentSheet(batch.first, racquets, bloc);
+    }
+
     // Replace any detection still on screen instead of queueing behind it.
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
@@ -117,6 +174,39 @@ class _VirtualBagScreenState extends State<VirtualBagScreen> {
         SnackBar(
           backgroundColor: CourtMidnightTheme.surface,
           behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 4),
+          persist: false,
+          action: SnackBarAction(
+            label: 'Assign',
+            textColor: CourtMidnightTheme.primaryVolt,
+            onPressed: () {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              if (_isAssignmentSheetOpen) return;
+              final activeState = _resolveBloc(context).state;
+              final currentRacquets = (activeState is BagLoaded)
+                  ? activeState.racquets
+                  : <Racquet>[];
+              if (currentRacquets.isNotEmpty) {
+                _openDetectedAssignmentSheet(
+                  batch.first,
+                  currentRacquets,
+                  _resolveBloc(context),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    backgroundColor: CourtMidnightTheme.surface,
+                    content: Text(
+                      'Please add a racquet to your bag first',
+                      style: GoogleFonts.inter(
+                        color: CourtMidnightTheme.textPrimary,
+                      ),
+                    ),
+                  ),
+                );
+              }
+            },
+          ),
           content: Row(
             children: [
               const Icon(
@@ -158,8 +248,22 @@ class _VirtualBagScreenState extends State<VirtualBagScreen> {
     final effectiveBloc = widget.bagBloc ?? context.read<BagBloc>();
     final isMobile = MediaQuery.sizeOf(context).width < 600;
 
-    return BlocBuilder<BagBloc, BagState>(
+    return BlocConsumer<BagBloc, BagState>(
       bloc: effectiveBloc,
+      listener: (context, state) {
+        if (state is BagLoaded && state.errorMessage != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: CourtMidnightTheme.healthCritical,
+              behavior: SnackBarBehavior.floating,
+              content: Text(
+                state.errorMessage!,
+                style: GoogleFonts.inter(color: Colors.white),
+              ),
+            ),
+          );
+        }
+      },
       builder: (context, state) {
         final content = _navIndex == 1
             ? _buildSessionsPlaceholder()
@@ -317,18 +421,24 @@ class _VirtualBagScreenState extends State<VirtualBagScreen> {
 
   Widget? _buildFab(BuildContext context, BagState state) {
     if (_navIndex != 0) return null;
+    final logFab = _buildLogSessionFab(context, state);
     final addFab = _buildAddRacquetFab(context, state);
     final showBadge = _healthSyncService?.supportsSimulation ?? false;
-    if (!showBadge) return addFab;
 
-    // Stack the judge badge above the Add Racquet FAB so they never collide.
+    final children = <Widget>[
+      if (showBadge) _buildSimulateWorkoutBadge(),
+      if (showBadge && logFab != null) const SizedBox(height: 12),
+      ?logFab,
+      if ((showBadge || logFab != null) && addFab != null)
+        const SizedBox(height: 12),
+      ?addFab,
+    ];
+
+    if (children.isEmpty) return null;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        _buildSimulateWorkoutBadge(),
-        if (addFab != null) ...[const SizedBox(height: 12), addFab],
-      ],
+      children: children,
     );
   }
 
@@ -360,10 +470,47 @@ class _VirtualBagScreenState extends State<VirtualBagScreen> {
     );
   }
 
+  Widget? _buildLogSessionFab(BuildContext context, BagState state) {
+    if (state is BagLoaded && state.racquets.isNotEmpty) {
+      return FloatingActionButton.extended(
+        key: VirtualBagScreen.keyLogSessionFab,
+        heroTag: 'virtual_bag_fab_log_session_hero',
+        backgroundColor: CourtMidnightTheme.surface,
+        foregroundColor: CourtMidnightTheme.primaryVolt,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(
+            color: CourtMidnightTheme.primaryVolt,
+            width: 1.5,
+          ),
+        ),
+        onPressed: () {
+          _openManualAssignmentSheet(
+            state.racquets,
+            _resolveBloc(context),
+          );
+        },
+        icon: const Icon(
+          Icons.timer_outlined,
+          color: CourtMidnightTheme.primaryVolt,
+        ),
+        label: Text(
+          '+ Log Session',
+          style: GoogleFonts.inter(
+            fontWeight: FontWeight.w700,
+            color: CourtMidnightTheme.primaryVolt,
+          ),
+        ),
+      );
+    }
+    return null;
+  }
+
   Widget? _buildAddRacquetFab(BuildContext context, BagState state) {
     if (state is BagLoaded && state.racquets.isNotEmpty) {
       return FloatingActionButton.extended(
         key: const Key('virtual_bag_fab_add'),
+        heroTag: 'virtual_bag_fab_add_hero',
         backgroundColor: CourtMidnightTheme.primaryVolt,
         foregroundColor: Colors.black,
         onPressed: () {

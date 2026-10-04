@@ -94,3 +94,36 @@ class BagStreamReceived extends BagEvent {
   @override
   List<Object?> get props => [message];
 }
+
+/// Logs a tennis session against [racquetId], attributing court time to its
+/// active stringbed.
+class LogSession extends BagEvent {
+  final int racquetId;
+  final DateTime startTime;
+  final int durationMinutes;
+  final String? courtSurface;
+  final String? notes;
+  final String source;
+  final String? externalWorkoutId;
+
+  const LogSession({
+    required this.racquetId,
+    required this.startTime,
+    required this.durationMinutes,
+    this.courtSurface,
+    this.notes,
+    required this.source,
+    this.externalWorkoutId,
+  });
+
+  @override
+  List<Object?> get props => [
+    racquetId,
+    startTime,
+    durationMinutes,
+    courtSurface,
+    notes,
+    source,
+    externalWorkoutId,
+  ];
+}

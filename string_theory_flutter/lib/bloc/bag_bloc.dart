@@ -22,6 +22,7 @@ class BagBloc extends Bloc<BagEvent, BagState> {
     on<SeedSampleBag>(_onSeedSampleBag);
     on<FastForwardRacquetAge>(_onFastForwardRacquetAge);
     on<BagStreamReceived>(_onBagStreamReceived);
+    on<LogSession>(_onLogSession);
   }
 
   @override
@@ -259,6 +260,39 @@ class BagBloc extends Bloc<BagEvent, BagState> {
       }
     } catch (e) {
       emit(BagError('Failed to fast-forward racquet age: $e'));
+    }
+  }
+
+  Future<void> _onLogSession(
+    LogSession event,
+    Emitter<BagState> emit,
+  ) async {
+    try {
+      await client.session.logSession(
+        SessionLog(
+          userId: 0,
+          racquetId: event.racquetId,
+          startTime: event.startTime,
+          durationMinutes: event.durationMinutes,
+          courtSurface: event.courtSurface,
+          notes: event.notes,
+          source: event.source,
+          externalWorkoutId: event.externalWorkoutId,
+        ),
+      );
+      final racquets = await client.bag.getVirtualBag();
+      emit(BagLoaded(racquets));
+    } catch (e) {
+      if (state is BagLoaded) {
+        emit(
+          BagLoaded(
+            (state as BagLoaded).racquets,
+            errorMessage: 'Failed to log session: $e',
+          ),
+        );
+      } else {
+        emit(BagError('Failed to log session: $e'));
+      }
     }
   }
 }

@@ -18,11 +18,12 @@ class BagLoading extends BagState {
 
 class BagLoaded extends BagState {
   final List<Racquet> racquets;
+  final String? errorMessage;
 
-  const BagLoaded(this.racquets);
+  const BagLoaded(this.racquets, {this.errorMessage});
 
   @override
-  List<Object?> get props => [racquets];
+  List<Object?> get props => [racquets, errorMessage];
 }
 
 class BagError extends BagState {

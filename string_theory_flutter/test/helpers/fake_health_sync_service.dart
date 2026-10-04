@@ -51,5 +51,10 @@ class FakeHealthSyncService implements HealthSyncService {
   }
 
   @override
+  void dismissPendingWorkout(String externalWorkoutId) {
+    _pending.removeWhere((w) => w.externalWorkoutId == externalWorkoutId);
+  }
+
+  @override
   void dispose() => _controller.close();
 }

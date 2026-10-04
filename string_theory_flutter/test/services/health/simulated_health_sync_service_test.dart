@@ -82,6 +82,23 @@ void main() {
       expect(service.supportsSimulation, isTrue);
       expect(await service.syncWorkouts(), isEmpty);
     });
+
+    test(
+      'dismissPendingWorkout removes matching workout from pendingWorkouts',
+      () async {
+        final service = SimulatedHealthSyncService(
+          now: () => fixedNow,
+          idGenerator: () => 'sim-to-dismiss',
+        );
+        addTearDown(service.dispose);
+
+        await service.simulateWorkout();
+        expect(service.pendingWorkouts, hasLength(1));
+
+        service.dismissPendingWorkout('sim-to-dismiss');
+        expect(service.pendingWorkouts, isEmpty);
+      },
+    );
   });
 
   group('DetectedWorkout', () {

@@ -10,9 +10,14 @@ class MockClient extends Mock implements Client {}
 
 class MockEndpointBag extends Mock implements EndpointBag {}
 
+class MockEndpointSession extends Mock implements EndpointSession {}
+
+class FakeSessionLog extends Fake implements SessionLog {}
+
 void main() {
   late MockClient mockClient;
   late MockEndpointBag mockBagEndpoint;
+  late MockEndpointSession mockSessionEndpoint;
 
   final sampleRacquet = Racquet(
     id: 1,
@@ -25,10 +30,16 @@ void main() {
     updatedAt: DateTime.utc(2026, 10, 1),
   );
 
+  setUpAll(() {
+    registerFallbackValue(FakeSessionLog());
+  });
+
   setUp(() {
     mockClient = MockClient();
     mockBagEndpoint = MockEndpointBag();
+    mockSessionEndpoint = MockEndpointSession();
     when(() => mockClient.bag).thenReturn(mockBagEndpoint);
+    when(() => mockClient.session).thenReturn(mockSessionEndpoint);
     when(
       () => mockBagEndpoint.bagUpdates(),
     ).thenAnswer((_) => const Stream<BagStreamMessage>.empty());
@@ -695,5 +706,150 @@ void main() {
 
       expect(cancelled, isTrue);
     });
+  });
+
+  group('Story 3.4: LogSession', () {
+    test(
+      'dispatches client.session.logSession and emits BagLoaded with updated racquets',
+      () async {
+        final now = DateTime.utc(2026, 10, 4, 18, 0);
+        final sessionLog = SessionLog(
+          userId: 1,
+          racquetId: 1,
+          startTime: now,
+          durationMinutes: 90,
+          courtSurface: 'Clay',
+          notes: 'Great match',
+          source: 'simulated',
+          externalWorkoutId: 'sim-123',
+        );
+        when(
+          () => mockSessionEndpoint.logSession(any()),
+        ).thenAnswer((_) async => sessionLog);
+        when(
+          () => mockBagEndpoint.getVirtualBag(),
+        ).thenAnswer((_) async => [sampleRacquet]);
+
+        final bloc = BagBloc(client: mockClient);
+        final states = <BagState>[];
+        final subscription = bloc.stream.listen(states.add);
+
+        bloc.add(
+          LogSession(
+            racquetId: 1,
+            startTime: now,
+            durationMinutes: 90,
+            courtSurface: 'Clay',
+            notes: 'Great match',
+            source: 'simulated',
+            externalWorkoutId: 'sim-123',
+          ),
+        );
+        await pumpEventQueue();
+
+        verify(
+          () => mockSessionEndpoint.logSession(
+            any(
+              that: isA<SessionLog>()
+                  .having((s) => s.racquetId, 'racquetId', 1)
+                  .having((s) => s.durationMinutes, 'durationMinutes', 90)
+                  .having((s) => s.courtSurface, 'courtSurface', 'Clay')
+                  .having((s) => s.notes, 'notes', 'Great match')
+                  .having((s) => s.source, 'source', 'simulated')
+                  .having(
+                    (s) => s.externalWorkoutId,
+                    'externalWorkoutId',
+                    'sim-123',
+                  ),
+            ),
+          ),
+        ).called(1);
+        verify(() => mockBagEndpoint.getVirtualBag()).called(1);
+        expect(
+          states,
+          equals([
+            BagLoaded([sampleRacquet]),
+          ]),
+        );
+
+        await subscription.cancel();
+        await bloc.close();
+      },
+    );
+
+    test(
+      'retains loaded racquets with transient errorMessage when client.session.logSession fails while BagLoaded',
+      () async {
+        when(
+          () => mockBagEndpoint.getVirtualBag(),
+        ).thenAnswer((_) async => [sampleRacquet]);
+        when(
+          () => mockSessionEndpoint.logSession(any()),
+        ).thenThrow(Exception('RPC timeout'));
+
+        final bloc = BagBloc(client: mockClient);
+        bloc.add(const LoadBag());
+        await pumpEventQueue();
+
+        final states = <BagState>[];
+        final subscription = bloc.stream.listen(states.add);
+
+        bloc.add(
+          LogSession(
+            racquetId: 1,
+            startTime: DateTime.utc(2026, 10, 4, 18, 0),
+            durationMinutes: 60,
+            source: 'manual',
+          ),
+        );
+        await pumpEventQueue();
+
+        expect(
+          states,
+          equals([
+            BagLoaded(
+              [sampleRacquet],
+              errorMessage: 'Failed to log session: Exception: RPC timeout',
+            ),
+          ]),
+        );
+
+        await subscription.cancel();
+        await bloc.close();
+      },
+    );
+
+    test(
+      'emits BagError when client.session.logSession fails without BagLoaded',
+      () async {
+        when(
+          () => mockSessionEndpoint.logSession(any()),
+        ).thenThrow(Exception('RPC timeout'));
+
+        final bloc = BagBloc(client: mockClient);
+        final states = <BagState>[];
+        final subscription = bloc.stream.listen(states.add);
+
+        bloc.add(
+          LogSession(
+            racquetId: 1,
+            startTime: DateTime.utc(2026, 10, 4, 18, 0),
+            durationMinutes: 60,
+            source: 'manual',
+          ),
+        );
+        await pumpEventQueue();
+
+        expect(
+          states,
+          equals([
+            const BagError('Failed to log session: Exception: RPC timeout'),
+          ]),
+        );
+
+        await subscription.cancel();
+        await bloc.close();
+      },
+    );
   });
 }

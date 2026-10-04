@@ -255,6 +255,24 @@ void main() {
       );
     });
 
+    test(
+      'dismissPendingWorkout removes matching workout from pendingWorkouts',
+      () async {
+        gateway.points = [
+          tennis(
+            'TO-DISMISS-1',
+            DateTime.utc(2026, 10, 4, 17, 0),
+            const Duration(minutes: 60),
+          ),
+        ];
+        await service.syncWorkouts();
+        expect(service.pendingWorkouts, hasLength(1));
+
+        service.dismissPendingWorkout('TO-DISMISS-1');
+        expect(service.pendingWorkouts, isEmpty);
+      },
+    );
+
     test('a failed sync does not advance the sync window', () async {
       gateway.fetchError = Exception('platform channel failure');
       await service.syncWorkouts();

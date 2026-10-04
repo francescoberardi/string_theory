@@ -59,5 +59,8 @@ abstract class HealthSyncService {
   /// Emits a simulated workout immediately.
   Future<void> simulateWorkout();
 
+  /// Removes the workout matching [externalWorkoutId] from [pendingWorkouts].
+  void dismissPendingWorkout(String externalWorkoutId);
+
   void dispose();
 }
