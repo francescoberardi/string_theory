@@ -49,7 +49,8 @@ class SessionEndpoint extends Endpoint {
       );
     }
 
-    final trimmedExternalId = (log.externalWorkoutId != null &&
+    final trimmedExternalId =
+        (log.externalWorkoutId != null &&
             log.externalWorkoutId!.trim().isNotEmpty)
         ? log.externalWorkoutId!.trim()
         : null;
