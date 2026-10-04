@@ -6,9 +6,18 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
 jobs:
-  test:
+  server-tests:
+    name: Serverpod Backend Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     env:
       VERSION: '4.0.3'
       SERVERPOD_PASSWORD_database: 'WdpOsfODtQAerx3UBObqFkOTBCt0-BzX'
@@ -20,6 +29,7 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.44.4'
+          cache: true
 
       # The test config sets `database.dataPath`, so the tests run against an
       # embedded PostgreSQL that Serverpod starts itself. No Docker needed.
@@ -29,7 +39,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/serverpod/pg-binaries
-          key: serverpod-pg-binaries-${{runner.os}}-${{env.VERSION}}
+          key: serverpod-pg-binaries-${{ runner.os }}-${{ env.VERSION }}
 
       - name: Install dependencies
         run: flutter pub get
@@ -41,10 +51,32 @@ jobs:
           # on the PATH of a GitHub runner.
           echo "${XDG_STATE_HOME:-$HOME/.local/state}/Dart/install/bin" >> "$GITHUB_PATH"
 
-      - name: Run Serverpod generator
+      - name: Run Serverpod generator check
         working-directory: string_theory_server
-        run: serverpod generate
+        run: |
+          serverpod generate
+          git diff --exit-code
 
       - name: Run tests
         working-directory: string_theory_server
         run: dart test
+
+  flutter-tests:
+    name: Flutter Frontend Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.4'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run tests
+        working-directory: string_theory_flutter
+        run: flutter test
