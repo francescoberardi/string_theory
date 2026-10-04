@@ -101,6 +101,10 @@ This document provides the complete epic and story breakdown for string_theory, 
 Players can launch String Theory, authenticate instantly as a guest without a login wall, load an instant sample bag or add custom racquets with smart string defaults, and view their Virtual Bag in the Court Midnight athletic dark theme.
 **FRs covered:** FR-1, FR-2, FR-3, FR-4, FR-5, FR-6, FR-7
 
+### Epic 1.5: DevOps — Multi-Package CI/CD Pipeline Automation
+Developers and CI systems have automated linting, formatting, and unit/widget test verification running across all workspace packages (`string_theory_server`, `string_theory_client`, and `string_theory_flutter`), guarding the repository quality gate on every commit and pull request.
+**Requirements covered:** TEST-1, ARCH-1, NFR-8
+
 ### Epic 2: Dynamic Health Score, Composite Decay & On-Demand FutureCall Trigger
 Players see a real-time, scientifically grounded Health Score (0-100%) for every racquet, visualized via a glowing 60fps radial ring gauge with secondary tension loss text and color-coded status tiers, supported by a daily Serverpod FutureCall background decay scheduler and an on-demand trigger for judges.
 **FRs covered:** FR-8, FR-9, FR-10, FR-19
@@ -200,6 +204,45 @@ So that I can test the full app immediately without typing mock data.
 - **Then** an empty state appears with `[+ Add Racquet]` and a prominent `[⚡ Load Sample Bag]` button,
 - **And** tapping `[⚡ Load Sample Bag]` seeds 3 realistic racquets (Wilson Blade @ 76% green, Babolat Pure Drive @ 58% amber, Head Radical @ 34% red) via Serverpod,
 - **And** on mobile (<600dp) racquets display as a single-column card list with a bottom navigation bar, while on tablet/desktop (>600dp) they display in an adaptive 2-column grid.
+
+---
+
+## Epic 1.5: DevOps — Multi-Package CI/CD Pipeline Automation
+
+Ensure full CI/CD quality gate enforcement across the entire Dart workspace, preventing client, server, or frontend regressions as Epics 2 through 5 are developed.
+
+### Story 1.5.1: Multi-Package Linting & Workspace Formatting in GitHub Actions
+
+As a DevOps engineer and developer,  
+I want GitHub Actions to run format checks and static analysis across all workspace packages,  
+So that stylistic inconsistencies and compiler warnings are caught immediately in CI before merge.
+
+**Requirements Covered:** TEST-1, ARCH-1
+
+**Acceptance Criteria:**
+- **Given** `.github/workflows/format.yml`,
+- **When** triggered on push or PR to `main`,
+- **Then** `dart format --set-exit-if-changed .` runs across the entire repository root workspace (verifying server, client, and flutter code).
+- **Given** `.github/workflows/analyze.yml`,
+- **When** triggered on push or PR to `main`,
+- **Then** dependencies are resolved via `flutter pub get` in the root workspace,
+- **And** static analysis runs with fatal infos across `string_theory_server`, `string_theory_client`, and `string_theory_flutter` (`flutter analyze --fatal-infos` or matrix analysis),
+- **And** any analysis warning or unformatted code fails the workflow.
+
+### Story 1.5.2: Multi-Package Automated Test Runner in GitHub Actions
+
+As a DevOps engineer and developer,  
+I want `.github/workflows/tests.yml` to run tests for both the Serverpod backend and Flutter client,  
+So that regressions in server endpoints, embedded PostgreSQL persistence, BLoC state logic, or widget rendering fail fast in CI.
+
+**Requirements Covered:** TEST-1, ARCH-1
+
+**Acceptance Criteria:**
+- **Given** `.github/workflows/tests.yml`,
+- **When** triggered on push or PR to `main`,
+- **Then** Job 1 installs dependencies, runs Serverpod code generation check, and executes embedded PostgreSQL backend tests (`cd string_theory_server && dart test`),
+- **And** Job 2 executes Flutter unit and widget tests (`cd string_theory_flutter && flutter test`),
+- **And** failure in either backend or frontend test suites halts the pipeline and blocks PR merge.
 
 ---
 
@@ -462,19 +505,17 @@ So that the judge walkthrough is 100% stable, repeatable, and completes in under
 - **Then** the entire sequence executes without errors in $<90$ seconds,
 - **And** `dart analyze` and `dart test` pass with 0 errors across server and client.
 
-### Story 5.4: GitHub Actions CI Pipeline with Serverpod, Flutter & Patrol Test Automation
+### Story 5.4: Patrol Headless End-to-End Test Automation in CI
 
-As a DevOps engineer and developer,  
-I want a multi-stage GitHub Actions CI workflow,  
-So that static analysis, embedded PostgreSQL backend tests, Flutter BLoC tests, and Patrol integration tests execute automatically on every PR and commit.
+As a DevOps engineer and QA developer,  
+I want automated Patrol integration tests running in CI,  
+So that end-to-end user flows, native dialogs, and simulated workouts are verified on automated builds.
 
-**Requirements Covered:** TEST-1, TEST-2, NFR-8
+**Requirements Covered:** TEST-2, NFR-8
 
 **Acceptance Criteria:**
 - **Given** a commit or pull request targeting the `main` branch,
-- **When** GitHub Actions triggers `.github/workflows/tests.yml`,
-- **Then** Job 1 verifies code quality (`dart format --output=none --set-exit-if-changed` and `dart analyze --fatal-infos`),
-- **And** Job 2 caches Serverpod embedded PostgreSQL binaries and runs server unit/endpoint tests (`cd string_theory_server && dart test`),
-- **And** Job 3 runs Flutter unit and BLoC tests (`cd string_theory_flutter && flutter test`),
-- **And** Job 4 runs the Patrol E2E smoke test suite headlessly,
-- **And** any failure in any stage blocks the quality gate and halts PR merge.
+- **When** GitHub Actions executes the E2E verification stage,
+- **Then** the Patrol E2E test suite runs headlessly against the Flutter client,
+- **And** it verifies the critical path (guest onboarding, virtual bag rendering, and sample workout simulation),
+- **And** any failure in the Patrol integration run blocks PR merge.

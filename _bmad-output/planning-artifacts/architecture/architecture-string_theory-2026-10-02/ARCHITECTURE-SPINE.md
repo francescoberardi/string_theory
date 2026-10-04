@@ -103,7 +103,7 @@ flowchart TD
 | **Dates & Timestamps** | UTC ISO 8601 strings in database (`DateTime`). Formatted to local player timezone in UI presentation layer. | Dart core `DateTime.toUtc()` |
 | **Real-Time Stream Channels** | Channel string template: `user_{userId}_bag`. Broadcast events typed as `BagStreamMessage`. | Serverpod Messages API |
 | **Error Handling** | Serverpod endpoints throw typed `ServerpodException` or return standardized error payloads. Client BLoCs catch and emit `BagErrorState`. | Serverpod RPC Contract |
-| **Testing Standards** | Strict TDD. Backend: `serverpod_test`. Client: `bloc_test`. E2E: `patrol`. CI: GitHub Actions. | Quality Gate |
+| **Testing Standards & CI** | Strict TDD & Multi-Package CI Quality Gate. Backend: `serverpod_test` (embedded PostgreSQL). Client: `bloc_test` & Flutter widget tests. E2E: `patrol`. GitHub Actions CI runs format (`dart format .`), analysis (`flutter analyze --fatal-infos`), and test runners across all 3 workspace packages (`string_theory_server`, `string_theory_client`, `string_theory_flutter`). | Quality Gate, CI Workflows |
 
 ---
 

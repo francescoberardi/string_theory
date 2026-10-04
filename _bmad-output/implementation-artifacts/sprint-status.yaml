@@ -44,6 +44,11 @@ development_status:
   1-5-virtual-bag-responsive-screen-instant-demo-bag-seeder: done
   epic-1-retrospective: done
 
+  epic-1-5: backlog
+  1-5-1-multi-package-linting-workspace-formatting-github-actions: backlog
+  1-5-2-multi-package-automated-test-runner-github-actions: backlog
+  epic-1-5-retrospective: optional
+
   epic-2: backlog
   2-1-pure-dart-decayengine-domain-calculation-unit-tests: backlog
   2-2-animated-radial-health-gauge-widget-racquet-card-integration: backlog
@@ -69,7 +74,7 @@ development_status:
   5-1-multi-platform-responsive-layout-navigationrail-desktop-grid: backlog
   5-2-keyboard-shortcuts-desktop-mouse-hover-states: backlog
   5-3-end-to-end-demo-script-verification-walkthrough: backlog
-  5-4-github-actions-ci-pipeline-with-serverpod-flutter-patrol-tes: backlog
+  5-4-patrol-headless-end-to-end-test-automation-in-ci: backlog
   epic-5-retrospective: optional
 action_items:
   - id: "epic-1-retro-item-1-extract-racquetcard-and-radialhealthgaug"
