@@ -2,7 +2,7 @@
 title: 'Story 3.1: Serverpod SessionLog Schema, SessionEndpoint & Idempotency'
 type: 'feature'
 created: '2026-10-04'
-status: 'in-review'
+status: 'done'
 baseline_commit: '2869857582d04cced63089ecadd237d1cd297d91'
 route: 'dispatch'
 review_loop_iteration: 0
