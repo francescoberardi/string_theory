@@ -58,7 +58,7 @@ void main() {
   });
 
   group('Story 1.4: Add Racquet Form with Smart Defaults & Presets', () {
-    test.skipWidgets(
+    testWidgets(
       '[P0] AC-1 should render AddRacquetModal with required racquet and string input fields',
       (tester) async {
         await tester.pumpWidget(
@@ -75,7 +75,8 @@ void main() {
         expect(
           find.byKey(AddRacquetModal.keyNameField),
           findsOneWidget,
-          reason: 'Racquet name / frame field must be rendered in AddRacquetModal',
+          reason:
+              'Racquet name / frame field must be rendered in AddRacquetModal',
         );
 
         // Secondary assertions for form inputs
@@ -90,7 +91,7 @@ void main() {
       },
     );
 
-    test.skipWidgets(
+    testWidgets(
       '[P0] AC-2 should pre-populate Manufacturer Max Hours to 20.0 hrs when Co-Polyester category is selected',
       (tester) async {
         await tester.pumpWidget(
@@ -114,12 +115,13 @@ void main() {
         expect(
           find.descendant(of: maxHoursFinder, matching: find.text('20.0')),
           findsOneWidget,
-          reason: 'Co-Polyester selection must automatically pre-populate max hours to 20.0 hrs',
+          reason:
+              'Co-Polyester selection must automatically pre-populate max hours to 20.0 hrs',
         );
       },
     );
 
-    test.skipWidgets(
+    testWidgets(
       '[P0] AC-3 should pre-populate Max Hours for Multifilament (35h), Synthetic Gut (30h), Natural Gut (50h) and remain editable',
       (tester) async {
         await tester.pumpWidget(
@@ -154,13 +156,16 @@ void main() {
         expect(find.text('50.0'), findsOneWidget);
 
         // 4. User can manually edit the pre-populated hours
-        await tester.enterText(find.byKey(AddRacquetModal.keyMaxHoursField), '45.0');
+        await tester.enterText(
+          find.byKey(AddRacquetModal.keyMaxHoursField),
+          '45.0',
+        );
         await tester.pumpAndSettle();
         expect(find.text('45.0'), findsOneWidget);
       },
     );
 
-    test.skipWidgets(
+    testWidgets(
       '[P0] AC-4 should instantly fill racquet frame, string model, tension, and defaults when Popular Poly preset is tapped',
       (tester) async {
         await tester.pumpWidget(
@@ -181,7 +186,8 @@ void main() {
         expect(
           find.text('Babolat Pure Aero'),
           findsOneWidget,
-          reason: 'Popular Poly preset must fill racquet frame name with Babolat Pure Aero',
+          reason:
+              'Popular Poly preset must fill racquet frame name with Babolat Pure Aero',
         );
 
         // Secondary assertions: string specs and tension
@@ -192,7 +198,7 @@ void main() {
       },
     );
 
-    test.skipWidgets(
+    testWidgets(
       '[P0] AC-5 should validate form inputs and dispatch AddRacquet event to BagBloc upon submission',
       (tester) async {
         await tester.pumpWidget(
@@ -228,6 +234,115 @@ void main() {
                   .having((e) => e.stringModel, 'stringModel', 'RPM Blast')
                   .having((e) => e.tension, 'tension', 52.0)
                   .having((e) => e.maxRatedHours, 'maxRatedHours', 20.0),
+            ),
+          ),
+        ).called(1);
+      },
+    );
+
+    testWidgets(
+      '[Edge-Case] should prevent submission and show validation warnings when required fields are missing',
+      (tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: CourtMidnightTheme.themeData,
+            home: Scaffold(
+              body: AddRacquetModal(bagBloc: mockBagBloc),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Attempt submission without filling fields
+        await tester.tap(find.byKey(AddRacquetModal.keySubmitButton));
+        await tester.pumpAndSettle();
+
+        // Verify validation error messages are displayed
+        expect(find.text('Racquet name is required'), findsOneWidget);
+        expect(find.text('Please select a material category'), findsOneWidget);
+        expect(find.text('String brand is required'), findsOneWidget);
+        expect(find.text('String model is required'), findsOneWidget);
+        expect(find.text('Tension is required'), findsOneWidget);
+        expect(find.text('Max hours is required'), findsOneWidget);
+
+        // Verify no event dispatched to BagBloc
+        verifyNever(() => mockBagBloc.add(any()));
+      },
+    );
+
+    testWidgets(
+      '[Edge-Case] should allow manual entry of custom racquet and string specifications',
+      (tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: CourtMidnightTheme.themeData,
+            home: Scaffold(
+              body: AddRacquetModal(bagBloc: mockBagBloc),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Enter frame details
+        await tester.enterText(
+          find.byKey(AddRacquetModal.keyNameField),
+          'Wilson Pro Staff 97',
+        );
+        await tester.enterText(
+          find.byKey(AddRacquetModal.keyBrandField),
+          'Wilson',
+        );
+        await tester.enterText(
+          find.byKey(AddRacquetModal.keyModelField),
+          'Pro Staff 97',
+        );
+
+        // Select category
+        await tester.tap(find.byKey(AddRacquetModal.keyCategoryField));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Natural Gut').last);
+        await tester.pumpAndSettle();
+
+        // Enter string details
+        await tester.enterText(
+          find.byKey(AddRacquetModal.keyStringBrandField),
+          'Luxilon',
+        );
+        await tester.enterText(
+          find.byKey(AddRacquetModal.keyStringModelField),
+          'ALU Power',
+        );
+        await tester.enterText(
+          find.byKey(AddRacquetModal.keyTensionField),
+          '54.5',
+        );
+
+        // Toggle primary switch
+        await tester.tap(find.byKey(AddRacquetModal.keyPrimarySwitch));
+        await tester.pumpAndSettle();
+
+        // Submit form
+        await tester.tap(find.byKey(AddRacquetModal.keySubmitButton));
+        await tester.pumpAndSettle();
+
+        // Verify custom event dispatched
+        verify(
+          () => mockBagBloc.add(
+            any(
+              that: isA<AddRacquet>()
+                  .having((e) => e.name, 'name', 'Wilson Pro Staff 97')
+                  .having((e) => e.brand, 'brand', 'Wilson')
+                  .having((e) => e.model, 'model', 'Pro Staff 97')
+                  .having((e) => e.isPrimary, 'isPrimary', true)
+                  .having(
+                    (e) => e.materialCategory,
+                    'category',
+                    StringMaterialCategory.naturalGut,
+                  )
+                  .having((e) => e.stringBrand, 'stringBrand', 'Luxilon')
+                  .having((e) => e.stringModel, 'stringModel', 'ALU Power')
+                  .having((e) => e.tension, 'tension', 54.5)
+                  .having((e) => e.maxRatedHours, 'maxRatedHours', 50.0),
             ),
           ),
         ).called(1);
