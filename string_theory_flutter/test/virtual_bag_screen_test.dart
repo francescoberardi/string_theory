@@ -614,6 +614,114 @@ void main() {
       },
     );
 
+    DetectedWorkout detected(String id, {int minutes = 60}) => DetectedWorkout(
+      externalWorkoutId: id,
+      startTime: DateTime.utc(2026, 10, 4, 17, 0),
+      durationMinutes: minutes,
+      source: DetectedWorkout.sourceSimulated,
+    );
+
+    testWidgets(
+      'confirming the auto-opened sheet logs the session and clears the pending workout once logged',
+      (tester) async {
+        await pumpBag(tester, fakeHealth, state: BagLoaded(sampleRacquets));
+
+        fakeHealth.emit(detected('sim-confirm-1', minutes: 90));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(WorkoutAssignmentSheet.keyConfirmButton));
+        await tester.pumpAndSettle();
+
+        final logged =
+            verify(
+                  () => mockBagBloc.add(captureAny(that: isA<LogSession>())),
+                ).captured.single
+                as LogSession;
+        expect(logged.externalWorkoutId, 'sim-confirm-1');
+        expect(logged.racquetId, sampleRacquets.first.id);
+        expect(fakeHealth.pendingWorkouts, hasLength(1));
+
+        logged.onLogged!();
+        expect(fakeHealth.pendingWorkouts, isEmpty);
+      },
+    );
+
+    testWidgets(
+      'a second detection while a sheet is open does not stack another sheet',
+      (tester) async {
+        await pumpBag(tester, fakeHealth, state: BagLoaded(sampleRacquets));
+
+        fakeHealth.emit(detected('sim-a'));
+        await tester.pumpAndSettle();
+        expect(find.text('ASSIGN WORKOUT'), findsOneWidget);
+
+        fakeHealth.emit(detected('sim-b', minutes: 45));
+        await tester.pumpAndSettle();
+
+        expect(find.text('ASSIGN WORKOUT'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'tapping Assign with an empty bag prompts the user to add a racquet',
+      (tester) async {
+        await pumpBag(tester, fakeHealth, state: const BagLoaded([]));
+
+        fakeHealth.emit(detected('sim-empty'));
+        await tester.pumpAndSettle();
+        expect(find.text('ASSIGN WORKOUT'), findsNothing);
+
+        await tester.tap(find.text('Assign'));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text('Please add a racquet to your bag first'),
+          findsOneWidget,
+        );
+        expect(find.text('ASSIGN WORKOUT'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'does not auto-open the sheet while the Sessions tab is selected',
+      (tester) async {
+        await pumpBag(tester, fakeHealth, state: BagLoaded(sampleRacquets));
+
+        await tester.tap(find.text('Sessions'));
+        await tester.pumpAndSettle();
+
+        fakeHealth.emit(detected('sim-tab'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('ASSIGN WORKOUT'), findsNothing);
+        expect(find.text('1h Tennis Match Detected'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'does not auto-open the sheet over another route',
+      (tester) async {
+        await pumpBag(tester, fakeHealth, state: BagLoaded(sampleRacquets));
+
+        unawaited(
+          tester
+              .state<NavigatorState>(find.byType(Navigator))
+              .push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const Scaffold(body: Text('Other Route')),
+                ),
+              ),
+        );
+        await tester.pumpAndSettle();
+
+        fakeHealth.emit(detected('sim-covered'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Other Route'), findsOneWidget);
+        expect(find.text('ASSIGN WORKOUT'), findsNothing);
+      },
+    );
+
     testWidgets(
       'surfaces transient errorMessage in BagLoaded via SnackBar without fatal error screen',
       (tester) async {

@@ -160,22 +160,43 @@ void main() {
         await tester.tap(confirmButton);
         await tester.pumpAndSettle();
 
-        verify(
-          () => mockBagBloc.add(
-            LogSession(
-              racquetId: primaryRacquet.id!,
-              startTime: detectedWorkout.startTime,
-              durationMinutes: 90,
-              courtSurface: null,
-              notes: null,
-              source: detectedWorkout.source,
-              externalWorkoutId: detectedWorkout.externalWorkoutId,
-            ),
+        final logged =
+            verify(
+                  () => mockBagBloc.add(captureAny(that: isA<LogSession>())),
+                ).captured.single
+                as LogSession;
+        expect(
+          logged,
+          LogSession(
+            racquetId: primaryRacquet.id!,
+            startTime: detectedWorkout.startTime,
+            durationMinutes: 90,
+            courtSurface: null,
+            notes: null,
+            source: detectedWorkout.source,
+            externalWorkoutId: detectedWorkout.externalWorkoutId,
           ),
-        ).called(1);
+        );
 
-        // Workout dismissed from pending
+        // Workout stays pending until the bloc confirms the log
+        expect(fakeHealthService.pendingWorkouts, contains(detectedWorkout));
+        logged.onLogged!();
         expect(fakeHealthService.pendingWorkouts, isEmpty);
+      },
+    );
+
+    testWidgets(
+      'keeps the workout pending when the log never succeeds',
+      (tester) async {
+        await tester.pumpWidget(buildDetectedSheet());
+        await tester.tap(find.text('Open Detected Sheet'));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(WorkoutAssignmentSheet.keyConfirmButton));
+        await tester.pumpAndSettle();
+
+        expect(find.text('ASSIGN WORKOUT'), findsNothing);
+        expect(fakeHealthService.pendingWorkouts, contains(detectedWorkout));
       },
     );
 
@@ -348,7 +369,9 @@ void main() {
         await tester.pumpAndSettle();
 
         // Confirm
+        final before = DateTime.now().toUtc();
         await tester.tap(find.byKey(WorkoutAssignmentSheet.keyConfirmButton));
+        final after = DateTime.now().toUtc();
         await tester.pumpAndSettle();
 
         final captured = verify(
@@ -361,6 +384,11 @@ void main() {
         expect(session.durationMinutes, 90);
         expect(session.source, 'manual');
         expect(session.externalWorkoutId, isNull);
+        // A quick log happens after play: the session ended "now".
+        const played = Duration(minutes: 90);
+        expect(session.startTime.isUtc, isTrue);
+        expect(session.startTime.isBefore(before.subtract(played)), isFalse);
+        expect(session.startTime.isAfter(after.subtract(played)), isFalse);
       },
     );
 
@@ -463,6 +491,10 @@ void main() {
 
         expect(find.text('UNSTRUNG'), findsOneWidget);
 
+        // Tapping the unstrung tile must not move the selection to it.
+        await tester.tap(find.byKey(WorkoutAssignmentSheet.keyRacquetTile(99)));
+        await tester.pumpAndSettle();
+
         // Because unstrungRacquet has activeStringJob == null, secondaryRacquet should be selected
         await tester.tap(find.byKey(WorkoutAssignmentSheet.keyConfirmButton));
         await tester.pumpAndSettle();
@@ -511,5 +543,114 @@ void main() {
         expect(find.textContaining('via simulated'), findsOneWidget);
       },
     );
+
+    testWidgets('formats a past start time as month, day and time', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        buildDetectedSheet(
+          workout: DetectedWorkout(
+            externalWorkoutId: 'sim-past',
+            startTime: DateTime(2025, 3, 7, 21, 5),
+            durationMinutes: 60,
+            source: DetectedWorkout.sourceSimulated,
+          ),
+        ),
+      );
+      await tester.tap(find.text('Open Detected Sheet'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Mar 7, 9:05 PM'), findsOneWidget);
+    });
+
+    testWidgets('formats a start time from today with a Today prefix', (
+      tester,
+    ) async {
+      final now = DateTime.now();
+      final todayMidnight = DateTime(now.year, now.month, now.day, 0, 30);
+      await tester.pumpWidget(
+        buildDetectedSheet(
+          workout: DetectedWorkout(
+            externalWorkoutId: 'sim-today',
+            startTime: todayMidnight,
+            durationMinutes: 60,
+            source: DetectedWorkout.sourceSimulated,
+          ),
+        ),
+      );
+      await tester.tap(find.text('Open Detected Sheet'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Today, 12:30 AM'), findsOneWidget);
+    });
+
+    final unstrungOnly = Racquet(
+      id: 99,
+      userId: 1,
+      name: 'Unstrung Frame',
+      brand: 'Wilson',
+      model: 'Pro Staff',
+      isPrimary: true,
+      activeStringJob: null,
+      createdAt: DateTime.utc(2026, 9, 20),
+      updatedAt: DateTime.utc(2026, 9, 20),
+    );
+
+    testWidgets(
+      'all-unstrung guard in showForDetected explains and prevents opening',
+      (tester) async {
+        await tester.pumpWidget(buildDetectedSheet(racquets: [unstrungOnly]));
+        await tester.tap(find.text('Open Detected Sheet'));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text('Restring a racquet before logging court time'),
+          findsOneWidget,
+        );
+        expect(find.text('ASSIGN WORKOUT'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'all-unstrung guard in showForManual explains and prevents opening',
+      (tester) async {
+        await tester.pumpWidget(buildManualSheet(racquets: [unstrungOnly]));
+        await tester.tap(find.text('Open Manual Sheet'));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text('Restring a racquet before logging court time'),
+          findsOneWidget,
+        );
+        expect(find.text('LOG COURT SESSION'), findsNothing);
+      },
+    );
+
+    testWidgets('exposes selection state to screen readers', (tester) async {
+      final handle = tester.ensureSemantics();
+      await tester.pumpWidget(buildManualSheet());
+      await tester.tap(find.text('Open Manual Sheet'));
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.getSemantics(
+          find.byKey(WorkoutAssignmentSheet.keyRacquetTile(1)),
+        ),
+        isSemantics(isButton: true, isSelected: true),
+      );
+      expect(
+        tester.getSemantics(
+          find.byKey(WorkoutAssignmentSheet.keyRacquetTile(2)),
+        ),
+        isSemantics(isButton: true, isSelected: false),
+      );
+      expect(
+        tester.getSemantics(
+          find.byKey(WorkoutAssignmentSheet.keyDurationChip('1h')),
+        ),
+        isSemantics(isButton: true, isSelected: true),
+      );
+      handle.dispose();
+    });
   });
 }

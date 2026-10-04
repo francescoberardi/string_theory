@@ -163,7 +163,11 @@ class _VirtualBagScreenState extends State<VirtualBagScreen> {
         ? currentState.racquets
         : <Racquet>[];
 
-    if (racquets.isNotEmpty) {
+    // Auto-open only over the bag tab itself; otherwise the Assign action
+    // below remains the way in.
+    final isBagVisible =
+        _navIndex == 0 && (ModalRoute.of(context)?.isCurrent ?? true);
+    if (racquets.isNotEmpty && isBagVisible) {
       _openDetectedAssignmentSheet(batch.first, racquets, bloc);
     }
 
@@ -180,31 +184,17 @@ class _VirtualBagScreenState extends State<VirtualBagScreen> {
             label: 'Assign',
             textColor: CourtMidnightTheme.primaryVolt,
             onPressed: () {
+              // The SnackBar can outlive this screen.
+              if (!mounted) return;
               ScaffoldMessenger.of(context).hideCurrentSnackBar();
               if (_isAssignmentSheetOpen) return;
-              final activeState = _resolveBloc(context).state;
-              final currentRacquets = (activeState is BagLoaded)
-                  ? activeState.racquets
-                  : <Racquet>[];
-              if (currentRacquets.isNotEmpty) {
-                _openDetectedAssignmentSheet(
-                  batch.first,
-                  currentRacquets,
-                  _resolveBloc(context),
-                );
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    backgroundColor: CourtMidnightTheme.surface,
-                    content: Text(
-                      'Please add a racquet to your bag first',
-                      style: GoogleFonts.inter(
-                        color: CourtMidnightTheme.textPrimary,
-                      ),
-                    ),
-                  ),
-                );
-              }
+              final bloc = _resolveBloc(context);
+              final activeState = bloc.state;
+              _openDetectedAssignmentSheet(
+                batch.first,
+                activeState is BagLoaded ? activeState.racquets : <Racquet>[],
+                bloc,
+              );
             },
           ),
           content: Row(

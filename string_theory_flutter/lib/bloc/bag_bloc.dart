@@ -280,19 +280,32 @@ class BagBloc extends Bloc<BagEvent, BagState> {
           externalWorkoutId: event.externalWorkoutId,
         ),
       );
-      final racquets = await client.bag.getVirtualBag();
-      emit(BagLoaded(racquets));
     } catch (e) {
-      if (state is BagLoaded) {
+      final current = state;
+      if (current is BagLoaded) {
+        // Clear first so a repeated identical error is still a new state.
+        emit(BagLoaded(current.racquets));
         emit(
           BagLoaded(
-            (state as BagLoaded).racquets,
+            current.racquets,
             errorMessage: 'Failed to log session: $e',
           ),
         );
       } else {
         emit(BagError('Failed to log session: $e'));
       }
+      return;
+    }
+
+    event.onLogged?.call();
+
+    // The session is saved; a failed refresh must not be reported as a failed
+    // log. The bag stream still delivers the updated health.
+    try {
+      final racquets = await client.bag.getVirtualBag();
+      emit(BagLoaded(racquets));
+    } catch (e) {
+      debugPrint('BagBloc: bag refresh after logSession failed: $e');
     }
   }
 }

@@ -733,6 +733,7 @@ void main() {
         final bloc = BagBloc(client: mockClient);
         final states = <BagState>[];
         final subscription = bloc.stream.listen(states.add);
+        var loggedCalls = 0;
 
         bloc.add(
           LogSession(
@@ -743,6 +744,7 @@ void main() {
             notes: 'Great match',
             source: 'simulated',
             externalWorkoutId: 'sim-123',
+            onLogged: () => loggedCalls++,
           ),
         );
         await pumpEventQueue();
@@ -752,6 +754,7 @@ void main() {
             any(
               that: isA<SessionLog>()
                   .having((s) => s.racquetId, 'racquetId', 1)
+                  .having((s) => s.startTime, 'startTime', now)
                   .having((s) => s.durationMinutes, 'durationMinutes', 90)
                   .having((s) => s.courtSurface, 'courtSurface', 'Clay')
                   .having((s) => s.notes, 'notes', 'Great match')
@@ -771,6 +774,7 @@ void main() {
             BagLoaded([sampleRacquet]),
           ]),
         );
+        expect(loggedCalls, 1);
 
         await subscription.cancel();
         await bloc.close();
@@ -793,6 +797,7 @@ void main() {
 
         final states = <BagState>[];
         final subscription = bloc.stream.listen(states.add);
+        var loggedCalls = 0;
 
         bloc.add(
           LogSession(
@@ -800,6 +805,7 @@ void main() {
             startTime: DateTime.utc(2026, 10, 4, 18, 0),
             durationMinutes: 60,
             source: 'manual',
+            onLogged: () => loggedCalls++,
           ),
         );
         await pumpEventQueue();
@@ -813,6 +819,7 @@ void main() {
             ),
           ]),
         );
+        expect(loggedCalls, 0);
 
         await subscription.cancel();
         await bloc.close();
@@ -846,6 +853,95 @@ void main() {
             const BagError('Failed to log session: Exception: RPC timeout'),
           ]),
         );
+
+        await subscription.cancel();
+        await bloc.close();
+      },
+    );
+    test(
+      'emits the error again when the same LogSession failure repeats',
+      () async {
+        when(
+          () => mockBagEndpoint.getVirtualBag(),
+        ).thenAnswer((_) async => [sampleRacquet]);
+        when(
+          () => mockSessionEndpoint.logSession(any()),
+        ).thenThrow(Exception('RPC timeout'));
+
+        final bloc = BagBloc(client: mockClient);
+        bloc.add(const LoadBag());
+        await pumpEventQueue();
+
+        final states = <BagState>[];
+        final subscription = bloc.stream.listen(states.add);
+        final event = LogSession(
+          racquetId: 1,
+          startTime: DateTime.utc(2026, 10, 4, 18, 0),
+          durationMinutes: 60,
+          source: 'manual',
+        );
+
+        bloc.add(event);
+        await pumpEventQueue();
+        bloc.add(event);
+        await pumpEventQueue();
+
+        final errorState = BagLoaded(
+          [sampleRacquet],
+          errorMessage: 'Failed to log session: Exception: RPC timeout',
+        );
+        expect(
+          states,
+          equals([
+            errorState,
+            BagLoaded([sampleRacquet]),
+            errorState,
+          ]),
+        );
+
+        await subscription.cancel();
+        await bloc.close();
+      },
+    );
+
+    test(
+      'treats a bag refresh failure after a successful logSession as logged',
+      () async {
+        when(
+          () => mockSessionEndpoint.logSession(any()),
+        ).thenAnswer(
+          (invocation) async => invocation.positionalArguments.first,
+        );
+        when(
+          () => mockBagEndpoint.getVirtualBag(),
+        ).thenAnswer((_) async => [sampleRacquet]);
+
+        final bloc = BagBloc(client: mockClient);
+        bloc.add(const LoadBag());
+        await pumpEventQueue();
+
+        when(
+          () => mockBagEndpoint.getVirtualBag(),
+        ).thenThrow(Exception('refresh failed'));
+
+        final states = <BagState>[];
+        final subscription = bloc.stream.listen(states.add);
+        var loggedCalls = 0;
+
+        bloc.add(
+          LogSession(
+            racquetId: 1,
+            startTime: DateTime.utc(2026, 10, 4, 18, 0),
+            durationMinutes: 60,
+            source: 'manual',
+            onLogged: () => loggedCalls++,
+          ),
+        );
+        await pumpEventQueue();
+
+        expect(loggedCalls, 1);
+        expect(states, isEmpty);
+        expect(bloc.state, BagLoaded([sampleRacquet]));
 
         await subscription.cancel();
         await bloc.close();

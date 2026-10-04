@@ -32,6 +32,32 @@ class WorkoutAssignmentSheet extends StatefulWidget {
   static Key keyDurationChip(String duration) =>
       Key('workout_assignment_duration_$duration');
 
+  /// Shows why no session can be logged yet and returns true, or returns
+  /// false when at least one racquet is strung.
+  static bool _explainIfUnloggable(
+    BuildContext context,
+    List<Racquet> racquets,
+  ) {
+    final String message;
+    if (racquets.isEmpty) {
+      message = 'Please add a racquet to your bag first';
+    } else if (!racquets.any((r) => r.activeStringJob != null)) {
+      message = 'Restring a racquet before logging court time';
+    } else {
+      return false;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: CourtMidnightTheme.surface,
+        content: Text(
+          message,
+          style: GoogleFonts.inter(color: CourtMidnightTheme.textPrimary),
+        ),
+      ),
+    );
+    return true;
+  }
+
   /// Displays the assignment sheet for an automated or simulated workout.
   static Future<void> showForDetected(
     BuildContext context, {
@@ -40,18 +66,7 @@ class WorkoutAssignmentSheet extends StatefulWidget {
     required BagBloc bagBloc,
     HealthSyncService? healthSyncService,
   }) {
-    if (racquets.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: CourtMidnightTheme.surface,
-          content: Text(
-            'Please add a racquet to your bag first',
-            style: GoogleFonts.inter(color: CourtMidnightTheme.textPrimary),
-          ),
-        ),
-      );
-      return Future.value();
-    }
+    if (_explainIfUnloggable(context, racquets)) return Future.value();
 
     return showModalBottomSheet(
       context: context,
@@ -73,18 +88,7 @@ class WorkoutAssignmentSheet extends StatefulWidget {
     required BagBloc bagBloc,
     HealthSyncService? healthSyncService,
   }) {
-    if (racquets.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: CourtMidnightTheme.surface,
-          content: Text(
-            'Please add a racquet to your bag first',
-            style: GoogleFonts.inter(color: CourtMidnightTheme.textPrimary),
-          ),
-        ),
-      );
-      return Future.value();
-    }
+    if (_explainIfUnloggable(context, racquets)) return Future.value();
 
     return showModalBottomSheet(
       context: context,
@@ -167,6 +171,7 @@ class _WorkoutAssignmentSheetState extends State<WorkoutAssignmentSheet> {
 
     if (widget.workout != null) {
       final w = widget.workout!;
+      final healthSyncService = widget.healthSyncService;
       widget.bagBloc.add(
         LogSession(
           racquetId: racquetId,
@@ -176,14 +181,21 @@ class _WorkoutAssignmentSheetState extends State<WorkoutAssignmentSheet> {
           notes: notes,
           source: w.source,
           externalWorkoutId: w.externalWorkoutId,
+          // Keep the workout pending until the server accepts it, so a
+          // failed log can be retried.
+          onLogged: () =>
+              healthSyncService?.dismissPendingWorkout(w.externalWorkoutId),
         ),
       );
-      widget.healthSyncService?.dismissPendingWorkout(w.externalWorkoutId);
     } else {
+      // A quick log is entered after play, so the session ended now.
+      final endTime = DateTime.now().toUtc();
       widget.bagBloc.add(
         LogSession(
           racquetId: racquetId,
-          startTime: DateTime.now().toUtc(),
+          startTime: endTime.subtract(
+            Duration(minutes: _selectedDurationMinutes),
+          ),
           durationMinutes: _selectedDurationMinutes,
           courtSurface: courtSurface,
           notes: notes,
@@ -242,44 +254,6 @@ class _WorkoutAssignmentSheetState extends State<WorkoutAssignmentSheet> {
     final isDetected = widget.workout != null;
     final mediaQuery = MediaQuery.of(context);
     final bottomInset = mediaQuery.viewInsets.bottom;
-
-    if (widget.racquets.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.all(24),
-        decoration: const BoxDecoration(
-          color: CourtMidnightTheme.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'NO RACQUETS IN BAG',
-              style: GoogleFonts.barlowCondensed(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: CourtMidnightTheme.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Add a racquet to your bag first before logging court sessions.',
-              style: GoogleFonts.inter(color: CourtMidnightTheme.textSecondary),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: CourtMidnightTheme.primaryVolt,
-                foregroundColor: Colors.black,
-              ),
-              child: const Text('Close'),
-            ),
-          ],
-        ),
-      );
-    }
 
     return Container(
       constraints: BoxConstraints(
@@ -408,42 +382,48 @@ class _WorkoutAssignmentSheetState extends State<WorkoutAssignmentSheet> {
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 4,
                                 ),
-                                child: InkWell(
-                                  key: WorkoutAssignmentSheet.keyDurationChip(
-                                    label,
-                                  ),
-                                  onTap: () => setState(
-                                    () => _selectedDurationMinutes = minutes,
-                                  ),
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: Container(
-                                    height: 48,
-                                    alignment: Alignment.center,
-                                    decoration: BoxDecoration(
-                                      color: isSelected
-                                          ? CourtMidnightTheme.primaryVolt
-                                                .withValues(
-                                                  alpha: 0.15,
-                                                )
-                                          : CourtMidnightTheme.background,
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color: isSelected
-                                            ? CourtMidnightTheme.primaryVolt
-                                            : CourtMidnightTheme.surfaceBorder,
-                                        width: isSelected ? 1.5 : 1.0,
-                                      ),
-                                    ),
-                                    child: Text(
+                                child: Semantics(
+                                  button: true,
+                                  selected: isSelected,
+                                  child: InkWell(
+                                    key: WorkoutAssignmentSheet.keyDurationChip(
                                       label,
-                                      style: GoogleFonts.inter(
-                                        fontSize: 14,
-                                        fontWeight: isSelected
-                                            ? FontWeight.w700
-                                            : FontWeight.w500,
+                                    ),
+                                    onTap: () => setState(
+                                      () => _selectedDurationMinutes = minutes,
+                                    ),
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Container(
+                                      height: 48,
+                                      alignment: Alignment.center,
+                                      decoration: BoxDecoration(
                                         color: isSelected
                                             ? CourtMidnightTheme.primaryVolt
-                                            : CourtMidnightTheme.textSecondary,
+                                                  .withValues(
+                                                    alpha: 0.15,
+                                                  )
+                                            : CourtMidnightTheme.background,
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: isSelected
+                                              ? CourtMidnightTheme.primaryVolt
+                                              : CourtMidnightTheme
+                                                    .surfaceBorder,
+                                          width: isSelected ? 1.5 : 1.0,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        label,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 14,
+                                          fontWeight: isSelected
+                                              ? FontWeight.w700
+                                              : FontWeight.w500,
+                                          color: isSelected
+                                              ? CourtMidnightTheme.primaryVolt
+                                              : CourtMidnightTheme
+                                                    .textSecondary,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -483,124 +463,130 @@ class _WorkoutAssignmentSheetState extends State<WorkoutAssignmentSheet> {
                             final stringModel =
                                 racquet.activeStringJob?.model ?? 'Unstrung';
 
-                            return InkWell(
-                              key: WorkoutAssignmentSheet.keyRacquetTile(
-                                racquet.id ?? index,
-                              ),
-                              onTap: isStrung
-                                  ? () {
-                                      setState(() {
-                                        _selectedRacquetId = racquet.id;
-                                      });
-                                    }
-                                  : null,
-                              borderRadius: BorderRadius.circular(14),
-                              child: Opacity(
-                                opacity: isStrung ? 1.0 : 0.45,
-                                child: Container(
-                                  width: 160,
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: isSelected
-                                        ? CourtMidnightTheme.primaryVolt
-                                              .withValues(
-                                                alpha: 0.10,
-                                              )
-                                        : CourtMidnightTheme.background,
-                                    borderRadius: BorderRadius.circular(14),
-                                    border: Border.all(
+                            return Semantics(
+                              button: true,
+                              selected: isSelected,
+                              enabled: isStrung,
+                              child: InkWell(
+                                key: WorkoutAssignmentSheet.keyRacquetTile(
+                                  racquet.id ?? index,
+                                ),
+                                onTap: isStrung
+                                    ? () {
+                                        setState(() {
+                                          _selectedRacquetId = racquet.id;
+                                        });
+                                      }
+                                    : null,
+                                borderRadius: BorderRadius.circular(14),
+                                child: Opacity(
+                                  opacity: isStrung ? 1.0 : 0.45,
+                                  child: Container(
+                                    width: 160,
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
                                       color: isSelected
                                           ? CourtMidnightTheme.primaryVolt
-                                          : CourtMidnightTheme.surfaceBorder,
-                                      width: isSelected ? 2.0 : 1.0,
+                                                .withValues(
+                                                  alpha: 0.10,
+                                                )
+                                          : CourtMidnightTheme.background,
+                                      borderRadius: BorderRadius.circular(14),
+                                      border: Border.all(
+                                        color: isSelected
+                                            ? CourtMidnightTheme.primaryVolt
+                                            : CourtMidnightTheme.surfaceBorder,
+                                        width: isSelected ? 2.0 : 1.0,
+                                      ),
                                     ),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Expanded(
-                                            child: Text(
-                                              racquet.name,
-                                              style: GoogleFonts.inter(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w700,
-                                                color: CourtMidnightTheme
-                                                    .textPrimary,
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                          if (!isStrung)
-                                            Container(
-                                              margin: const EdgeInsets.only(
-                                                left: 4,
-                                              ),
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 5,
-                                                    vertical: 2,
-                                                  ),
-                                              decoration: BoxDecoration(
-                                                color: CourtMidnightTheme
-                                                    .healthCritical
-                                                    .withValues(alpha: 0.2),
-                                                borderRadius:
-                                                    BorderRadius.circular(4),
-                                              ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Expanded(
                                               child: Text(
-                                                'UNSTRUNG',
+                                                racquet.name,
                                                 style: GoogleFonts.inter(
-                                                  fontSize: 9,
-                                                  fontWeight: FontWeight.w800,
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w700,
                                                   color: CourtMidnightTheme
-                                                      .healthCritical,
+                                                      .textPrimary,
                                                 ),
-                                              ),
-                                            )
-                                          else if (racquet.isPrimary)
-                                            Container(
-                                              margin: const EdgeInsets.only(
-                                                left: 4,
-                                              ),
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 5,
-                                                    vertical: 2,
-                                                  ),
-                                              decoration: BoxDecoration(
-                                                color: CourtMidnightTheme
-                                                    .primaryVolt,
-                                                borderRadius:
-                                                    BorderRadius.circular(4),
-                                              ),
-                                              child: Text(
-                                                'PRI',
-                                                style: GoogleFonts.inter(
-                                                  fontSize: 9,
-                                                  fontWeight: FontWeight.w900,
-                                                  color: Colors.black,
-                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
                                               ),
                                             ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        stringModel,
-                                        style: GoogleFonts.inter(
-                                          fontSize: 12,
-                                          color:
-                                              CourtMidnightTheme.textSecondary,
+                                            if (!isStrung)
+                                              Container(
+                                                margin: const EdgeInsets.only(
+                                                  left: 4,
+                                                ),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 5,
+                                                      vertical: 2,
+                                                    ),
+                                                decoration: BoxDecoration(
+                                                  color: CourtMidnightTheme
+                                                      .healthCritical
+                                                      .withValues(alpha: 0.2),
+                                                  borderRadius:
+                                                      BorderRadius.circular(4),
+                                                ),
+                                                child: Text(
+                                                  'UNSTRUNG',
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 9,
+                                                    fontWeight: FontWeight.w800,
+                                                    color: CourtMidnightTheme
+                                                        .healthCritical,
+                                                  ),
+                                                ),
+                                              )
+                                            else if (racquet.isPrimary)
+                                              Container(
+                                                margin: const EdgeInsets.only(
+                                                  left: 4,
+                                                ),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 5,
+                                                      vertical: 2,
+                                                    ),
+                                                decoration: BoxDecoration(
+                                                  color: CourtMidnightTheme
+                                                      .primaryVolt,
+                                                  borderRadius:
+                                                      BorderRadius.circular(4),
+                                                ),
+                                                child: Text(
+                                                  'PRI',
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 9,
+                                                    fontWeight: FontWeight.w900,
+                                                    color: Colors.black,
+                                                  ),
+                                                ),
+                                              ),
+                                          ],
                                         ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          stringModel,
+                                          style: GoogleFonts.inter(
+                                            fontSize: 12,
+                                            color: CourtMidnightTheme
+                                                .textSecondary,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
@@ -690,57 +676,61 @@ class _WorkoutAssignmentSheetState extends State<WorkoutAssignmentSheet> {
                                             padding: const EdgeInsets.symmetric(
                                               horizontal: 4,
                                             ),
-                                            child: InkWell(
-                                              key:
-                                                  WorkoutAssignmentSheet.keySurfaceChip(
+                                            child: Semantics(
+                                              button: true,
+                                              selected: isSelected,
+                                              child: InkWell(
+                                                key:
+                                                    WorkoutAssignmentSheet.keySurfaceChip(
+                                                      surface,
+                                                    ),
+                                                onTap: () {
+                                                  setState(() {
+                                                    _selectedCourtSurface =
+                                                        isSelected
+                                                        ? null
+                                                        : surface;
+                                                  });
+                                                },
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                                child: Container(
+                                                  height: 48,
+                                                  alignment: Alignment.center,
+                                                  decoration: BoxDecoration(
+                                                    color: isSelected
+                                                        ? CourtMidnightTheme
+                                                              .primaryVolt
+                                                              .withValues(
+                                                                alpha: 0.15,
+                                                              )
+                                                        : CourtMidnightTheme
+                                                              .background,
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          10,
+                                                        ),
+                                                    border: Border.all(
+                                                      color: isSelected
+                                                          ? CourtMidnightTheme
+                                                                .primaryVolt
+                                                          : CourtMidnightTheme
+                                                                .surfaceBorder,
+                                                    ),
+                                                  ),
+                                                  child: Text(
                                                     surface,
-                                                  ),
-                                              onTap: () {
-                                                setState(() {
-                                                  _selectedCourtSurface =
-                                                      isSelected
-                                                      ? null
-                                                      : surface;
-                                                });
-                                              },
-                                              borderRadius:
-                                                  BorderRadius.circular(10),
-                                              child: Container(
-                                                height: 48,
-                                                alignment: Alignment.center,
-                                                decoration: BoxDecoration(
-                                                  color: isSelected
-                                                      ? CourtMidnightTheme
-                                                            .primaryVolt
-                                                            .withValues(
-                                                              alpha: 0.15,
-                                                            )
-                                                      : CourtMidnightTheme
-                                                            .background,
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                        10,
-                                                      ),
-                                                  border: Border.all(
-                                                    color: isSelected
-                                                        ? CourtMidnightTheme
-                                                              .primaryVolt
-                                                        : CourtMidnightTheme
-                                                              .surfaceBorder,
-                                                  ),
-                                                ),
-                                                child: Text(
-                                                  surface,
-                                                  style: GoogleFonts.inter(
-                                                    fontSize: 13,
-                                                    fontWeight: isSelected
-                                                        ? FontWeight.w700
-                                                        : FontWeight.w500,
-                                                    color: isSelected
-                                                        ? CourtMidnightTheme
-                                                              .primaryVolt
-                                                        : CourtMidnightTheme
-                                                              .textSecondary,
+                                                    style: GoogleFonts.inter(
+                                                      fontSize: 13,
+                                                      fontWeight: isSelected
+                                                          ? FontWeight.w700
+                                                          : FontWeight.w500,
+                                                      color: isSelected
+                                                          ? CourtMidnightTheme
+                                                                .primaryVolt
+                                                          : CourtMidnightTheme
+                                                                .textSecondary,
+                                                    ),
                                                   ),
                                                 ),
                                               ),

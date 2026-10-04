@@ -106,6 +106,10 @@ class LogSession extends BagEvent {
   final String source;
   final String? externalWorkoutId;
 
+  /// Called once the server has accepted the session, even if the bag
+  /// refresh that follows fails. Not part of [props].
+  final void Function()? onLogged;
+
   const LogSession({
     required this.racquetId,
     required this.startTime,
@@ -114,6 +118,7 @@ class LogSession extends BagEvent {
     this.notes,
     required this.source,
     this.externalWorkoutId,
+    this.onLogged,
   });
 
   @override
