@@ -1,17 +1,37 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:string_theory_client/string_theory_client.dart';
 
+import '../bloc/bag_bloc.dart';
 import '../client.dart' as app_client;
 import '../services/auth_service.dart';
 
 /// Settings screen displaying current authentication info, guest ID,
 /// and stubbed account upgrade options (FR-2).
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   final AuthService? authService;
+  final Client? client;
+  final BagBloc? bagBloc;
 
-  const SettingsScreen({super.key, this.authService});
+  const SettingsScreen({
+    super.key,
+    this.authService,
+    this.client,
+    this.bagBloc,
+  });
 
-  AuthService get _authService => authService ?? app_client.authService;
+  static const keyDevTriggerDecayButton = Key('dev_trigger_decay_button');
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  bool _isDecaying = false;
+
+  AuthService get _authService => widget.authService ?? app_client.authService;
+  Client get _client => widget.client ?? app_client.client;
 
   void _showLinkAccountDialog(BuildContext context) {
     showDialog<void>(
@@ -206,6 +226,56 @@ class SettingsScreen extends StatelessWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Device signed out')),
         );
+      }
+    }
+  }
+
+  void _showErrorFeedback(BuildContext context, String message) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: GoogleFonts.inter(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        backgroundColor: const Color(0xFFFF453A),
+        duration: const Duration(seconds: 4),
+      ),
+    );
+  }
+
+  Future<void> _triggerFutureCallDecay(BuildContext context) async {
+    if (_isDecaying) return;
+    setState(() => _isDecaying = true);
+    try {
+      final updatedCount = await _client.bag.triggerDailyDecayNow();
+      debugPrint(
+        '[DevControl] DailyDecayFutureCall executed: $updatedCount active string jobs updated',
+      );
+      if (context.mounted) {
+        _showLinkFeedback(
+          context,
+          'Decay executed: $updatedCount string jobs updated',
+        );
+      }
+      if (widget.bagBloc != null) {
+        widget.bagBloc!.add(const LoadBag());
+      } else if (context.mounted) {
+        try {
+          context.read<BagBloc>().add(const LoadBag());
+        } catch (_) {}
+      }
+    } catch (e) {
+      debugPrint('[DevControl] Error executing DailyDecayFutureCall: $e');
+      if (context.mounted) {
+        _showErrorFeedback(context, 'Error triggering decay: $e');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isDecaying = false);
       }
     }
   }
@@ -482,6 +552,88 @@ class SettingsScreen extends StatelessWidget {
                             'Sign Out',
                             style: GoogleFonts.inter(
                               color: const Color(0xFFFF453A),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 28),
+                Text(
+                  'DEVELOPER & JUDGE CONTROLS',
+                  style: GoogleFonts.barlowCondensed(
+                    color: const Color(0xFFC6F10E),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1A1E20),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFF2A3034)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Background Job Simulation',
+                        style: GoogleFonts.inter(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Executes the Serverpod DailyDecayFutureCall worker on demand to recalculate static shelf-life decay across all active racquets.',
+                        style: GoogleFonts.inter(
+                          color: Colors.white60,
+                          fontSize: 13,
+                          height: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 46,
+                        child: ElevatedButton.icon(
+                          key: SettingsScreen.keyDevTriggerDecayButton,
+                          onPressed: _isDecaying
+                              ? null
+                              : () => _triggerFutureCallDecay(context),
+                          icon: _isDecaying
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.black,
+                                  ),
+                                )
+                              : const Icon(Icons.bolt, color: Colors.black),
+                          label: Text(
+                            _isDecaying
+                                ? 'Calculating Decay...'
+                                : '⚡ Trigger FutureCall Decay',
+                            style: GoogleFonts.inter(
+                              color: Colors.black,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFC6F10E),
+                            disabledBackgroundColor: const Color(
+                              0xFFC6F10E,
+                            ).withValues(alpha: 0.6),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
                             ),
                           ),
                         ),

@@ -16,5 +16,6 @@ bag:
   - createRacquet:
   - setPrimary:
   - deleteRacquet:
+  - triggerDailyDecayNow:
 greeting:
   - hello:

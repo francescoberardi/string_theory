@@ -17,6 +17,8 @@ import 'package:serverpod/serverpod.dart' as _is;
 import 'package:serverpod_auth_core_server/serverpod_auth_core_server.dart'
     as _iacs;
 import 'package:serverpod_test/serverpod_test.dart' as _ist;
+import 'package:string_theory_server/src/generated/future_calls.dart'
+    as _ireyqaq4;
 import 'package:string_theory_server/src/generated/greetings/greeting.dart'
     as _i6qn1rsc;
 import 'package:string_theory_server/src/generated/racquet.dart' as _iwugozzn;
@@ -155,6 +157,8 @@ void withServerpod(
 }
 
 class TestEndpoints {
+  late final futureCalls = _FutureCalls();
+
   late final _AnonymousIdpEndpoint anonymousIdp;
 
   late final _EmailIdpEndpoint emailIdp;
@@ -194,6 +198,10 @@ class _InternalTestEndpoints extends TestEndpoints
       serializationManager,
     );
   }
+}
+
+class _FutureCalls {
+  late final dailyDecay = _DailyDecayFutureCall();
 }
 
 class _AnonymousIdpEndpoint {
@@ -708,6 +716,36 @@ class _BagEndpoint {
       }
     });
   }
+
+  _ida.Future<int> triggerDailyDecayNow(
+    _ist.TestSessionBuilder sessionBuilder,
+  ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'bag',
+            method: 'triggerDailyDecayNow',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'bag',
+          methodName: 'triggerDailyDecayNow',
+          parameters: _ist.testObjectToJson({}),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<int>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
 }
 
 class _GreetingEndpoint {
@@ -749,5 +787,20 @@ class _GreetingEndpoint {
         await _localUniqueSession.close();
       }
     });
+  }
+}
+
+class _DailyDecayFutureCall {
+  Future<void> execute(_ist.TestSessionBuilder sessionBuilder) async {
+    var _localUniqueSession =
+        (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild();
+    try {
+      await _ireyqaq4.DailyDecayExecuteFutureCall().invoke(
+        _localUniqueSession,
+        null,
+      );
+    } finally {
+      await _localUniqueSession.close();
+    }
   }
 }

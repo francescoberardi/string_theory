@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-02-2026 17:45
-last_updated: 10-04-2026 15:28
+last_updated: 10-04-2026 15:58
 project: string_theory
 project_key: NOKEY
 tracking_system: file-system
@@ -52,7 +52,7 @@ development_status:
   epic-2: in-progress
   2-1-pure-dart-decayengine-domain-calculation-unit-tests: done
   2-2-animated-radial-health-gauge-widget-racquet-card-integration: done
-  2-3-serverpod-dailydecayfuturecall-on-demand-test-trigger: backlog
+  2-3-serverpod-dailydecayfuturecall-on-demand-test-trigger: review
   2-4-time-warp-aging-simulator-30-days-dev-control: backlog
   epic-2-retrospective: optional
 

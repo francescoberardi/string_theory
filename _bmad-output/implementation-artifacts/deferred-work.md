@@ -16,3 +16,11 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-2-animated-radial-health-gauge-widget-racquet-card-integration.md`
   summary: Extract RacquetPreset and StringCategoryDefaults domain models out of add_racquet_modal.dart into domain layer.
   evidence: Pre-existing presentation file declared domain constants and defaults during Story 1.4; should be placed in pure domain models.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-3-serverpod-dailydecayfuturecall-on-demand-test-trigger.md`
+  summary: Add database pagination and chunked batch writes to DailyDecayService for large-scale deployments.
+  evidence: Background worker queries all active string jobs into memory in a single query; acceptable for hackathon scale, but requires chunking/streaming for high volume production.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-3-serverpod-dailydecayfuturecall-on-demand-test-trigger.md`
+  summary: Implement rate limiting or distributed lock on on-demand triggerDailyDecayNow RPC endpoint.
+  evidence: FutureCalls cron already uses Serverpod claim tables, but dev RPC endpoint allows unconstrained concurrent calls in multi-tenant environments.

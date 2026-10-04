@@ -1,4 +1,5 @@
 import 'package:serverpod/serverpod.dart';
+import '../future_calls/daily_decay_future_call.dart';
 import '../generated/protocol.dart';
 
 /// Endpoint for managing virtual gear bags, racquets, and string setups.
@@ -223,5 +224,15 @@ class BagEndpoint extends Endpoint {
       await Racquet.db.deleteRow(session, target, transaction: tx);
       return true;
     });
+  }
+
+  /// Triggers the static tension relaxation and decay calculation worker
+  /// immediately across active string jobs.
+  ///
+  /// Intended for on-demand developer/judge demonstration of background decay.
+  /// Returns the number of [StringJob] records updated.
+  Future<int> triggerDailyDecayNow(Session session) async {
+    _resolveUserId(session);
+    return await DailyDecayService.performDecayCalculation(session);
   }
 }

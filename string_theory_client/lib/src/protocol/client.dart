@@ -336,6 +336,17 @@ class EndpointBag extends _isc.EndpointRef {
         'deleteRacquet',
         {'racquetId': racquetId},
       );
+
+  /// Triggers the static tension relaxation and decay calculation worker
+  /// immediately across active string jobs.
+  ///
+  /// Intended for on-demand developer/judge demonstration of background decay.
+  /// Returns the number of [StringJob] records updated.
+  _ida.Future<int> triggerDailyDecayNow() => caller.callServerEndpoint<int>(
+    'bag',
+    'triggerDailyDecayNow',
+    {},
+  );
 }
 
 /// This is an example endpoint that returns a greeting message through

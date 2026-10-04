@@ -1,9 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:serverpod_auth_idp_flutter/serverpod_auth_idp_flutter.dart';
 import 'package:string_theory_client/string_theory_client.dart';
+import 'package:string_theory_flutter/bloc/bag_bloc.dart';
 import 'package:string_theory_flutter/screens/settings_screen.dart';
 import 'package:string_theory_flutter/services/auth_service.dart';
+
+class MockClient extends Mock implements Client {}
+
+class MockEndpointBag extends Mock implements EndpointBag {}
+
+class MockBagBloc extends Mock implements BagBloc {}
 
 class InMemoryAuthSuccessStorage implements ClientAuthSuccessStorage {
   AuthSuccess? _stored;
@@ -220,6 +228,125 @@ void main() {
 
         expect(find.text('Device signed out'), findsOneWidget);
         expect(authService.isAuthenticated, isFalse);
+      },
+    );
+
+    testWidgets(
+      'Story 2.3: given settings screen, should render DEVELOPER & JUDGE CONTROLS and Trigger FutureCall Decay button',
+      (tester) async {
+        final storage = InMemoryAuthSuccessStorage(sampleAuthSuccess);
+        final client = Client('http://localhost:8080/')
+          ..authSessionManager = FlutterAuthSessionManager(storage: storage);
+        final authService = AuthService(
+          client: client,
+          anonymousEndpoint: FakeEndpointAnonymousIdp(),
+        );
+        await authService.initialize();
+
+        await tester.pumpWidget(
+          MaterialApp(home: SettingsScreen(authService: authService)),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.ensureVisible(
+          find.byKey(SettingsScreen.keyDevTriggerDecayButton),
+        );
+        expect(find.text('DEVELOPER & JUDGE CONTROLS'), findsOneWidget);
+        expect(
+          find.byKey(SettingsScreen.keyDevTriggerDecayButton),
+          findsOneWidget,
+        );
+        expect(find.text('⚡ Trigger FutureCall Decay'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Story 2.3: given settings screen, when [⚡ Trigger FutureCall Decay] is tapped, executes worker via RPC and reloads bag',
+      (tester) async {
+        final storage = InMemoryAuthSuccessStorage(sampleAuthSuccess);
+        final client = Client('http://localhost:8080/')
+          ..authSessionManager = FlutterAuthSessionManager(storage: storage);
+        final authService = AuthService(
+          client: client,
+          anonymousEndpoint: FakeEndpointAnonymousIdp(),
+        );
+        await authService.initialize();
+
+        final mockClient = MockClient();
+        final mockEndpointBag = MockEndpointBag();
+        final mockBagBloc = MockBagBloc();
+
+        when(() => mockClient.bag).thenReturn(mockEndpointBag);
+        when(
+          () => mockEndpointBag.triggerDailyDecayNow(),
+        ).thenAnswer((_) async => 4);
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: SettingsScreen(
+              authService: authService,
+              client: mockClient,
+              bagBloc: mockBagBloc,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.ensureVisible(
+          find.byKey(SettingsScreen.keyDevTriggerDecayButton),
+        );
+        await tester.tap(find.byKey(SettingsScreen.keyDevTriggerDecayButton));
+        await tester.pumpAndSettle();
+
+        verify(() => mockEndpointBag.triggerDailyDecayNow()).called(1);
+        verify(() => mockBagBloc.add(const LoadBag())).called(1);
+        expect(
+          find.text('Decay executed: 4 string jobs updated'),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      'Story 2.3: given settings screen, when [⚡ Trigger FutureCall Decay] fails via RPC, shows error feedback snackbar',
+      (tester) async {
+        final storage = InMemoryAuthSuccessStorage(sampleAuthSuccess);
+        final client = Client('http://localhost:8080/')
+          ..authSessionManager = FlutterAuthSessionManager(storage: storage);
+        final authService = AuthService(
+          client: client,
+          anonymousEndpoint: FakeEndpointAnonymousIdp(),
+        );
+        await authService.initialize();
+
+        final mockClient = MockClient();
+        final mockEndpointBag = MockEndpointBag();
+
+        when(() => mockClient.bag).thenReturn(mockEndpointBag);
+        when(
+          () => mockEndpointBag.triggerDailyDecayNow(),
+        ).thenThrow(Exception('RPC timeout'));
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: SettingsScreen(
+              authService: authService,
+              client: mockClient,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.ensureVisible(
+          find.byKey(SettingsScreen.keyDevTriggerDecayButton),
+        );
+        await tester.tap(find.byKey(SettingsScreen.keyDevTriggerDecayButton));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.textContaining('Error triggering decay: Exception: RPC timeout'),
+          findsOneWidget,
+        );
       },
     );
   });

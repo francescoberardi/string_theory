@@ -15,6 +15,8 @@ import 'package:serverpod_auth_core_server/serverpod_auth_core_server.dart'
     as _iacs;
 import 'package:serverpod_auth_idp_server/serverpod_auth_idp_server.dart'
     as _iais;
+import 'package:string_theory_server/src/generated/future_calls.dart'
+    as _ireyqaq4;
 import 'package:string_theory_server/src/generated/string_material_category.dart'
     as _iqkmcx65;
 import '../auth/anonymous_idp_endpoint.dart' as _in0zita6;
@@ -22,6 +24,7 @@ import '../auth/email_idp_endpoint.dart' as _iuc1hd5t;
 import '../auth/jwt_refresh_endpoint.dart' as _inwq3ztq;
 import '../endpoints/bag_endpoint.dart' as _i30u42n8;
 import '../greetings/greeting_endpoint.dart' as _il624ik7;
+export 'future_calls.dart' show ServerpodFutureCallsGetter;
 
 class Endpoints extends _is.EndpointDispatch {
   @override
@@ -414,6 +417,16 @@ class Endpoints extends _is.EndpointDispatch {
                     racquetId: params['racquetId'],
                   ),
         ),
+        'triggerDailyDecayNow': _is.MethodConnector(
+          name: 'triggerDailyDecayNow',
+          params: {},
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['bag'] as _i30u42n8.BagEndpoint)
+                  .triggerDailyDecayNow(session),
+        ),
       },
     );
     connectors['greeting'] = _is.EndpointConnector(
@@ -445,5 +458,10 @@ class Endpoints extends _is.EndpointDispatch {
       ..initializeEndpoints(server);
     modules['serverpod_auth_core'] = _iacs.Endpoints()
       ..initializeEndpoints(server);
+  }
+
+  @override
+  _is.FutureCallDispatch? get futureCalls {
+    return _ireyqaq4.FutureCalls();
   }
 }

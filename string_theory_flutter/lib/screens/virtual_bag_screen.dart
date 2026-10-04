@@ -150,7 +150,11 @@ class _VirtualBagScreenState extends State<VirtualBagScreen> {
   void _onNavigationTapped(BuildContext context, int index) {
     if (index == 2) {
       Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const SettingsScreen()),
+        MaterialPageRoute(
+          builder: (_) => SettingsScreen(
+            bagBloc: _resolveBloc(context),
+          ),
+        ),
       );
     } else {
       setState(() => _navIndex = index);

@@ -107,4 +107,11 @@ void run(List<String> args) async {
 
   // Start the server.
   await pod.start();
+
+  // Schedule nightly static tension relaxation decay at 00:00 UTC (Story 2.3)
+  await pod.futureCalls
+      .callRecurring(identifier: 'dailyDecayFutureCall')
+      .cron('0 0 * * *')
+      .dailyDecay
+      .execute();
 }
