@@ -17,6 +17,8 @@ import 'package:serverpod/serverpod.dart' as _is;
 import 'package:serverpod_auth_core_server/serverpod_auth_core_server.dart'
     as _iacs;
 import 'package:serverpod_test/serverpod_test.dart' as _ist;
+import 'package:string_theory_server/src/generated/bag_stream_message.dart'
+    as _iuc095de;
 import 'package:string_theory_server/src/generated/future_calls.dart'
     as _ireyqaq4;
 import 'package:string_theory_server/src/generated/greetings/greeting.dart'
@@ -610,6 +612,38 @@ class _BagEndpoint {
         await _localUniqueSession.close();
       }
     });
+  }
+
+  _ida.Stream<_iuc095de.BagStreamMessage> bagUpdates(
+    _ist.TestSessionBuilder sessionBuilder,
+  ) {
+    var _localTestStreamManager =
+        _ist.TestStreamManager<_iuc095de.BagStreamMessage>();
+    _ist.callStreamFunctionAndHandleExceptions(
+      () async {
+        var _localUniqueSession =
+            (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+              endpoint: 'bag',
+              method: 'bagUpdates',
+            );
+        var _localCallContext = await _endpointDispatch
+            .getMethodStreamCallContext(
+              createSessionCallback: (_) => _localUniqueSession,
+              endpointPath: 'bag',
+              methodName: 'bagUpdates',
+              arguments: {},
+              requestedInputStreams: [],
+              serializationManager: _serializationManager,
+            );
+        await _localTestStreamManager.callStreamMethod(
+          _localCallContext,
+          _localUniqueSession,
+          {},
+        );
+      },
+      _localTestStreamManager.outputStreamController,
+    );
+    return _localTestStreamManager.outputStreamController.stream;
   }
 
   _ida.Future<_iwugozzn.Racquet> createRacquet(

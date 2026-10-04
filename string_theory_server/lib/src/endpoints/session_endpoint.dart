@@ -1,6 +1,7 @@
 import 'package:serverpod/serverpod.dart';
 import '../domain/decay_engine.dart';
 import '../generated/protocol.dart';
+import '../messaging/bag_channels.dart';
 
 /// Endpoint for recording tennis match/practice sessions,
 /// incrementing stringbed court hours, and recalculating health scores.
@@ -55,8 +56,15 @@ class SessionEndpoint extends Endpoint {
         ? log.externalWorkoutId!.trim()
         : null;
 
+    final SessionLog logged;
+    final StringJob? updatedJob;
     try {
-      return await _insertSession(session, log, userId, trimmedExternalId);
+      (logged, updatedJob) = await _insertSession(
+        session,
+        log,
+        userId,
+        trimmedExternalId,
+      );
     } on DatabaseUniqueViolationException catch (e) {
       // A concurrent sync of the same workout committed first. This
       // transaction rolled back, so no hours were counted: return the winner.
@@ -71,6 +79,53 @@ class SessionEndpoint extends Endpoint {
       );
       if (existing == null) rethrow;
       return existing;
+    }
+
+    // Publish only after the transaction committed and a new row was inserted.
+    if (updatedJob != null) {
+      await _publishSessionLogged(
+        session,
+        userId,
+        logged.racquetId,
+        updatedJob,
+      );
+    }
+    return logged;
+  }
+
+  /// Posts a [BagChannels.sessionLogged] message to the user's bag channel.
+  /// A publish failure is logged and never fails the request.
+  Future<void> _publishSessionLogged(
+    Session session,
+    int userId,
+    int racquetId,
+    StringJob updatedJob,
+  ) async {
+    try {
+      final posted = await session.messages.postMessage(
+        BagChannels.forUser(userId),
+        BagStreamMessage(
+          eventType: BagChannels.sessionLogged,
+          racquetId: racquetId,
+          healthScore: updatedJob.currentHealthScore,
+          totalCourtHours: updatedJob.totalCourtHours,
+          timestamp: DateTime.now().toUtc(),
+        ),
+      );
+      if (!posted) {
+        session.log(
+          'Failed to publish sessionLogged for racquet $racquetId: '
+          'postMessage returned false',
+          level: LogLevel.warning,
+        );
+      }
+    } catch (e, stackTrace) {
+      session.log(
+        'Failed to publish sessionLogged for racquet $racquetId: $e',
+        level: LogLevel.warning,
+        exception: e,
+        stackTrace: stackTrace,
+      );
     }
   }
 
@@ -97,7 +152,11 @@ class SessionEndpoint extends Endpoint {
     return existing;
   }
 
-  Future<SessionLog> _insertSession(
+  /// Inserts [log] and updates the active string job in one transaction.
+  ///
+  /// Returns the session log and the updated [StringJob]; `updatedJob` is null
+  /// when an existing log was returned idempotently.
+  Future<(SessionLog log, StringJob? updatedJob)> _insertSession(
     Session session,
     SessionLog log,
     int userId,
@@ -129,7 +188,7 @@ class SessionEndpoint extends Endpoint {
           userId,
           transaction: tx,
         );
-        if (existing != null) return existing;
+        if (existing != null) return (existing, null);
       }
 
       // 3. Only check activeStringJob if inserting a new session
@@ -175,7 +234,7 @@ class SessionEndpoint extends Endpoint {
       );
 
       // 7. Persist updated StringJob
-      await StringJob.db.updateRow(
+      final updatedJob = await StringJob.db.updateRow(
         session,
         stringJob.copyWith(
           totalCourtHours: newTotalHours,
@@ -184,7 +243,7 @@ class SessionEndpoint extends Endpoint {
         transaction: tx,
       );
 
-      return insertedSession;
+      return (insertedSession, updatedJob);
     });
   }
 

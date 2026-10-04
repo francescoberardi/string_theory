@@ -17,6 +17,8 @@ import 'package:serverpod_auth_core_client/serverpod_auth_core_client.dart'
 import 'package:serverpod_auth_idp_client/serverpod_auth_idp_client.dart'
     as _iaic;
 import 'package:serverpod_client/serverpod_client.dart' as _isc;
+import 'package:string_theory_client/src/protocol/bag_stream_message.dart'
+    as _i51r56kl;
 import 'package:string_theory_client/src/protocol/greetings/greeting.dart'
     as _iowftvok;
 import 'package:string_theory_client/src/protocol/racquet.dart' as _ib48ci23;
@@ -287,6 +289,19 @@ class EndpointBag extends _isc.EndpointRef {
       caller.callServerEndpoint<List<_ib48ci23.Racquet>>(
         'bag',
         'getVirtualBag',
+        {},
+      );
+
+  /// Streams real-time [BagStreamMessage] updates for the authenticated
+  /// user's bag from channel `user_{userId}_bag`.
+  _ida.Stream<_i51r56kl.BagStreamMessage> bagUpdates() =>
+      caller.callStreamingServerEndpoint<
+        _ida.Stream<_i51r56kl.BagStreamMessage>,
+        _i51r56kl.BagStreamMessage
+      >(
+        'bag',
+        'bagUpdates',
+        {},
         {},
       );
 

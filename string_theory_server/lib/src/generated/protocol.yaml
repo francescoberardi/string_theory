@@ -13,6 +13,7 @@ jwtRefresh:
   - refreshAccessToken:
 bag:
   - getVirtualBag:
+  - bagUpdates:
   - createRacquet:
   - setPrimary:
   - deleteRacquet:

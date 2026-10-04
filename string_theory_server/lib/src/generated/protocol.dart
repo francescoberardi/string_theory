@@ -21,12 +21,14 @@ import 'package:string_theory_server/src/generated/racquet.dart' as _iwugozzn;
 import 'package:string_theory_server/src/generated/session_log.dart'
     as _iyc5nsr4;
 import 'bag_exception.dart' as _ik2s0sst;
+import 'bag_stream_message.dart' as _iwuh6un6;
 import 'greetings/greeting.dart' as _izw8z7ou;
 import 'racquet.dart' as _iiy1gsnd;
 import 'session_log.dart' as _ijme2vd8;
 import 'string_job.dart' as _ipf7mlcg;
 import 'string_material_category.dart' as _i5v32zda;
 export 'bag_exception.dart';
+export 'bag_stream_message.dart';
 export 'greetings/greeting.dart';
 export 'racquet.dart';
 export 'session_log.dart';
@@ -428,6 +430,9 @@ class Protocol extends _is.DatabaseSerializationManager {
     if (t == _ik2s0sst.BagException) {
       return _ik2s0sst.BagException.fromJson(data) as T;
     }
+    if (t == _iwuh6un6.BagStreamMessage) {
+      return _iwuh6un6.BagStreamMessage.fromJson(data) as T;
+    }
     if (t == _izw8z7ou.Greeting) {
       return _izw8z7ou.Greeting.fromJson(data) as T;
     }
@@ -445,6 +450,10 @@ class Protocol extends _is.DatabaseSerializationManager {
     }
     if (t == _is.getType<_ik2s0sst.BagException?>()) {
       return (data != null ? _ik2s0sst.BagException.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_iwuh6un6.BagStreamMessage?>()) {
+      return (data != null ? _iwuh6un6.BagStreamMessage.fromJson(data) : null)
+          as T;
     }
     if (t == _is.getType<_izw8z7ou.Greeting?>()) {
       return (data != null ? _izw8z7ou.Greeting.fromJson(data) : null) as T;
@@ -491,6 +500,7 @@ class Protocol extends _is.DatabaseSerializationManager {
   static String? getClassNameForType(Type type) {
     return switch (type) {
       _ik2s0sst.BagException => 'BagException',
+      _iwuh6un6.BagStreamMessage => 'BagStreamMessage',
       _izw8z7ou.Greeting => 'Greeting',
       _iiy1gsnd.Racquet => 'Racquet',
       _ijme2vd8.SessionLog => 'SessionLog',
@@ -515,6 +525,8 @@ class Protocol extends _is.DatabaseSerializationManager {
     switch (data) {
       case _ik2s0sst.BagException():
         return 'BagException';
+      case _iwuh6un6.BagStreamMessage():
+        return 'BagStreamMessage';
       case _izw8z7ou.Greeting():
         return 'Greeting';
       case _iiy1gsnd.Racquet():
@@ -553,6 +565,9 @@ class Protocol extends _is.DatabaseSerializationManager {
     }
     if (dataClassName == 'BagException') {
       return deserialize<_ik2s0sst.BagException>(data['data']);
+    }
+    if (dataClassName == 'BagStreamMessage') {
+      return deserialize<_iwuh6un6.BagStreamMessage>(data['data']);
     }
     if (dataClassName == 'Greeting') {
       return deserialize<_izw8z7ou.Greeting>(data['data']);

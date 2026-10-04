@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:string_theory_client/string_theory_client.dart';
@@ -26,6 +29,9 @@ void main() {
     mockClient = MockClient();
     mockBagEndpoint = MockEndpointBag();
     when(() => mockClient.bag).thenReturn(mockBagEndpoint);
+    when(
+      () => mockBagEndpoint.bagUpdates(),
+    ).thenAnswer((_) => const Stream<BagStreamMessage>.empty());
   });
 
   group('BagBloc Reactive State Management', () {
@@ -497,5 +503,197 @@ void main() {
         await bloc.close();
       },
     );
+  });
+
+  group('[Story 3.2] BagBloc real-time BagStreamMessage updates', () {
+    late StreamController<BagStreamMessage> controller;
+
+    final strungJob = StringJob(
+      id: 10,
+      userId: 1,
+      racquetId: 1,
+      materialCategory: StringMaterialCategory.coPoly,
+      stringingDate: DateTime.utc(2026, 9, 20),
+      totalCourtHours: 2.0,
+      currentHealthScore: 90,
+      createdAt: DateTime.utc(2026, 9, 20),
+    );
+    final racquetA = sampleRacquet.copyWith(activeStringJob: strungJob);
+    final racquetB = Racquet(
+      id: 2,
+      userId: 1,
+      name: 'Head Speed Pro',
+      isPrimary: false,
+      createdAt: DateTime.utc(2026, 10, 1),
+      updatedAt: DateTime.utc(2026, 10, 1),
+      activeStringJob: strungJob.copyWith(id: 20, racquetId: 2),
+    );
+
+    BagStreamMessage messageFor(int racquetId) => BagStreamMessage(
+      eventType: 'sessionLogged',
+      racquetId: racquetId,
+      healthScore: 82,
+      totalCourtHours: 3.5,
+      timestamp: DateTime.utc(2026, 10, 4),
+    );
+
+    setUp(() {
+      controller = StreamController<BagStreamMessage>.broadcast();
+      when(
+        () => mockBagEndpoint.bagUpdates(),
+      ).thenAnswer((_) => controller.stream);
+      when(
+        () => mockBagEndpoint.getVirtualBag(),
+      ).thenAnswer((_) async => [racquetA, racquetB]);
+    });
+
+    tearDown(() async {
+      await controller.close();
+    });
+
+    // Serverpod models compare by identity, so match on field values.
+    Matcher loadedWithJob(int racquetId, int healthScore, double hours) =>
+        isA<BagLoaded>().having(
+          (s) =>
+              s.racquets.firstWhere((r) => r.id == racquetId).activeStringJob,
+          'racquet $racquetId active job',
+          isA<StringJob>()
+              .having(
+                (j) => j.currentHealthScore,
+                'currentHealthScore',
+                healthScore,
+              )
+              .having((j) => j.totalCourtHours, 'totalCourtHours', hours),
+        );
+
+    blocTest<BagBloc, BagState>(
+      'subscribes to bagUpdates once after the bag loads',
+      build: () => BagBloc(client: mockClient),
+      act: (bloc) async {
+        bloc.add(const LoadBag());
+        await pumpEventQueue();
+        bloc.add(const LoadBag());
+        await pumpEventQueue();
+        expect(controller.hasListener, isTrue);
+      },
+      verify: (_) {
+        verify(() => mockBagEndpoint.bagUpdates()).called(1);
+      },
+    );
+
+    blocTest<BagBloc, BagState>(
+      'patches the matching racquet health score and court hours in place',
+      build: () => BagBloc(client: mockClient),
+      act: (bloc) async {
+        bloc.add(const LoadBag());
+        await pumpEventQueue();
+        controller.add(messageFor(1));
+        await pumpEventQueue();
+      },
+      expect: () => [
+        const BagLoading(),
+        BagLoaded([racquetA, racquetB]),
+        allOf(
+          loadedWithJob(1, 82, 3.5),
+          loadedWithJob(2, 90, 2.0),
+          isA<BagLoaded>().having(
+            (s) => s.racquets[1],
+            'untouched racquet',
+            same(racquetB),
+          ),
+        ),
+      ],
+      verify: (_) {
+        verify(() => mockBagEndpoint.getVirtualBag()).called(1);
+      },
+    );
+
+    blocTest<BagBloc, BagState>(
+      'ignores messages for racquets not in the loaded bag',
+      build: () => BagBloc(client: mockClient),
+      act: (bloc) async {
+        bloc.add(const LoadBag());
+        await pumpEventQueue();
+        controller.add(messageFor(999));
+        await pumpEventQueue();
+      },
+      expect: () => [
+        const BagLoading(),
+        BagLoaded([racquetA, racquetB]),
+      ],
+    );
+
+    blocTest<BagBloc, BagState>(
+      'ignores messages while the bag is not loaded',
+      build: () => BagBloc(client: mockClient),
+      act: (bloc) => bloc.add(BagStreamReceived(messageFor(1))),
+      expect: () => <BagState>[],
+    );
+
+    blocTest<BagBloc, BagState>(
+      'clears the subscription on stream error without emitting BagError, '
+      'and re-subscribes on the next LoadBag',
+      build: () => BagBloc(client: mockClient),
+      act: (bloc) async {
+        bloc.add(const LoadBag());
+        await pumpEventQueue();
+        controller.addError(Exception('socket closed'));
+        await pumpEventQueue();
+        bloc.add(const LoadBag());
+        await pumpEventQueue();
+      },
+      expect: () => [
+        const BagLoading(),
+        BagLoaded([racquetA, racquetB]),
+        const BagLoading(),
+        BagLoaded([racquetA, racquetB]),
+      ],
+      verify: (_) {
+        verify(() => mockBagEndpoint.bagUpdates()).called(2);
+      },
+    );
+
+    blocTest<BagBloc, BagState>(
+      'clears the subscription when the stream completes, '
+      'and re-subscribes on the next LoadBag',
+      build: () => BagBloc(client: mockClient),
+      act: (bloc) async {
+        final first = StreamController<BagStreamMessage>();
+        when(
+          () => mockBagEndpoint.bagUpdates(),
+        ).thenAnswer((_) => first.stream);
+        bloc.add(const LoadBag());
+        await pumpEventQueue();
+        expect(first.hasListener, isTrue);
+
+        final second = StreamController<BagStreamMessage>();
+        when(
+          () => mockBagEndpoint.bagUpdates(),
+        ).thenAnswer((_) => second.stream);
+        await first.close();
+        await pumpEventQueue();
+
+        bloc.add(const LoadBag());
+        await pumpEventQueue();
+        expect(second.hasListener, isTrue);
+      },
+      verify: (_) {
+        verify(() => mockBagEndpoint.bagUpdates()).called(2);
+      },
+    );
+
+    test('close() cancels the bagUpdates subscription', () async {
+      var cancelled = false;
+      controller.onCancel = () => cancelled = true;
+
+      final bloc = BagBloc(client: mockClient);
+      bloc.add(const LoadBag());
+      await pumpEventQueue();
+      expect(controller.hasListener, isTrue);
+
+      await bloc.close();
+
+      expect(cancelled, isTrue);
+    });
   });
 }

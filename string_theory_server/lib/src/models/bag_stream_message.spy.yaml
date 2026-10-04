@@ -1,0 +1,13 @@
+### Real-time bag update pushed to a user's `user_{userId}_bag` channel.
+class: BagStreamMessage
+fields:
+  ### Event kind, e.g. `sessionLogged` or `restrung`.
+  eventType: String
+  ### Racquet affected by the event.
+  racquetId: int?
+  ### New health score of the racquet's active string job.
+  healthScore: int?
+  ### New total court hours of the racquet's active string job.
+  totalCourtHours: double?
+  ### When the event happened (UTC).
+  timestamp: DateTime

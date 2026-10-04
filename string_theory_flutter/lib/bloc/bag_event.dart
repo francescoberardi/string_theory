@@ -83,3 +83,14 @@ class FastForwardRacquetAge extends BagEvent {
   @override
   List<Object?> get props => [racquetId, days];
 }
+
+/// A real-time [BagStreamMessage] pushed by the server on the user's bag
+/// channel.
+class BagStreamReceived extends BagEvent {
+  final BagStreamMessage message;
+
+  const BagStreamReceived(this.message);
+
+  @override
+  List<Object?> get props => [message];
+}

@@ -2,6 +2,7 @@ import 'package:serverpod/serverpod.dart';
 import '../domain/decay_engine.dart';
 import '../future_calls/daily_decay_future_call.dart';
 import '../generated/protocol.dart';
+import '../messaging/bag_channels.dart';
 
 /// Endpoint for managing virtual gear bags, racquets, and string setups.
 class BagEndpoint extends Endpoint {
@@ -48,6 +49,15 @@ class BagEndpoint extends Endpoint {
       include: Racquet.include(
         activeStringJob: StringJob.include(),
       ),
+    );
+  }
+
+  /// Streams real-time [BagStreamMessage] updates for the authenticated
+  /// user's bag from channel `user_{userId}_bag`.
+  Stream<BagStreamMessage> bagUpdates(Session session) {
+    final userId = _resolveUserId(session);
+    return session.messages.createStream<BagStreamMessage>(
+      BagChannels.forUser(userId),
     );
   }
 

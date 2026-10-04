@@ -36,3 +36,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-1-serverpod-sessionlog-schema-sessionendpoint-idempotency.md`
   summary: Tighten logSession input validation for startTime, durationMinutes upper bound, and racquetId mismatch on dedup hits.
   evidence: Only durationMinutes > 0 is checked; future startTime and unbounded durations are accepted (one huge session drives health to 0), and a duplicate externalWorkoutId sent for a different racquet silently returns the original row.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-2-serverpod-real-time-websocket-streaming-bagstreammessage.md`
+  summary: Publish BagStreamMessage from DailyDecayFutureCall, fastForwardRacquetAge, and racquet CRUD so open clients stay live for every health/bag change, not only session logging.
+  evidence: Story 3.2 intent limited publishing to sessionLogged (restrung comes in 4.1); review noted the nightly decay cron is the main source of score changes yet pushes nothing to connected clients.

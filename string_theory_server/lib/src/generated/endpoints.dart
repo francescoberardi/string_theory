@@ -461,6 +461,20 @@ class Endpoints extends _is.EndpointDispatch {
                     days: params['days'],
                   ),
         ),
+        'bagUpdates': _is.MethodStreamConnector(
+          name: 'bagUpdates',
+          params: {},
+          streamParams: {},
+          returnType: _is.MethodStreamReturnType.streamType,
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+                Map<String, Stream> streamParams,
+              ) => (endpoints['bag'] as _i30u42n8.BagEndpoint).bagUpdates(
+                session,
+              ),
+        ),
       },
     );
     connectors['session'] = _is.EndpointConnector(

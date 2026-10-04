@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:string_theory_client/string_theory_client.dart';
 
@@ -9,6 +12,7 @@ export 'bag_state.dart';
 
 class BagBloc extends Bloc<BagEvent, BagState> {
   final Client client;
+  StreamSubscription<BagStreamMessage>? _bagUpdatesSubscription;
 
   BagBloc({required this.client}) : super(const BagInitial()) {
     on<LoadBag>(_onLoadBag);
@@ -17,6 +21,67 @@ class BagBloc extends Bloc<BagEvent, BagState> {
     on<SetPrimaryRacquet>(_onSetPrimaryRacquet);
     on<SeedSampleBag>(_onSeedSampleBag);
     on<FastForwardRacquetAge>(_onFastForwardRacquetAge);
+    on<BagStreamReceived>(_onBagStreamReceived);
+  }
+
+  @override
+  Future<void> close() async {
+    await _bagUpdatesSubscription?.cancel();
+    _bagUpdatesSubscription = null;
+    return super.close();
+  }
+
+  /// Subscribes to the server's real-time bag channel unless already
+  /// subscribed. An error or done clears the subscription so the next
+  /// [LoadBag] re-subscribes; there is no retry loop.
+  void _subscribeToBagUpdates() {
+    if (_bagUpdatesSubscription != null || isClosed) return;
+    try {
+      _bagUpdatesSubscription = client.bag.bagUpdates().listen(
+        (message) {
+          if (!isClosed) add(BagStreamReceived(message));
+        },
+        onError: (Object error) {
+          debugPrint('BagBloc: bag updates stream error: $error');
+          _clearBagUpdatesSubscription();
+        },
+        onDone: _clearBagUpdatesSubscription,
+        cancelOnError: true,
+      );
+    } catch (e) {
+      debugPrint('BagBloc: failed to subscribe to bag updates: $e');
+      _bagUpdatesSubscription = null;
+    }
+  }
+
+  void _clearBagUpdatesSubscription() {
+    _bagUpdatesSubscription = null;
+  }
+
+  void _onBagStreamReceived(
+    BagStreamReceived event,
+    Emitter<BagState> emit,
+  ) {
+    final current = state;
+    if (current is! BagLoaded) return;
+    final message = event.message;
+    final index = current.racquets.indexWhere(
+      (r) => r.id == message.racquetId,
+    );
+    if (index == -1) return;
+    final job = current.racquets[index].activeStringJob;
+    if (job == null) return;
+
+    final newRacquets = current.racquets.map((r) {
+      if (r.id != message.racquetId) return r;
+      return r.copyWith(
+        activeStringJob: job.copyWith(
+          currentHealthScore: message.healthScore ?? job.currentHealthScore,
+          totalCourtHours: message.totalCourtHours ?? job.totalCourtHours,
+        ),
+      );
+    }).toList();
+    emit(BagLoaded(newRacquets));
   }
 
   Future<void> _onLoadBag(LoadBag event, Emitter<BagState> emit) async {
@@ -24,6 +89,7 @@ class BagBloc extends Bloc<BagEvent, BagState> {
     try {
       final racquets = await client.bag.getVirtualBag();
       emit(BagLoaded(racquets));
+      _subscribeToBagUpdates();
     } catch (e) {
       emit(BagError('Failed to load virtual bag: $e'));
     }
