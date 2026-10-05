@@ -67,7 +67,7 @@ development_status:
   epic-4: in-progress
   4-1-serverpod-restringevent-schema-transactional-restring-endpoi: done
   4-2-restrung-today-2-option-decision-sheet-toast-confirmation: done
-  4-3-racquet-detail-screen-restring-history-timeline-ui: backlog
+  4-3-racquet-detail-screen-restring-history-timeline-ui: ready-for-dev
   epic-4-retrospective: optional
 
   epic-5: backlog
