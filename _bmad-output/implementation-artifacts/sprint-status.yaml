@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-02-2026 17:45
-last_updated: 10-05-2026 14:22
+last_updated: 10-05-2026 14:33
 project: string_theory
 project_key: NOKEY
 tracking_system: file-system
@@ -68,7 +68,7 @@ development_status:
   4-1-serverpod-restringevent-schema-transactional-restring-endpoi: done
   4-2-restrung-today-2-option-decision-sheet-toast-confirmation: done
   4-3-racquet-detail-screen-restring-history-timeline-ui: done
-  epic-4-retrospective: optional
+  epic-4-retrospective: done
 
   epic-5: backlog
   5-1-multi-platform-responsive-layout-navigationrail-desktop-grid: backlog
@@ -98,19 +98,22 @@ action_items:
     ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-10-04.md"
   - id: "epic-1-5-retro-item-1-maintain-auth-secret-parity-in-ci"
     epic: 1.5
-    action: "Maintain Serverpod auth and IDP password environment variable parity in CI tests"
+    action: "Maintain Serverpod auth and IDP password environment variable parity
+      in CI tests"
     owner: "Amelia (Developer)"
     status: open
     ref: "_bmad-output/implementation-artifacts/epic-1.5-retro-2026-10-04.md"
   - id: "epic-1-5-retro-item-2-scoped-drift-checks-in-multi-package-workspaces"
     epic: 1.5
-    action: "Maintain directory scoping on git diff --exit-code checks for code generation in CI"
+    action: "Maintain directory scoping on git diff --exit-code checks for code generation
+      in CI"
     owner: "Amelia (Developer)"
     status: open
     ref: "_bmad-output/implementation-artifacts/epic-1.5-retro-2026-10-04.md"
   - id: "epic-2-retro-item-1-extract-shared-pure-dart-domain-pack"
     epic: 2
-    action: "Extract shared pure Dart domain calculation logic into a shared package or client extension"
+    action: "Extract shared pure Dart domain calculation logic into a shared package
+      or client extension"
     owner: "Winston (Architect)"
     status: open
     ref: "_bmad-output/implementation-artifacts/epic-2-retro-2026-10-04.md"
@@ -122,7 +125,8 @@ action_items:
     ref: "_bmad-output/implementation-artifacts/epic-2-retro-2026-10-04.md"
   - id: "epic-3-retro-item-1-extract-shared-tenant-resolver-helper"
     epic: 3
-    action: "Consolidate duplicated _resolveUserId logic from BagEndpoint and SessionEndpoint into a shared server utility"
+    action: "Consolidate duplicated _resolveUserId logic from BagEndpoint and SessionEndpoint
+      into a shared server utility"
     owner: "Amelia (Developer)"
     status: done
     ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-10-04.md"
@@ -134,7 +138,26 @@ action_items:
     ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-10-04.md"
   - id: "epic-3-retro-item-3-decompose-virtualbagscreen-and-assignmentsheet"
     epic: 3
-    action: "Decompose VirtualBagScreen and WorkoutAssignmentSheet into modular widget components"
+    action: "Decompose VirtualBagScreen and WorkoutAssignmentSheet into modular widget
+      components"
     owner: "Winston (Architect)"
     status: done
     ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-10-04.md"
+  - id: "epic-4-retro-item-11-add-dedicated-unit-tests-for-tenantresol"
+    epic: 4
+    action: "Add dedicated unit tests for TenantResolver"
+    owner: "Amelia (Developer)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-4-retro-2026-10-05.md"
+  - id: "epic-4-retro-item-12-add-cross-tenant-bagupdates-stream-isola"
+    epic: 4
+    action: "Add cross-tenant bagUpdates stream isolation test for restringing"
+    owner: "Amelia (Developer)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-4-retro-2026-10-05.md"
+  - id: "epic-4-retro-item-13-update-stale-planning-copy-in-sessionspl"
+    epic: 4
+    action: "Update stale planning copy in SessionsPlaceholder widget"
+    owner: "Amelia (Developer)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-4-retro-2026-10-05.md"
