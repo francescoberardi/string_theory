@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-02-2026 17:45
-last_updated: 10-05-2026 10:25
+last_updated: 10-05-2026 12:11
 project: string_theory
 project_key: NOKEY
 tracking_system: file-system
@@ -67,7 +67,7 @@ development_status:
   epic-4: in-progress
   4-1-serverpod-restringevent-schema-transactional-restring-endpoi: done
   4-2-restrung-today-2-option-decision-sheet-toast-confirmation: done
-  4-3-racquet-detail-screen-restring-history-timeline-ui: ready-for-dev
+  4-3-racquet-detail-screen-restring-history-timeline-ui: review
   epic-4-retrospective: optional
 
   epic-5: backlog

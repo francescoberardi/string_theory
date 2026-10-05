@@ -22,6 +22,7 @@ abstract class RestringEvent
     required this.stringJobId,
     required this.stringDescription,
     required this.materialCategory,
+    this.installedTension,
     required this.stringingDate,
     required this.restringDate,
     required this.finalCourtHours,
@@ -37,6 +38,7 @@ abstract class RestringEvent
     required int stringJobId,
     required String stringDescription,
     required _i5v32zda.StringMaterialCategory materialCategory,
+    double? installedTension,
     required DateTime stringingDate,
     required DateTime restringDate,
     required double finalCourtHours,
@@ -55,6 +57,8 @@ abstract class RestringEvent
       materialCategory: _i5v32zda.StringMaterialCategory.fromJson(
         (jsonSerialization['materialCategory'] as String),
       ),
+      installedTension: (jsonSerialization['installedTension'] as num?)
+          ?.toDouble(),
       stringingDate: _is.DateTimeJsonExtension.fromJson(
         jsonSerialization['stringingDate'],
       ),
@@ -87,6 +91,8 @@ abstract class RestringEvent
 
   _i5v32zda.StringMaterialCategory materialCategory;
 
+  double? installedTension;
+
   DateTime stringingDate;
 
   DateTime restringDate;
@@ -112,6 +118,7 @@ abstract class RestringEvent
     int? stringJobId,
     String? stringDescription,
     _i5v32zda.StringMaterialCategory? materialCategory,
+    double? installedTension,
     DateTime? stringingDate,
     DateTime? restringDate,
     double? finalCourtHours,
@@ -129,6 +136,7 @@ abstract class RestringEvent
       'stringJobId': stringJobId,
       'stringDescription': stringDescription,
       'materialCategory': materialCategory.toJson(),
+      if (installedTension != null) 'installedTension': installedTension,
       'stringingDate': stringingDate.toJson(),
       'restringDate': restringDate.toJson(),
       'finalCourtHours': finalCourtHours,
@@ -148,6 +156,7 @@ abstract class RestringEvent
       'stringJobId': stringJobId,
       'stringDescription': stringDescription,
       'materialCategory': materialCategory.toJson(),
+      if (installedTension != null) 'installedTension': installedTension,
       'stringingDate': stringingDate.toJson(),
       'restringDate': restringDate.toJson(),
       'finalCourtHours': finalCourtHours,
@@ -195,6 +204,7 @@ class _RestringEventImpl extends RestringEvent {
     required int stringJobId,
     required String stringDescription,
     required _i5v32zda.StringMaterialCategory materialCategory,
+    double? installedTension,
     required DateTime stringingDate,
     required DateTime restringDate,
     required double finalCourtHours,
@@ -208,6 +218,7 @@ class _RestringEventImpl extends RestringEvent {
          stringJobId: stringJobId,
          stringDescription: stringDescription,
          materialCategory: materialCategory,
+         installedTension: installedTension,
          stringingDate: stringingDate,
          restringDate: restringDate,
          finalCourtHours: finalCourtHours,
@@ -227,6 +238,7 @@ class _RestringEventImpl extends RestringEvent {
     int? stringJobId,
     String? stringDescription,
     _i5v32zda.StringMaterialCategory? materialCategory,
+    Object? installedTension = _Undefined,
     DateTime? stringingDate,
     DateTime? restringDate,
     double? finalCourtHours,
@@ -241,6 +253,9 @@ class _RestringEventImpl extends RestringEvent {
       stringJobId: stringJobId ?? this.stringJobId,
       stringDescription: stringDescription ?? this.stringDescription,
       materialCategory: materialCategory ?? this.materialCategory,
+      installedTension: installedTension is double?
+          ? installedTension
+          : this.installedTension,
       stringingDate: stringingDate ?? this.stringingDate,
       restringDate: restringDate ?? this.restringDate,
       finalCourtHours: finalCourtHours ?? this.finalCourtHours,
@@ -283,6 +298,12 @@ class RestringEventUpdateTable extends _is.UpdateTable<RestringEventTable> {
     table.materialCategory,
     value,
   );
+
+  _is.ColumnValue<double, double> installedTension(double? value) =>
+      _is.ColumnValue(
+        table.installedTension,
+        value,
+      );
 
   _is.ColumnValue<DateTime, DateTime> stringingDate(DateTime value) =>
       _is.ColumnValue(
@@ -344,6 +365,10 @@ class RestringEventTable extends _is.Table<int?> {
       this,
       _is.EnumSerialization.byName,
     );
+    installedTension = _is.ColumnDouble(
+      'installedTension',
+      this,
+    );
     stringingDate = _is.ColumnDateTime(
       'stringingDate',
       this,
@@ -383,6 +408,8 @@ class RestringEventTable extends _is.Table<int?> {
 
   late final _is.ColumnEnum<_i5v32zda.StringMaterialCategory> materialCategory;
 
+  late final _is.ColumnDouble installedTension;
+
   late final _is.ColumnDateTime stringingDate;
 
   late final _is.ColumnDateTime restringDate;
@@ -403,6 +430,7 @@ class RestringEventTable extends _is.Table<int?> {
     stringJobId,
     stringDescription,
     materialCategory,
+    installedTension,
     stringingDate,
     restringDate,
     finalCourtHours,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:string_theory_client/string_theory_client.dart';
 
 import '../../bloc/bag_bloc.dart';
+import '../../screens/racquet_detail_screen.dart';
 import '../../theme/court_midnight_theme.dart';
 import '../racquet_card.dart';
 
@@ -47,7 +48,21 @@ class BagRacquetList extends StatelessWidget {
           itemCount: racquets.length,
           separatorBuilder: (_, _) => const SizedBox(height: 12),
           itemBuilder: (context, index) {
-            return RacquetCard(racquet: racquets[index], bloc: bloc);
+            final racquet = racquets[index];
+            return RacquetCard(
+              racquet: racquet,
+              bloc: bloc,
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => RacquetDetailScreen(
+                      racquet: racquet,
+                      bagBloc: bloc,
+                    ),
+                  ),
+                );
+              },
+            );
           },
         ),
       );
@@ -74,7 +89,21 @@ class BagRacquetList extends StatelessWidget {
         ),
         itemCount: racquets.length,
         itemBuilder: (context, index) {
-          return RacquetCard(racquet: racquets[index], bloc: bloc);
+          final racquet = racquets[index];
+          return RacquetCard(
+            racquet: racquet,
+            bloc: bloc,
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => RacquetDetailScreen(
+                    racquet: racquet,
+                    bagBloc: bloc,
+                  ),
+                ),
+              );
+            },
+          );
         },
       ),
     );

@@ -9,7 +9,13 @@ import 'package:string_theory_flutter/widgets/racquet_card.dart';
 import 'package:string_theory_flutter/widgets/radial_health_gauge.dart';
 import 'package:string_theory_flutter/widgets/restring_sheet.dart';
 
+import 'package:string_theory_flutter/screens/racquet_detail_screen.dart';
+
 class MockBagBloc extends Mock implements BagBloc {}
+
+class MockClient extends Mock implements Client {}
+
+class MockEndpointBag extends Mock implements EndpointBag {}
 
 void main() {
   late MockBagBloc mockBagBloc;
@@ -427,6 +433,94 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(tester.takeException(), isNull);
+    });
+  });
+
+  group('Story 4.3 - BagRacquetList navigation to RacquetDetailScreen', () {
+    testWidgets('tapping card in mobile list pushes RacquetDetailScreen', (
+      tester,
+    ) async {
+      final mockClient = MockClient();
+      final mockBag = MockEndpointBag();
+      when(() => mockClient.bag).thenReturn(mockBag);
+      when(() => mockBagBloc.client).thenReturn(mockClient);
+      when(() => mockBagBloc.state).thenReturn(
+        BagLoaded([
+          createRacquet(id: 7, name: 'Detail Nav Racquet', healthScore: 80),
+        ]),
+      );
+      when(() => mockBagBloc.stream).thenAnswer((_) => const Stream.empty());
+      when(
+        () => mockBag.getRestringHistory(racquetId: any(named: 'racquetId')),
+      ).thenAnswer((_) async => []);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: CourtMidnightTheme.themeData,
+          home: Scaffold(
+            body: BagRacquetList(
+              racquets: [
+                createRacquet(
+                  id: 7,
+                  name: 'Detail Nav Racquet',
+                  healthScore: 80,
+                ),
+              ],
+              bloc: mockBagBloc,
+              isMobile: true,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Detail Nav Racquet'), findsOneWidget);
+      await tester.tap(find.text('Detail Nav Racquet'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(RacquetDetailScreen), findsOneWidget);
+      expect(find.text('Overview'), findsOneWidget);
+      expect(find.text('History'), findsOneWidget);
+    });
+
+    testWidgets('tapping card in grid pushes RacquetDetailScreen', (
+      tester,
+    ) async {
+      final mockClient = MockClient();
+      final mockBag = MockEndpointBag();
+      when(() => mockClient.bag).thenReturn(mockBag);
+      when(() => mockBagBloc.client).thenReturn(mockClient);
+      when(() => mockBagBloc.state).thenReturn(
+        BagLoaded([
+          createRacquet(id: 8, name: 'Grid Nav Racquet', healthScore: 85),
+        ]),
+      );
+      when(() => mockBagBloc.stream).thenAnswer((_) => const Stream.empty());
+      when(
+        () => mockBag.getRestringHistory(racquetId: any(named: 'racquetId')),
+      ).thenAnswer((_) async => []);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: CourtMidnightTheme.themeData,
+          home: Scaffold(
+            body: BagRacquetList(
+              racquets: [
+                createRacquet(id: 8, name: 'Grid Nav Racquet', healthScore: 85),
+              ],
+              bloc: mockBagBloc,
+              isMobile: false,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Grid Nav Racquet'), findsOneWidget);
+      await tester.tap(find.text('Grid Nav Racquet'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(RacquetDetailScreen), findsOneWidget);
     });
   });
 }

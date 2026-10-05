@@ -6,6 +6,7 @@ fields:
   stringJobId: int, relation(parent=string_job, onDelete=Cascade)
   stringDescription: String
   materialCategory: StringMaterialCategory
+  installedTension: double?
   stringingDate: DateTime
   restringDate: DateTime
   finalCourtHours: double

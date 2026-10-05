@@ -185,6 +185,12 @@ class Protocol extends _is.DatabaseSerializationManager {
           dartType: 'protocol:StringMaterialCategory',
         ),
         _isp.ColumnDefinition(
+          name: 'installedTension',
+          columnType: _isp.ColumnType.doublePrecision,
+          isNullable: true,
+          dartType: 'double?',
+        ),
+        _isp.ColumnDefinition(
           name: 'stringingDate',
           columnType: _isp.ColumnType.timestampWithoutTimeZone,
           isNullable: false,

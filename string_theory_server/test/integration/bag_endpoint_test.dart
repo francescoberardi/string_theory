@@ -515,6 +515,7 @@ void main() {
           expect(event.stringJobId, equals(originalJobId));
           expect(event.stringDescription, equals('Luxilon ALU Power 125'));
           expect(event.materialCategory, equals(StringMaterialCategory.coPoly));
+          expect(event.installedTension, equals(52.0));
           expect(event.finalHealthScore, equals(oldJob.currentHealthScore));
           expect(event.finalCourtHours, equals(oldJob.totalCourtHours));
           expect(event.finalDaysActive, equals(40));

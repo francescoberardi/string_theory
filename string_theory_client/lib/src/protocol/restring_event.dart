@@ -22,6 +22,7 @@ abstract class RestringEvent
     required this.stringJobId,
     required this.stringDescription,
     required this.materialCategory,
+    this.installedTension,
     required this.stringingDate,
     required this.restringDate,
     required this.finalCourtHours,
@@ -37,6 +38,7 @@ abstract class RestringEvent
     required int stringJobId,
     required String stringDescription,
     required _i5v32zda.StringMaterialCategory materialCategory,
+    double? installedTension,
     required DateTime stringingDate,
     required DateTime restringDate,
     required double finalCourtHours,
@@ -55,6 +57,8 @@ abstract class RestringEvent
       materialCategory: _i5v32zda.StringMaterialCategory.fromJson(
         (jsonSerialization['materialCategory'] as String),
       ),
+      installedTension: (jsonSerialization['installedTension'] as num?)
+          ?.toDouble(),
       stringingDate: _isc.DateTimeJsonExtension.fromJson(
         jsonSerialization['stringingDate'],
       ),
@@ -85,6 +89,8 @@ abstract class RestringEvent
 
   _i5v32zda.StringMaterialCategory materialCategory;
 
+  double? installedTension;
+
   DateTime stringingDate;
 
   DateTime restringDate;
@@ -107,6 +113,7 @@ abstract class RestringEvent
     int? stringJobId,
     String? stringDescription,
     _i5v32zda.StringMaterialCategory? materialCategory,
+    double? installedTension,
     DateTime? stringingDate,
     DateTime? restringDate,
     double? finalCourtHours,
@@ -124,6 +131,7 @@ abstract class RestringEvent
       'stringJobId': stringJobId,
       'stringDescription': stringDescription,
       'materialCategory': materialCategory.toJson(),
+      if (installedTension != null) 'installedTension': installedTension,
       'stringingDate': stringingDate.toJson(),
       'restringDate': restringDate.toJson(),
       'finalCourtHours': finalCourtHours,
@@ -143,6 +151,7 @@ abstract class RestringEvent
       'stringJobId': stringJobId,
       'stringDescription': stringDescription,
       'materialCategory': materialCategory.toJson(),
+      if (installedTension != null) 'installedTension': installedTension,
       'stringingDate': stringingDate.toJson(),
       'restringDate': restringDate.toJson(),
       'finalCourtHours': finalCourtHours,
@@ -168,6 +177,7 @@ class _RestringEventImpl extends RestringEvent {
     required int stringJobId,
     required String stringDescription,
     required _i5v32zda.StringMaterialCategory materialCategory,
+    double? installedTension,
     required DateTime stringingDate,
     required DateTime restringDate,
     required double finalCourtHours,
@@ -181,6 +191,7 @@ class _RestringEventImpl extends RestringEvent {
          stringJobId: stringJobId,
          stringDescription: stringDescription,
          materialCategory: materialCategory,
+         installedTension: installedTension,
          stringingDate: stringingDate,
          restringDate: restringDate,
          finalCourtHours: finalCourtHours,
@@ -200,6 +211,7 @@ class _RestringEventImpl extends RestringEvent {
     int? stringJobId,
     String? stringDescription,
     _i5v32zda.StringMaterialCategory? materialCategory,
+    Object? installedTension = _Undefined,
     DateTime? stringingDate,
     DateTime? restringDate,
     double? finalCourtHours,
@@ -214,6 +226,9 @@ class _RestringEventImpl extends RestringEvent {
       stringJobId: stringJobId ?? this.stringJobId,
       stringDescription: stringDescription ?? this.stringDescription,
       materialCategory: materialCategory ?? this.materialCategory,
+      installedTension: installedTension is double?
+          ? installedTension
+          : this.installedTension,
       stringingDate: stringingDate ?? this.stringingDate,
       restringDate: restringDate ?? this.restringDate,
       finalCourtHours: finalCourtHours ?? this.finalCourtHours,

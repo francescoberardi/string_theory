@@ -84,3 +84,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-2-restrung-today-2-option-decision-sheet-toast-confirmation.md`
   summary: Make the tablet grid card height flexible instead of the fixed `gridCardExtent` so larger system text scales do not overflow.
   evidence: `BagRacquetList` uses a fixed `mainAxisExtent` (140 before, 176 now with the Restrung Today button); only default text scale is tested, and a large font or long name overflows the cell.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-3-racquet-detail-screen-restring-history-timeline-ui.md`
+  summary: Unconstrained wide-screen layout on tablet/desktop for RacquetDetailScreen.
+  evidence: On tablet/desktop viewports, stat cards and headers stretch to window bounds; deferred to Epic 5 (Story 5.1 Responsive Layout & Desktop Grid).

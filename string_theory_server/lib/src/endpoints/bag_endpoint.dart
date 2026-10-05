@@ -386,6 +386,7 @@ class BagEndpoint extends Endpoint {
         stringJobId: retiredJob.id!,
         stringDescription: _formatStringDescription(oldJob),
         materialCategory: oldJob.materialCategory,
+        installedTension: oldJob.installedTension,
         stringingDate: oldJob.stringingDate,
         restringDate: effectiveRestringDate,
         finalCourtHours: oldJob.totalCourtHours,

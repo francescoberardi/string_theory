@@ -2,7 +2,8 @@
 title: 'Story 4.3: Racquet Detail Screen & Restring History Timeline UI'
 type: 'feature'
 created: '2026-10-05'
-status: 'ready-for-dev'
+status: 'done'
+baseline_commit: 'c8865a90d6d52dad1d40db9381c4a50ec4c8839d'
 route: 'dispatch'
 review_loop_iteration: 0
 context:
@@ -64,13 +65,13 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `string_theory_server/lib/src/models/restring_event.spy.yaml`, `bag_endpoint.dart` -- Add `installedTension: double?`, generate code and migration, populate in `restringRacquet`.
-- [ ] `string_theory_server/test/integration/bag_endpoint_test.dart` -- Write failing test verifying `installedTension` on `RestringEvent` (red), run tests to turn green.
-- [ ] `string_theory_flutter/lib/widgets/timeline/restring_timeline_tile.dart` -- Implement timeline card widget with date range, stats, health badge, and tension badge.
-- [ ] `string_theory_flutter/lib/screens/racquet_detail_screen.dart` -- Implement `RacquetDetailScreen` with Overview and History tabs, real-time bloc reactivity, error & retry handling.
-- [ ] `string_theory_flutter/lib/widgets/bag/bag_racquet_list.dart` -- Connect `RacquetCard.onTap` to navigate to `RacquetDetailScreen`.
-- [ ] `string_theory_flutter/test/screens/racquet_detail_screen_test.dart` -- Widget tests covering overview specs, history timeline rendering, empty states, tab switching, error retry.
-- [ ] `_bmad-output/implementation-artifacts/sprint-status.yaml` -- Update story status to `review` during build and `done` upon completion.
+- [x] `string_theory_server/lib/src/models/restring_event.spy.yaml`, `bag_endpoint.dart` -- Add `installedTension: double?`, generate code and migration, populate in `restringRacquet`.
+- [x] `string_theory_server/test/integration/bag_endpoint_test.dart` -- Write failing test verifying `installedTension` on `RestringEvent` (red), run tests to turn green.
+- [x] `string_theory_flutter/lib/widgets/timeline/restring_timeline_tile.dart` -- Implement timeline card widget with date range, stats, health badge, and tension badge.
+- [x] `string_theory_flutter/lib/screens/racquet_detail_screen.dart` -- Implement `RacquetDetailScreen` with Overview and History tabs, real-time bloc reactivity, error & retry handling.
+- [x] `string_theory_flutter/lib/widgets/bag/bag_racquet_list.dart` -- Connect `RacquetCard.onTap` to navigate to `RacquetDetailScreen`.
+- [x] `string_theory_flutter/test/screens/racquet_detail_screen_test.dart` -- Widget tests covering overview specs, history timeline rendering, empty states, tab switching, error retry.
+- [x] `_bmad-output/implementation-artifacts/sprint-status.yaml` -- Update story status to `review` during build and `done` upon completion.
 
 **Acceptance Criteria:**
 - Given a user viewing their Virtual Bag, when tapping any racquet card, then the app navigates into `RacquetDetailScreen` showing the racquet name and Overview tab.
@@ -84,6 +85,29 @@ context:
 ## Spec Change Log
 
 ## Review Triage Log
+
+| Finding | Layer | Verdict | Route | Evidence / Notes |
+|---------|-------|---------|-------|------------------|
+| `RefreshIndicator` unmounts on pull-to-refresh when `_isLoadingHistory` is set true | Edge-Case Hunter | medium | patch | Setting `_isLoadingHistory = true` during refresh replaces the ListView with a center spinner, interrupting pull-to-refresh gesture. |
+| `widget.racquet.id == null` unchecked force-unwrap | Edge-Case / Blind Hunter | low | patch | Adding defensive guard prevents potential `Null check operator used on null value` in edge test harnesses. |
+| Potential `RenderFlex` overflow on timeline date text | Blind Hunter | medium | patch | Date range `Text` in tile header row unconstrained; wrapping in `Expanded` with ellipsis ensures safety on narrow devices or large fonts. |
+| Multi-year timeline date range missing year notation | Edge-Case / Blind Hunter | low | patch | Dates spanning calendar years omit year numbers; appending year when `start.year != end.year` prevents ambiguity. |
+| Verification gap: Tension decay estimator card unverified in tests | Verification Gap | medium | patch | Acceptance criteria specifies tension decay estimate display; asserting card and `calculateTensionLossText` output closes gap. |
+| Verification gap: Real-time `BagBloc` reactivity and history reload unverified | Verification Gap | medium | patch | `_onBagStateChanged` listener and `BlocConsumer` re-render untested; emitting `BagLoaded` with updated `activeStringJobId` verifies reload. |
+| Unstrung racquet empty state / CTA on Overview tab | Blind Hunter | low | rejected | In String Theory, racquets are created atomically with initial string jobs; unstrung racquet handling is outside Story 4.3 scope. |
+| `IntrinsicHeight` layout overhead in ListView | Blind Hunter | false | rejected | Standard Flutter idiom for timeline connector lines; stringbed history lists are short (<50 items) so no jank occurs. |
+| Connector line offset mismatch with card margin | Blind Hunter | false | rejected | Connector lines correctly align with node bullet indicators and card bounds. |
+| Tension decimal formatting consistency | Blind Hunter | low | rejected | Overview uses 0 decimals to match bag summary; History uses 1 decimal for precise historical tracking. |
+| Missing pull-to-refresh on Overview tab | Blind Hunter | low | rejected | Overview tab is real-time reactive via `BagBloc` stream; explicit pull-to-refresh unnecessary. |
+| Unconstrained wide-screen layout on tablet/desktop | Blind Hunter | low | defer | Responsive layout, NavigationRail, and desktop grid optimization belongs to Epic 5 (Story 5.1). |
+| AppBar styling consistency | Blind Hunter | low | rejected | Detail screen AppBar conforms to app-wide AppBarTheme. |
+| `late Client` fallback in `_resolveClient` | Blind Hunter | false | rejected | Production boots with initialized `client`; tests inject `widget.client` or `widget.bagBloc`. |
+| Missing static test keys for automation | Blind Hunter | low | patch | Added static keys for `restrungTodayButton`, `overviewTab`, `historyTab`, `retryButton`. |
+| Raw enum identifier in fallback string description | Blind Hunter | low | rejected | Pre-existing logic in `bag_endpoint.dart` from Story 4.1; not introduced in this story. |
+| Active string title fallback when brand/model empty | Edge-Case Hunter | low | rejected | Handled gracefully by falling back to category display name. |
+| Negative `maxRatedHours` clamp error | Edge-Case Hunter | false | rejected | `maxRatedHours` is validated positive at database and model creation time. |
+| Concurrent `_fetchHistory` race condition | Edge-Case Hunter | low | rejected | Only triggered on mount and state ID change, low concurrency risk. |
+
 
 ## Design Notes
 
