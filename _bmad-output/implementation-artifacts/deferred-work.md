@@ -69,3 +69,8 @@
 
 - Raw exception text (`'Failed to ...: $e'`) is surfaced verbatim in user-facing SnackBars/BagError across all `BagBloc` handlers (`string_theory_flutter/lib/bloc/bag_bloc.dart`). Map known failures (unstrung racquet, invalid duration, offline) to friendly messages and log the rest. Pre-existing pattern.
 - Detected workouts that cannot be opened immediately become unreachable: only `batch.first` of a multi-workout sync gets the sheet/Assign; detections arriving while an assignment sheet is open are skipped (Assign SnackBar expires under the modal barrier); detections arriving while the bag is loading never auto-open and Assign wrongly says "add a racquet" (`string_theory_flutter/lib/screens/virtual_bag_screen.dart:167`). Options: sequential queue drained on sheet close / bag load, or a pending-workouts list. Reason: out of scope for 3-4, handle in story 3.5.
+
+## Deferred from: code review of spec-4-1-serverpod-restringevent-schema-transactional-restring-endpoint.md (2026-10-05)
+
+- `resolveUserId` (`string_theory_server/lib/src/util/tenant_resolver.dart`) derives the `int` tenant id from `userIdentifier` by UUID mod 2^63-1 or an FNV-1a hash fallback, accepts negative integer strings, has no unit tests, and throws a domain `BagException` from a generic util. Pre-existing logic moved verbatim from `SessionEndpoint` in Story 4.1; collision odds are negligible. Revisit the identity-to-`userId` mapping when auth is reworked.
+- Add tests that another user's `bagUpdates` stream receives no `restrung` message from someone else's restring, and that a failed `postMessage` does not fail a committed restring (`string_theory_server/test/integration/bag_endpoint_test.dart` or `bag_stream_test.dart`). The success path is already verified.
