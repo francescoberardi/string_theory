@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-02-2026 17:45
-last_updated: 10-04-2026 22:17
+last_updated: 10-05-2026 12:00
 project: string_theory
 project_key: NOKEY
 tracking_system: file-system
@@ -64,8 +64,8 @@ development_status:
   3-5-offline-session-queue-with-auto-reconnection-sync: done
   epic-3-retrospective: done
 
-  epic-4: backlog
-  4-1-serverpod-restringevent-schema-transactional-restring-endpoi: backlog
+  epic-4: in-progress
+  4-1-serverpod-restringevent-schema-transactional-restring-endpoi: done
   4-2-restrung-today-2-option-decision-sheet-toast-confirmation: backlog
   4-3-racquet-detail-screen-restring-history-timeline-ui: backlog
   epic-4-retrospective: optional
@@ -124,7 +124,7 @@ action_items:
     epic: 3
     action: "Consolidate duplicated _resolveUserId logic from BagEndpoint and SessionEndpoint into a shared server utility"
     owner: "Amelia (Developer)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-10-04.md"
   - id: "epic-3-retro-item-2-map-raw-exceptions-in-bagbloc"
     epic: 3
