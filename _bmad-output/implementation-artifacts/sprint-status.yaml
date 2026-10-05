@@ -70,8 +70,8 @@ development_status:
   4-3-racquet-detail-screen-restring-history-timeline-ui: done
   epic-4-retrospective: done
 
-  epic-5: backlog
-  5-1-multi-platform-responsive-layout-navigationrail-desktop-grid: backlog
+  epic-5: in-progress
+  5-1-multi-platform-responsive-layout-navigationrail-desktop-grid: ready-for-dev
   5-2-keyboard-shortcuts-desktop-mouse-hover-states: backlog
   5-3-end-to-end-demo-script-verification-walkthrough: backlog
   5-4-patrol-headless-end-to-end-test-automation-in-ci: backlog
