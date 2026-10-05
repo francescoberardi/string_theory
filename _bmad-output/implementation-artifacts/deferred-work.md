@@ -80,3 +80,7 @@
 - `SessionsPlaceholder` still tells users "Session logging & Apple Health sync coming soon in Epic 2." (`string_theory_flutter/lib/widgets/bag/sessions_placeholder.dart:46`). It exposes internal planning vocabulary and is stale now that session logging has shipped. Pre-existing copy moved verbatim; replace it with real copy or a real Sessions screen.
 - The Bag/Sessions/Account destinations are defined twice, in `BagBottomNav` and `BagNavigationRail`, and the tab index order is implicit. Adding a tab (likely in Epic 5) means editing both and keeping indices aligned with `_onNavigationTapped`. Pre-existing duplication; extract a shared destinations constant when a tab is added.
 - Info SnackBar icon (`cloud_off_outlined` for pending sync vs `cloud_done_outlined`) and error SnackBar `healthCritical` background are not asserted (`string_theory_flutter/lib/widgets/bag/bag_snack_bars.dart`). Visual-only; message text is already verified in `test/virtual_bag_screen_test.dart`.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-2-restrung-today-2-option-decision-sheet-toast-confirmation.md`
+  summary: Make the tablet grid card height flexible instead of the fixed `gridCardExtent` so larger system text scales do not overflow.
+  evidence: `BagRacquetList` uses a fixed `mainAxisExtent` (140 before, 176 now with the Restrung Today button); only default text scale is tested, and a large font or long name overflows the cell.
