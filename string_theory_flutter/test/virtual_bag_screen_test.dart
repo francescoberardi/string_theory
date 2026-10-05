@@ -238,14 +238,15 @@ void main() {
         // Bottom navigation bar is visible on mobile
         expect(find.byKey(VirtualBagScreen.keyBottomNav), findsOneWidget);
         expect(find.byKey(VirtualBagScreen.keyNavigationRail), findsNothing);
+        expect(find.byKey(VirtualBagScreen.keyNavigationDrawer), findsNothing);
       },
     );
 
     testWidgets(
-      '[P0] AC-5 should display adaptive 2-column grid with NavigationRail on tablet/desktop screen width (>=600dp)',
+      '[P0] AC-5 should display adaptive 2-column grid with NavigationRail on tablet screen width (600–1024dp)',
       (tester) async {
-        // Configure tablet screen size (e.g. 900 x 1200)
-        tester.view.physicalSize = const Size(900, 1200);
+        // Configure tablet screen size (e.g. 800 x 1000)
+        tester.view.physicalSize = const Size(800, 1000);
         tester.view.devicePixelRatio = 1.0;
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);
@@ -264,20 +265,72 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        // Criterion-defining primary assertion: 2-column grid is rendered on tablet/desktop
+        // Criterion-defining primary assertion: 2-column grid is rendered on tablet
         expect(
           find.byKey(VirtualBagScreen.keyRacquetGrid),
           findsOneWidget,
-          reason:
-              'Tablet/desktop screen must render racquets in a multi-column grid',
+          reason: 'Tablet screen must render racquets in a multi-column grid',
         );
 
         expect(find.byType(RacquetCard), findsNWidgets(sampleRacquets.length));
         expect(find.text('Wilson Blade 98'), findsOneWidget);
 
-        // NavigationRail is visible on tablet/desktop
+        // NavigationRail is visible on tablet
         expect(find.byKey(VirtualBagScreen.keyNavigationRail), findsOneWidget);
         expect(find.byKey(VirtualBagScreen.keyBottomNav), findsNothing);
+        expect(find.byKey(VirtualBagScreen.keyNavigationDrawer), findsNothing);
+
+        final grid = tester.widget<GridView>(
+          find.byKey(VirtualBagScreen.keyRacquetGrid),
+        );
+        final delegate =
+            grid.gridDelegate as SliverGridDelegateWithFixedCrossAxisCount;
+        expect(delegate.crossAxisCount, 2);
+      },
+    );
+
+    testWidgets(
+      '[P0] AC-6 should display persistent NavigationDrawer with 3-column grid on desktop/web screen width (>1024dp)',
+      (tester) async {
+        // Configure desktop screen size (e.g. 1280 x 900)
+        tester.view.physicalSize = const Size(1280, 900);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        when(() => mockBagBloc.state).thenReturn(BagLoaded(sampleRacquets));
+        when(() => mockBagBloc.stream).thenAnswer((_) => const Stream.empty());
+
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: CourtMidnightTheme.themeData,
+            home: VirtualBagScreen(
+              bagBloc: mockBagBloc,
+              healthSyncService: fakeHealth,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Persistent NavigationDrawer is visible on desktop (>1024dp)
+        expect(
+          find.byKey(VirtualBagScreen.keyNavigationDrawer),
+          findsOneWidget,
+        );
+        expect(find.byKey(VirtualBagScreen.keyNavigationRail), findsNothing);
+        expect(find.byKey(VirtualBagScreen.keyBottomNav), findsNothing);
+
+        // Header branding
+        expect(find.text('STRING THEORY'), findsOneWidget);
+
+        // 3-column grid is rendered
+        expect(find.byKey(VirtualBagScreen.keyRacquetGrid), findsOneWidget);
+        final grid = tester.widget<GridView>(
+          find.byKey(VirtualBagScreen.keyRacquetGrid),
+        );
+        final delegate =
+            grid.gridDelegate as SliverGridDelegateWithFixedCrossAxisCount;
+        expect(delegate.crossAxisCount, 3);
       },
     );
 
@@ -1138,4 +1191,162 @@ void main() {
       },
     );
   });
+
+  group(
+    'Story 5.1: Multi-Platform Responsive Layout (NavigationRail & Desktop Grid)',
+    () {
+      testWidgets(
+        'navigation drawer switches between Bag and Sessions placeholder',
+        (tester) async {
+          tester.view.physicalSize = const Size(1280, 900);
+          tester.view.devicePixelRatio = 1.0;
+          addTearDown(tester.view.resetPhysicalSize);
+          addTearDown(tester.view.resetDevicePixelRatio);
+
+          when(() => mockBagBloc.state).thenReturn(BagLoaded(sampleRacquets));
+          when(
+            () => mockBagBloc.stream,
+          ).thenAnswer((_) => const Stream.empty());
+
+          await tester.pumpWidget(
+            MaterialApp(
+              theme: CourtMidnightTheme.themeData,
+              home: VirtualBagScreen(
+                bagBloc: mockBagBloc,
+                healthSyncService: fakeHealth,
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+
+          final drawer = find.byKey(VirtualBagScreen.keyNavigationDrawer);
+          expect(find.text('COURT SESSIONS'), findsNothing);
+          expect(find.byKey(VirtualBagScreen.keyRacquetGrid), findsOneWidget);
+
+          await tester.tap(
+            find.descendant(of: drawer, matching: find.text('Sessions')),
+          );
+          await tester.pumpAndSettle();
+
+          expect(find.text('COURT SESSIONS'), findsOneWidget);
+          expect(find.byKey(VirtualBagScreen.keyRacquetGrid), findsNothing);
+
+          await tester.tap(
+            find.descendant(of: drawer, matching: find.text('Bag')),
+          );
+          await tester.pumpAndSettle();
+
+          expect(find.text('COURT SESSIONS'), findsNothing);
+          expect(find.byKey(VirtualBagScreen.keyRacquetGrid), findsOneWidget);
+        },
+      );
+
+      testWidgets(
+        'dynamic resize between mobile, tablet, and desktop preserves tab selection',
+        (tester) async {
+          // Start on desktop
+          tester.view.physicalSize = const Size(1280, 900);
+          tester.view.devicePixelRatio = 1.0;
+          addTearDown(tester.view.resetPhysicalSize);
+          addTearDown(tester.view.resetDevicePixelRatio);
+
+          when(() => mockBagBloc.state).thenReturn(BagLoaded(sampleRacquets));
+          when(
+            () => mockBagBloc.stream,
+          ).thenAnswer((_) => const Stream.empty());
+
+          await tester.pumpWidget(
+            MaterialApp(
+              theme: CourtMidnightTheme.themeData,
+              home: VirtualBagScreen(
+                bagBloc: mockBagBloc,
+                healthSyncService: fakeHealth,
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+
+          // Switch to Sessions tab on desktop
+          await tester.tap(
+            find.descendant(
+              of: find.byKey(VirtualBagScreen.keyNavigationDrawer),
+              matching: find.text('Sessions'),
+            ),
+          );
+          await tester.pumpAndSettle();
+          expect(find.text('COURT SESSIONS'), findsOneWidget);
+
+          // Resize to tablet (800dp)
+          tester.view.physicalSize = const Size(800, 1000);
+          await tester.pumpAndSettle();
+
+          expect(
+            find.byKey(VirtualBagScreen.keyNavigationRail),
+            findsOneWidget,
+          );
+          expect(
+            find.byKey(VirtualBagScreen.keyNavigationDrawer),
+            findsNothing,
+          );
+          expect(find.text('COURT SESSIONS'), findsOneWidget);
+
+          // Resize to mobile (400dp)
+          tester.view.physicalSize = const Size(400, 800);
+          await tester.pumpAndSettle();
+
+          expect(find.byKey(VirtualBagScreen.keyBottomNav), findsOneWidget);
+          expect(find.byKey(VirtualBagScreen.keyNavigationRail), findsNothing);
+          expect(find.text('COURT SESSIONS'), findsOneWidget);
+        },
+      );
+
+      testWidgets(
+        'renders centered empty state across all 3 tiers (mobile, tablet, desktop)',
+        (tester) async {
+          when(() => mockBagBloc.state).thenReturn(const BagLoaded([]));
+          when(
+            () => mockBagBloc.stream,
+          ).thenAnswer((_) => const Stream.empty());
+
+          // Desktop
+          tester.view.physicalSize = const Size(1280, 900);
+          tester.view.devicePixelRatio = 1.0;
+          addTearDown(tester.view.resetPhysicalSize);
+          addTearDown(tester.view.resetDevicePixelRatio);
+
+          await tester.pumpWidget(
+            MaterialApp(
+              theme: CourtMidnightTheme.themeData,
+              home: VirtualBagScreen(
+                bagBloc: mockBagBloc,
+                healthSyncService: fakeHealth,
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+
+          expect(
+            find.byKey(VirtualBagScreen.keyNavigationDrawer),
+            findsOneWidget,
+          );
+          expect(find.byKey(VirtualBagScreen.keyEmptyState), findsOneWidget);
+
+          // Tablet
+          tester.view.physicalSize = const Size(800, 1000);
+          await tester.pumpAndSettle();
+          expect(
+            find.byKey(VirtualBagScreen.keyNavigationRail),
+            findsOneWidget,
+          );
+          expect(find.byKey(VirtualBagScreen.keyEmptyState), findsOneWidget);
+
+          // Mobile
+          tester.view.physicalSize = const Size(400, 800);
+          await tester.pumpAndSettle();
+          expect(find.byKey(VirtualBagScreen.keyBottomNav), findsOneWidget);
+          expect(find.byKey(VirtualBagScreen.keyEmptyState), findsOneWidget);
+        },
+      );
+    },
+  );
 }

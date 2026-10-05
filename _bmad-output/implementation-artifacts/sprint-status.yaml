@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-02-2026 17:45
-last_updated: 10-05-2026 14:33
+last_updated: 10-05-2026 15:42
 project: string_theory
 project_key: NOKEY
 tracking_system: file-system
@@ -71,7 +71,7 @@ development_status:
   epic-4-retrospective: done
 
   epic-5: in-progress
-  5-1-multi-platform-responsive-layout-navigationrail-desktop-grid: ready-for-dev
+  5-1-multi-platform-responsive-layout-navigationrail-desktop-grid: review
   5-2-keyboard-shortcuts-desktop-mouse-hover-states: backlog
   5-3-end-to-end-demo-script-verification-walkthrough: backlog
   5-4-patrol-headless-end-to-end-test-automation-in-ci: backlog

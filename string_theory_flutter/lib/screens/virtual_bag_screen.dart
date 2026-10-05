@@ -14,6 +14,7 @@ import '../widgets/bag/bag_bottom_nav.dart';
 import '../widgets/bag/bag_empty_state.dart';
 import '../widgets/bag/bag_error_view.dart';
 import '../widgets/bag/bag_loading_indicator.dart';
+import '../widgets/bag/bag_navigation_drawer.dart';
 import '../widgets/bag/bag_navigation_rail.dart';
 import '../widgets/bag/bag_racquet_list.dart';
 import '../widgets/bag/bag_snack_bars.dart';
@@ -26,6 +27,9 @@ import 'settings_screen.dart';
 
 export '../widgets/racquet_card.dart';
 
+const double kMobileBreakpoint = VirtualBagScreen.kMobileBreakpoint;
+const double kDesktopBreakpoint = VirtualBagScreen.kDesktopBreakpoint;
+
 /// Screen displaying the virtual gear bag with responsive mobile/tablet layout
 /// and an empty state demo bag seeder (Story 1.5).
 class VirtualBagScreen extends StatefulWidget {
@@ -36,6 +40,9 @@ class VirtualBagScreen extends StatefulWidget {
 
   const VirtualBagScreen({super.key, this.bagBloc, this.healthSyncService});
 
+  static const double kMobileBreakpoint = 600.0;
+  static const double kDesktopBreakpoint = 1024.0;
+
   static const keyEmptyState = BagEmptyState.keyEmptyState;
   static const keyEmptyAddButton = BagEmptyState.keyEmptyAddButton;
   static const keyLoadSampleBagButton = BagEmptyState.keyLoadSampleBagButton;
@@ -43,6 +50,7 @@ class VirtualBagScreen extends StatefulWidget {
   static const keyRacquetGrid = BagRacquetList.keyRacquetGrid;
   static const keyBottomNav = BagBottomNav.keyBottomNav;
   static const keyNavigationRail = BagNavigationRail.keyNavigationRail;
+  static const keyNavigationDrawer = BagNavigationDrawer.keyNavigationDrawer;
   static const keyLoadingIndicator = BagLoadingIndicator.keyLoadingIndicator;
   static const keySimulateWorkoutBadge =
       SimulateWorkoutBadge.keySimulateWorkoutBadge;
@@ -214,7 +222,10 @@ class _VirtualBagScreenState extends State<VirtualBagScreen> {
   @override
   Widget build(BuildContext context) {
     final effectiveBloc = widget.bagBloc ?? context.read<BagBloc>();
-    final isMobile = MediaQuery.sizeOf(context).width < 600;
+    final width = MediaQuery.sizeOf(context).width;
+    final isMobile = width < VirtualBagScreen.kMobileBreakpoint;
+    final isDesktop = width > VirtualBagScreen.kDesktopBreakpoint;
+    final crossAxisCount = isDesktop ? 3 : 2;
 
     return BlocConsumer<BagBloc, BagState>(
       bloc: effectiveBloc,
@@ -243,7 +254,7 @@ class _VirtualBagScreenState extends State<VirtualBagScreen> {
       builder: (context, state) {
         final content = _navIndex == 1
             ? const SessionsPlaceholder()
-            : _buildBodyForState(context, state, isMobile);
+            : _buildBodyForState(context, state, isMobile, crossAxisCount);
 
         if (isMobile) {
           return Scaffold(
@@ -257,7 +268,26 @@ class _VirtualBagScreenState extends State<VirtualBagScreen> {
           );
         }
 
-        // Tablet / Desktop layout (>=600dp)
+        if (isDesktop) {
+          return Scaffold(
+            backgroundColor: CourtMidnightTheme.background,
+            body: SafeArea(
+              child: Row(
+                children: [
+                  BagNavigationDrawer(
+                    selectedIndex: _navIndex,
+                    onDestinationSelected: (index) =>
+                        _onNavigationTapped(context, index),
+                  ),
+                  Expanded(child: content),
+                ],
+              ),
+            ),
+            floatingActionButton: _buildFab(context, state),
+          );
+        }
+
+        // Tablet layout (600dp <= width <= 1024dp)
         return Scaffold(
           backgroundColor: CourtMidnightTheme.background,
           body: SafeArea(
@@ -334,6 +364,7 @@ class _VirtualBagScreenState extends State<VirtualBagScreen> {
     BuildContext context,
     BagState state,
     bool isMobile,
+    int crossAxisCount,
   ) {
     if (state is BagError) {
       return BagErrorView(
@@ -356,6 +387,7 @@ class _VirtualBagScreenState extends State<VirtualBagScreen> {
               racquets: state.racquets,
               bloc: _resolveBloc(context),
               isMobile: isMobile,
+              crossAxisCount: crossAxisCount,
             );
       if (state.pendingSyncCount <= 0) return body;
       return Column(
