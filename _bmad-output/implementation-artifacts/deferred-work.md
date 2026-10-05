@@ -74,3 +74,9 @@
 
 - `resolveUserId` (`string_theory_server/lib/src/util/tenant_resolver.dart`) derives the `int` tenant id from `userIdentifier` by UUID mod 2^63-1 or an FNV-1a hash fallback, accepts negative integer strings, has no unit tests, and throws a domain `BagException` from a generic util. Pre-existing logic moved verbatim from `SessionEndpoint` in Story 4.1; collision odds are negligible. Revisit the identity-to-`userId` mapping when auth is reworked.
 - Add tests that another user's `bagUpdates` stream receives no `restrung` message from someone else's restring, and that a failed `postMessage` does not fail a committed restring (`string_theory_server/test/integration/bag_endpoint_test.dart` or `bag_stream_test.dart`). The success path is already verified.
+
+## Deferred from: code review of spec-epic-3-retro-3-decompose-virtualbagscreen-and-assignmentsheet.md (2026-10-05)
+
+- `SessionsPlaceholder` still tells users "Session logging & Apple Health sync coming soon in Epic 2." (`string_theory_flutter/lib/widgets/bag/sessions_placeholder.dart:46`). It exposes internal planning vocabulary and is stale now that session logging has shipped. Pre-existing copy moved verbatim; replace it with real copy or a real Sessions screen.
+- The Bag/Sessions/Account destinations are defined twice, in `BagBottomNav` and `BagNavigationRail`, and the tab index order is implicit. Adding a tab (likely in Epic 5) means editing both and keeping indices aligned with `_onNavigationTapped`. Pre-existing duplication; extract a shared destinations constant when a tab is added.
+- Info SnackBar icon (`cloud_off_outlined` for pending sync vs `cloud_done_outlined`) and error SnackBar `healthCritical` background are not asserted (`string_theory_flutter/lib/widgets/bag/bag_snack_bars.dart`). Visual-only; message text is already verified in `test/virtual_bag_screen_test.dart`.
