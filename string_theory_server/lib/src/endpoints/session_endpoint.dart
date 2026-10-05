@@ -2,6 +2,7 @@ import 'package:serverpod/serverpod.dart';
 import '../domain/decay_engine.dart';
 import '../generated/protocol.dart';
 import '../messaging/bag_channels.dart';
+import '../util/tenant_resolver.dart';
 
 /// Endpoint for recording tennis match/practice sessions,
 /// incrementing stringbed court hours, and recalculating health scores.
@@ -9,39 +10,10 @@ class SessionEndpoint extends Endpoint {
   @override
   bool get requireLogin => true;
 
-  int _resolveUserId(Session session) {
-    final authInfo = session.authenticated;
-    if (authInfo == null) {
-      throw BagException(
-        message: 'User is not authenticated',
-        statusCode: 401,
-      );
-    }
-    final parsed = int.tryParse(authInfo.userIdentifier);
-    if (parsed != null) {
-      return parsed;
-    }
-
-    // Deterministic resolution for UUID userIdentifier strings across server restarts
-    final cleanHex = authInfo.userIdentifier.replaceAll('-', '');
-    final bigIntVal = BigInt.tryParse(cleanHex, radix: 16);
-    if (bigIntVal != null) {
-      return (bigIntVal.remainder(BigInt.from(0x7FFFFFFFFFFFFFFF))).toInt();
-    }
-
-    // Deterministic 64-bit FNV-1a hash fallback for non-UUID strings
-    var hash = BigInt.parse('0xcbf29ce484222325');
-    final prime = BigInt.parse('0x100000001b3');
-    for (final byte in authInfo.userIdentifier.codeUnits) {
-      hash = (hash ^ BigInt.from(byte)) * prime;
-    }
-    return (hash.remainder(BigInt.from(0x7FFFFFFFFFFFFFFF))).abs().toInt();
-  }
-
   /// Records a new playing session, updating the active stringbed court hours
   /// and health score idempotently.
   Future<SessionLog> logSession(Session session, SessionLog log) async {
-    final userId = _resolveUserId(session);
+    final userId = resolveUserId(session);
 
     if (log.durationMinutes <= 0) {
       throw BagException(
@@ -255,7 +227,7 @@ class SessionEndpoint extends Endpoint {
     int? limit,
     int? offset,
   }) async {
-    final userId = _resolveUserId(session);
+    final userId = resolveUserId(session);
 
     if ((limit != null && limit < 0) || (offset != null && offset < 0)) {
       throw BagException(

@@ -3,45 +3,17 @@ import '../domain/decay_engine.dart';
 import '../future_calls/daily_decay_future_call.dart';
 import '../generated/protocol.dart';
 import '../messaging/bag_channels.dart';
+import '../util/tenant_resolver.dart';
 
 /// Endpoint for managing virtual gear bags, racquets, and string setups.
 class BagEndpoint extends Endpoint {
   @override
   bool get requireLogin => true;
 
-  int _resolveUserId(Session session) {
-    final authInfo = session.authenticated;
-    if (authInfo == null) {
-      throw BagException(
-        message: 'User is not authenticated',
-        statusCode: 401,
-      );
-    }
-    final parsed = int.tryParse(authInfo.userIdentifier);
-    if (parsed != null) {
-      return parsed;
-    }
-
-    // Deterministic resolution for UUID userIdentifier strings across server restarts
-    final cleanHex = authInfo.userIdentifier.replaceAll('-', '');
-    final bigIntVal = BigInt.tryParse(cleanHex, radix: 16);
-    if (bigIntVal != null) {
-      return (bigIntVal.remainder(BigInt.from(0x7FFFFFFFFFFFFFFF))).toInt();
-    }
-
-    // Deterministic 64-bit FNV-1a hash fallback for non-UUID strings
-    var hash = BigInt.parse('0xcbf29ce484222325');
-    final prime = BigInt.parse('0x100000001b3');
-    for (final byte in authInfo.userIdentifier.codeUnits) {
-      hash = (hash ^ BigInt.from(byte)) * prime;
-    }
-    return (hash.remainder(BigInt.from(0x7FFFFFFFFFFFFFFF))).abs().toInt();
-  }
-
   /// Returns all racquets in the virtual bag owned by the authenticated user,
   /// eagerly loading each racquet's active string job.
   Future<List<Racquet>> getVirtualBag(Session session) async {
-    final userId = _resolveUserId(session);
+    final userId = resolveUserId(session);
     return await Racquet.db.find(
       session,
       where: (t) => t.userId.equals(userId),
@@ -55,7 +27,7 @@ class BagEndpoint extends Endpoint {
   /// Streams real-time [BagStreamMessage] updates for the authenticated
   /// user's bag from channel `user_{userId}_bag`.
   Stream<BagStreamMessage> bagUpdates(Session session) {
-    final userId = _resolveUserId(session);
+    final userId = resolveUserId(session);
     return session.messages.createStream<BagStreamMessage>(
       BagChannels.forUser(userId),
     );
@@ -84,7 +56,7 @@ class BagEndpoint extends Endpoint {
       );
     }
 
-    final userId = _resolveUserId(session);
+    final userId = resolveUserId(session);
     final now = DateTime.now().toUtc();
     final effectiveIsPrimary = isPrimary ?? false;
     final effectiveCategory = materialCategory ?? StringMaterialCategory.coPoly;
@@ -163,7 +135,7 @@ class BagEndpoint extends Endpoint {
     Session session, {
     required int racquetId,
   }) async {
-    final userId = _resolveUserId(session);
+    final userId = resolveUserId(session);
     final now = DateTime.now().toUtc();
 
     return await session.db.transaction((tx) async {
@@ -217,7 +189,7 @@ class BagEndpoint extends Endpoint {
     Session session, {
     required int racquetId,
   }) async {
-    final userId = _resolveUserId(session);
+    final userId = resolveUserId(session);
 
     return await session.db.transaction((tx) async {
       final target = await Racquet.db.findById(
@@ -243,7 +215,7 @@ class BagEndpoint extends Endpoint {
   /// Intended for on-demand developer/judge demonstration of background decay.
   /// Returns the number of [StringJob] records updated.
   Future<int> triggerDailyDecayNow(Session session) async {
-    _resolveUserId(session);
+    resolveUserId(session);
     return await DailyDecayService.performDecayCalculation(session);
   }
 
@@ -257,7 +229,7 @@ class BagEndpoint extends Endpoint {
     required int racquetId,
     int? days,
   }) async {
-    final userId = _resolveUserId(session);
+    final userId = resolveUserId(session);
     final effectiveDays = days ?? 30;
     if (effectiveDays <= 0) {
       throw BagException(
