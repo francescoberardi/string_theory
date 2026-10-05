@@ -2,14 +2,25 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:string_theory_client/string_theory_client.dart';
 
 import '../bloc/bag_bloc.dart';
+import '../domain/workout_formatting.dart' as formatting;
 import '../services/health/health_sync_service.dart';
 import '../theme/court_midnight_theme.dart';
 import '../widgets/add_racquet_modal.dart';
-import '../widgets/racquet_card.dart';
+import '../widgets/bag/add_racquet_fab.dart';
+import '../widgets/bag/bag_bottom_nav.dart';
+import '../widgets/bag/bag_empty_state.dart';
+import '../widgets/bag/bag_error_view.dart';
+import '../widgets/bag/bag_loading_indicator.dart';
+import '../widgets/bag/bag_navigation_rail.dart';
+import '../widgets/bag/bag_racquet_list.dart';
+import '../widgets/bag/bag_snack_bars.dart';
+import '../widgets/bag/log_session_fab.dart';
+import '../widgets/bag/pending_sync_banner.dart';
+import '../widgets/bag/sessions_placeholder.dart';
+import '../widgets/bag/simulate_workout_badge.dart';
 import '../widgets/workout_assignment_sheet.dart';
 import 'settings_screen.dart';
 
@@ -25,30 +36,22 @@ class VirtualBagScreen extends StatefulWidget {
 
   const VirtualBagScreen({super.key, this.bagBloc, this.healthSyncService});
 
-  static const keyEmptyState = Key('virtual_bag_empty_state');
-  static const keyEmptyAddButton = Key('virtual_bag_empty_add_button');
-  static const keyLoadSampleBagButton = Key(
-    'virtual_bag_load_sample_bag_button',
-  );
-  static const keyRacquetList = Key('virtual_bag_racquet_list');
-  static const keyRacquetGrid = Key('virtual_bag_racquet_grid');
-  static const keyBottomNav = Key('virtual_bag_bottom_nav');
-  static const keyNavigationRail = Key('virtual_bag_navigation_rail');
-  static const keyLoadingIndicator = Key('virtual_bag_loading_indicator');
-  static const keySimulateWorkoutBadge = Key(
-    'virtual_bag_simulate_workout_badge',
-  );
-  static const keyLogSessionFab = Key('virtual_bag_fab_log_session');
-  static const keyPendingSyncBanner = Key('virtual_bag_pending_sync_banner');
+  static const keyEmptyState = BagEmptyState.keyEmptyState;
+  static const keyEmptyAddButton = BagEmptyState.keyEmptyAddButton;
+  static const keyLoadSampleBagButton = BagEmptyState.keyLoadSampleBagButton;
+  static const keyRacquetList = BagRacquetList.keyRacquetList;
+  static const keyRacquetGrid = BagRacquetList.keyRacquetGrid;
+  static const keyBottomNav = BagBottomNav.keyBottomNav;
+  static const keyNavigationRail = BagNavigationRail.keyNavigationRail;
+  static const keyLoadingIndicator = BagLoadingIndicator.keyLoadingIndicator;
+  static const keySimulateWorkoutBadge =
+      SimulateWorkoutBadge.keySimulateWorkoutBadge;
+  static const keyLogSessionFab = LogSessionFab.keyLogSessionFab;
+  static const keyPendingSyncBanner = PendingSyncBanner.keyPendingSyncBanner;
 
   /// Formats a workout duration as e.g. `1h 30m`, `2h` or `45m`.
-  static String formatWorkoutDuration(int minutes) {
-    final hours = minutes ~/ 60;
-    final rest = minutes % 60;
-    if (hours == 0) return '${rest}m';
-    if (rest == 0) return '${hours}h';
-    return '${hours}h ${rest}m';
-  }
+  static String formatWorkoutDuration(int minutes) =>
+      formatting.formatWorkoutDuration(minutes);
 
   @override
   State<VirtualBagScreen> createState() => _VirtualBagScreenState();
@@ -153,7 +156,7 @@ class _VirtualBagScreenState extends State<VirtualBagScreen> {
 
     final message = switch (batch) {
       [final workout] =>
-        '${VirtualBagScreen.formatWorkoutDuration(workout.durationMinutes)} '
+        '${formatting.formatWorkoutDuration(workout.durationMinutes)} '
             'Tennis Match Detected',
       _ => '${batch.length} Tennis Matches Detected',
     };
@@ -176,47 +179,21 @@ class _VirtualBagScreenState extends State<VirtualBagScreen> {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
-        SnackBar(
-          backgroundColor: CourtMidnightTheme.surface,
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 4),
-          persist: false,
-          action: SnackBarAction(
-            label: 'Assign',
-            textColor: CourtMidnightTheme.primaryVolt,
-            onPressed: () {
-              // The SnackBar can outlive this screen.
-              if (!mounted) return;
-              ScaffoldMessenger.of(context).hideCurrentSnackBar();
-              if (_isAssignmentSheetOpen) return;
-              final bloc = _resolveBloc(context);
-              final activeState = bloc.state;
-              _openDetectedAssignmentSheet(
-                batch.first,
-                activeState is BagLoaded ? activeState.racquets : <Racquet>[],
-                bloc,
-              );
-            },
-          ),
-          content: Row(
-            children: [
-              const Icon(
-                Icons.sports_tennis,
-                color: CourtMidnightTheme.primaryVolt,
-                size: 20,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  message,
-                  style: GoogleFonts.inter(
-                    color: CourtMidnightTheme.textPrimary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
+        buildDetectionSnackBar(
+          message: message,
+          onAssign: () {
+            // The SnackBar can outlive this screen.
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            if (_isAssignmentSheetOpen) return;
+            final bloc = _resolveBloc(context);
+            final activeState = bloc.state;
+            _openDetectedAssignmentSheet(
+              batch.first,
+              activeState is BagLoaded ? activeState.racquets : <Racquet>[],
+              bloc,
+            );
+          },
         ),
       );
   }
@@ -246,77 +223,30 @@ class _VirtualBagScreenState extends State<VirtualBagScreen> {
           ScaffoldMessenger.of(context)
             ..hideCurrentSnackBar()
             ..showSnackBar(
-              SnackBar(
-                backgroundColor: CourtMidnightTheme.surface,
-                behavior: SnackBarBehavior.floating,
-                content: Row(
-                  children: [
-                    Icon(
-                      state.pendingSyncCount > 0
-                          ? Icons.cloud_off_outlined
-                          : Icons.cloud_done_outlined,
-                      color: CourtMidnightTheme.primaryVolt,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        state.infoMessage!,
-                        style: GoogleFonts.inter(
-                          color: CourtMidnightTheme.textPrimary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+              buildInfoSnackBar(
+                message: state.infoMessage!,
+                hasPendingSync: state.pendingSyncCount > 0,
               ),
             );
         }
         if (state is BagLoaded && state.errorMessage != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              backgroundColor: CourtMidnightTheme.healthCritical,
-              behavior: SnackBarBehavior.floating,
-              content: Text(
-                state.errorMessage!,
-                style: GoogleFonts.inter(color: Colors.white),
-              ),
-            ),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(buildErrorSnackBar(state.errorMessage!));
         }
       },
       builder: (context, state) {
         final content = _navIndex == 1
-            ? _buildSessionsPlaceholder()
+            ? const SessionsPlaceholder()
             : _buildBodyForState(context, state, isMobile);
 
         if (isMobile) {
           return Scaffold(
             backgroundColor: CourtMidnightTheme.background,
             body: SafeArea(child: content),
-            bottomNavigationBar: BottomNavigationBar(
-              key: VirtualBagScreen.keyBottomNav,
-              type: BottomNavigationBarType.fixed,
-              backgroundColor: CourtMidnightTheme.surface,
-              selectedItemColor: CourtMidnightTheme.primaryVolt,
-              unselectedItemColor: CourtMidnightTheme.textSecondary,
+            bottomNavigationBar: BagBottomNav(
               currentIndex: _navIndex,
               onTap: (index) => _onNavigationTapped(context, index),
-              items: const [
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.sports_tennis),
-                  label: 'Bag',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.history),
-                  label: 'Sessions',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.manage_accounts_outlined),
-                  label: 'Account',
-                ),
-              ],
             ),
             floatingActionButton: _buildFab(context, state),
           );
@@ -328,41 +258,10 @@ class _VirtualBagScreenState extends State<VirtualBagScreen> {
           body: SafeArea(
             child: Row(
               children: [
-                NavigationRail(
-                  key: VirtualBagScreen.keyNavigationRail,
-                  backgroundColor: CourtMidnightTheme.surface,
+                BagNavigationRail(
                   selectedIndex: _navIndex,
                   onDestinationSelected: (index) =>
                       _onNavigationTapped(context, index),
-                  labelType: NavigationRailLabelType.all,
-                  selectedIconTheme: const IconThemeData(
-                    color: CourtMidnightTheme.primaryVolt,
-                  ),
-                  selectedLabelTextStyle: GoogleFonts.barlowCondensed(
-                    color: CourtMidnightTheme.primaryVolt,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  unselectedIconTheme: const IconThemeData(
-                    color: CourtMidnightTheme.textSecondary,
-                  ),
-                  unselectedLabelTextStyle: GoogleFonts.inter(
-                    color: CourtMidnightTheme.textSecondary,
-                    fontSize: 12,
-                  ),
-                  destinations: const [
-                    NavigationRailDestination(
-                      icon: Icon(Icons.sports_tennis),
-                      label: Text('Bag'),
-                    ),
-                    NavigationRailDestination(
-                      icon: Icon(Icons.history),
-                      label: Text('Sessions'),
-                    ),
-                    NavigationRailDestination(
-                      icon: Icon(Icons.manage_accounts_outlined),
-                      label: Text('Account'),
-                    ),
-                  ],
                 ),
                 const VerticalDivider(
                   width: 1,
@@ -393,67 +292,29 @@ class _VirtualBagScreenState extends State<VirtualBagScreen> {
     }
   }
 
-  Widget _buildSessionsPlaceholder() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 76,
-              height: 76,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: CourtMidnightTheme.primaryVolt.withValues(alpha: 0.12),
-                border: Border.all(
-                  color: CourtMidnightTheme.primaryVolt.withValues(alpha: 0.3),
-                ),
-              ),
-              child: const Icon(
-                Icons.sports_tennis,
-                size: 38,
-                color: CourtMidnightTheme.primaryVolt,
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'COURT SESSIONS',
-              style: GoogleFonts.barlowCondensed(
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                color: CourtMidnightTheme.textPrimary,
-                letterSpacing: 0.5,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Session logging & Apple Health sync coming soon in Epic 2.',
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                color: CourtMidnightTheme.textSecondary,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget? _buildFab(BuildContext context, BagState state) {
     if (_navIndex != 0) return null;
-    final logFab = _buildLogSessionFab(context, state);
-    final addFab = _buildAddRacquetFab(context, state);
+    final racquets = state is BagLoaded ? state.racquets : const <Racquet>[];
+    final hasRacquets = racquets.isNotEmpty;
     final showBadge = _healthSyncService?.supportsSimulation ?? false;
 
     final children = <Widget>[
-      if (showBadge) _buildSimulateWorkoutBadge(),
-      if (showBadge && logFab != null) const SizedBox(height: 12),
-      ?logFab,
-      if ((showBadge || logFab != null) && addFab != null)
-        const SizedBox(height: 12),
-      ?addFab,
+      if (showBadge)
+        SimulateWorkoutBadge(
+          onTap: () => _healthSyncService?.simulateWorkout(),
+        ),
+      if (showBadge && hasRacquets) const SizedBox(height: 12),
+      if (hasRacquets)
+        LogSessionFab(
+          onPressed: () =>
+              _openManualAssignmentSheet(racquets, _resolveBloc(context)),
+        ),
+      if (hasRacquets) const SizedBox(height: 12),
+      if (hasRacquets)
+        AddRacquetFab(
+          onPressed: () =>
+              AddRacquetModal.show(context, bagBloc: _resolveBloc(context)),
+        ),
     ];
 
     if (children.isEmpty) return null;
@@ -464,405 +325,44 @@ class _VirtualBagScreenState extends State<VirtualBagScreen> {
     );
   }
 
-  Widget _buildSimulateWorkoutBadge() {
-    return Material(
-      color: CourtMidnightTheme.surface,
-      shape: StadiumBorder(
-        side: BorderSide(
-          color: CourtMidnightTheme.primaryVolt.withValues(alpha: 0.6),
-        ),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        key: VirtualBagScreen.keySimulateWorkoutBadge,
-        onTap: () => _healthSyncService?.simulateWorkout(),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          child: Text(
-            '🧪 Simulate Workout',
-            style: GoogleFonts.barlowCondensed(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.4,
-              color: CourtMidnightTheme.primaryVolt,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget? _buildLogSessionFab(BuildContext context, BagState state) {
-    if (state is BagLoaded && state.racquets.isNotEmpty) {
-      return FloatingActionButton.extended(
-        key: VirtualBagScreen.keyLogSessionFab,
-        heroTag: 'virtual_bag_fab_log_session_hero',
-        backgroundColor: CourtMidnightTheme.surface,
-        foregroundColor: CourtMidnightTheme.primaryVolt,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(
-            color: CourtMidnightTheme.primaryVolt,
-            width: 1.5,
-          ),
-        ),
-        onPressed: () {
-          _openManualAssignmentSheet(
-            state.racquets,
-            _resolveBloc(context),
-          );
-        },
-        icon: const Icon(
-          Icons.timer_outlined,
-          color: CourtMidnightTheme.primaryVolt,
-        ),
-        label: Text(
-          '+ Log Session',
-          style: GoogleFonts.inter(
-            fontWeight: FontWeight.w700,
-            color: CourtMidnightTheme.primaryVolt,
-          ),
-        ),
-      );
-    }
-    return null;
-  }
-
-  Widget? _buildAddRacquetFab(BuildContext context, BagState state) {
-    if (state is BagLoaded && state.racquets.isNotEmpty) {
-      return FloatingActionButton.extended(
-        key: const Key('virtual_bag_fab_add'),
-        heroTag: 'virtual_bag_fab_add_hero',
-        backgroundColor: CourtMidnightTheme.primaryVolt,
-        foregroundColor: Colors.black,
-        onPressed: () {
-          AddRacquetModal.show(context, bagBloc: _resolveBloc(context));
-        },
-        icon: const Icon(Icons.add),
-        label: Text(
-          'Add Racquet',
-          style: GoogleFonts.inter(
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      );
-    }
-    return null;
-  }
-
   Widget _buildBodyForState(
     BuildContext context,
     BagState state,
     bool isMobile,
   ) {
-    if (state is BagLoading) {
-      return const Center(
-        child: CircularProgressIndicator(
-          key: VirtualBagScreen.keyLoadingIndicator,
-          color: CourtMidnightTheme.primaryVolt,
-        ),
-      );
-    }
-
     if (state is BagError) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.error_outline,
-                color: CourtMidnightTheme.healthCritical,
-                size: 48,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                state.message,
-                style: GoogleFonts.inter(
-                  color: CourtMidnightTheme.textSecondary,
-                  fontSize: 14,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton.icon(
-                onPressed: () => _resolveBloc(context).add(const LoadBag()),
-                icon: const Icon(Icons.refresh),
-                label: const Text('Reload Bag'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: CourtMidnightTheme.primaryVolt,
-                  foregroundColor: Colors.black,
-                ),
-              ),
-            ],
-          ),
-        ),
+      return BagErrorView(
+        message: state.message,
+        onReload: () => _resolveBloc(context).add(const LoadBag()),
       );
     }
 
     if (state is BagLoaded) {
-      final body = _buildLoadedBody(context, state, isMobile);
+      final body = state.racquets.isEmpty
+          ? BagEmptyState(
+              onAddRacquet: () => AddRacquetModal.show(
+                context,
+                bagBloc: _resolveBloc(context),
+              ),
+              onLoadSampleBag: () =>
+                  _resolveBloc(context).add(const SeedSampleBag()),
+            )
+          : BagRacquetList(
+              racquets: state.racquets,
+              bloc: _resolveBloc(context),
+              isMobile: isMobile,
+            );
       if (state.pendingSyncCount <= 0) return body;
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _buildPendingSyncBanner(state.pendingSyncCount, isMobile),
+          PendingSyncBanner(count: state.pendingSyncCount, isMobile: isMobile),
           Expanded(child: body),
         ],
       );
     }
 
-    // Default loading state for BagInitial
-    return const Center(
-      child: CircularProgressIndicator(
-        key: VirtualBagScreen.keyLoadingIndicator,
-        color: CourtMidnightTheme.primaryVolt,
-      ),
-    );
-  }
-
-  /// Indicator shown while sessions logged offline wait to reach the server.
-  Widget _buildPendingSyncBanner(int count, bool isMobile) {
-    final sessions = count == 1 ? '1 session' : '$count sessions';
-    final horizontal = isMobile ? 16.0 : 24.0;
-    return Semantics(
-      container: true,
-      liveRegion: true,
-      label: '$sessions saved offline, waiting to sync',
-      child: ExcludeSemantics(
-        child: Container(
-          key: VirtualBagScreen.keyPendingSyncBanner,
-          margin: EdgeInsets.fromLTRB(horizontal, 12, horizontal, 0),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(
-            color: CourtMidnightTheme.healthDegraded.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: CourtMidnightTheme.healthDegraded.withValues(alpha: 0.4),
-            ),
-          ),
-          child: Row(
-            children: [
-              const Icon(
-                Icons.cloud_off_outlined,
-                color: CourtMidnightTheme.healthDegraded,
-                size: 20,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  '$sessions waiting to sync',
-                  style: GoogleFonts.inter(
-                    color: CourtMidnightTheme.textPrimary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              Text(
-                'OFFLINE',
-                style: GoogleFonts.barlowCondensed(
-                  color: CourtMidnightTheme.healthDegraded,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.6,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLoadedBody(
-    BuildContext context,
-    BagLoaded state,
-    bool isMobile,
-  ) {
-    if (state.racquets.isEmpty) {
-      return _buildEmptyState(context);
-    }
-
-    if (isMobile) {
-      return RefreshIndicator(
-        color: CourtMidnightTheme.primaryVolt,
-        backgroundColor: CourtMidnightTheme.surface,
-        onRefresh: () async {
-          _resolveBloc(context).add(const LoadBag());
-        },
-        child: ListView.separated(
-          key: VirtualBagScreen.keyRacquetList,
-          padding: const EdgeInsets.only(
-            left: 16,
-            right: 16,
-            top: 16,
-            bottom: 88,
-          ),
-          itemCount: state.racquets.length,
-          separatorBuilder: (_, _) => const SizedBox(height: 12),
-          itemBuilder: (context, index) {
-            return RacquetCard(
-              racquet: state.racquets[index],
-              bloc: _resolveBloc(context),
-            );
-          },
-        ),
-      );
-    }
-
-    // Tablet / Desktop multi-column grid (>=600dp)
-    return RefreshIndicator(
-      color: CourtMidnightTheme.primaryVolt,
-      backgroundColor: CourtMidnightTheme.surface,
-      onRefresh: () async {
-        _resolveBloc(context).add(const LoadBag());
-      },
-      child: GridView.builder(
-        key: VirtualBagScreen.keyRacquetGrid,
-        padding: const EdgeInsets.only(
-          left: 24,
-          right: 24,
-          top: 24,
-          bottom: 88,
-        ),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-          mainAxisExtent: 140,
-        ),
-        itemCount: state.racquets.length,
-        itemBuilder: (context, index) {
-          return RacquetCard(
-            racquet: state.racquets[index],
-            bloc: _resolveBloc(context),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildEmptyState(BuildContext context) {
-    return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-        child: Container(
-          key: VirtualBagScreen.keyEmptyState,
-          constraints: const BoxConstraints(maxWidth: 480),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-          decoration: BoxDecoration(
-            color: CourtMidnightTheme.surface,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: CourtMidnightTheme.surfaceBorder),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 76,
-                height: 76,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: CourtMidnightTheme.primaryVolt.withValues(alpha: 0.12),
-                  border: Border.all(
-                    color: CourtMidnightTheme.primaryVolt.withValues(
-                      alpha: 0.3,
-                    ),
-                  ),
-                ),
-                child: const Icon(
-                  Icons.sports_tennis,
-                  size: 38,
-                  color: CourtMidnightTheme.primaryVolt,
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                'YOUR BAG IS EMPTY',
-                style: GoogleFonts.barlowCondensed(
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                  color: CourtMidnightTheme.textPrimary,
-                  letterSpacing: 0.5,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Add your racquets to track stringbed decay, tension loss, and court hours.',
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  color: CourtMidnightTheme.textSecondary,
-                  height: 1.4,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 28),
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton.icon(
-                  key: VirtualBagScreen.keyEmptyAddButton,
-                  onPressed: () {
-                    AddRacquetModal.show(
-                      context,
-                      bagBloc: _resolveBloc(context),
-                    );
-                  },
-                  icon: const Icon(Icons.add, color: Colors.black),
-                  label: Text(
-                    '+ Add Racquet',
-                    style: GoogleFonts.inter(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.black,
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: CourtMidnightTheme.primaryVolt,
-                    foregroundColor: Colors.black,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: OutlinedButton(
-                  key: VirtualBagScreen.keyLoadSampleBagButton,
-                  onPressed: () {
-                    _resolveBloc(context).add(const SeedSampleBag());
-                  },
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: CourtMidnightTheme.primaryVolt,
-                    side: const BorderSide(
-                      color: CourtMidnightTheme.primaryVolt,
-                      width: 1.5,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: Text(
-                    '⚡ Load Sample Bag',
-                    style: GoogleFonts.inter(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: CourtMidnightTheme.primaryVolt,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    // BagLoading and BagInitial
+    return const BagLoadingIndicator();
   }
 }

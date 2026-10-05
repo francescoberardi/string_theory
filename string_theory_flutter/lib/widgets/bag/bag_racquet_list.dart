@@ -1,0 +1,78 @@
+import 'package:flutter/material.dart';
+import 'package:string_theory_client/string_theory_client.dart';
+
+import '../../bloc/bag_bloc.dart';
+import '../../theme/court_midnight_theme.dart';
+import '../racquet_card.dart';
+
+/// Pull-to-refresh racquet list on mobile, two-column grid on wider screens.
+class BagRacquetList extends StatelessWidget {
+  final List<Racquet> racquets;
+  final BagBloc bloc;
+  final bool isMobile;
+
+  const BagRacquetList({
+    super.key,
+    required this.racquets,
+    required this.bloc,
+    required this.isMobile,
+  });
+
+  static const keyRacquetList = Key('virtual_bag_racquet_list');
+  static const keyRacquetGrid = Key('virtual_bag_racquet_grid');
+
+  Future<void> _onRefresh() async {
+    bloc.add(const LoadBag());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (isMobile) {
+      return RefreshIndicator(
+        color: CourtMidnightTheme.primaryVolt,
+        backgroundColor: CourtMidnightTheme.surface,
+        onRefresh: _onRefresh,
+        child: ListView.separated(
+          key: keyRacquetList,
+          padding: const EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 16,
+            bottom: 88,
+          ),
+          itemCount: racquets.length,
+          separatorBuilder: (_, _) => const SizedBox(height: 12),
+          itemBuilder: (context, index) {
+            return RacquetCard(racquet: racquets[index], bloc: bloc);
+          },
+        ),
+      );
+    }
+
+    // Tablet / Desktop multi-column grid (>=600dp)
+    return RefreshIndicator(
+      color: CourtMidnightTheme.primaryVolt,
+      backgroundColor: CourtMidnightTheme.surface,
+      onRefresh: _onRefresh,
+      child: GridView.builder(
+        key: keyRacquetGrid,
+        padding: const EdgeInsets.only(
+          left: 24,
+          right: 24,
+          top: 24,
+          bottom: 88,
+        ),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
+          mainAxisExtent: 140,
+        ),
+        itemCount: racquets.length,
+        itemBuilder: (context, index) {
+          return RacquetCard(racquet: racquets[index], bloc: bloc);
+        },
+      ),
+    );
+  }
+}
