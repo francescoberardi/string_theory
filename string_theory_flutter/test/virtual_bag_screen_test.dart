@@ -919,4 +919,143 @@ void main() {
       });
     });
   });
+
+  group('Epic 3 retro 3: wiring of extracted bag widgets', () {
+    // Enough racquets to overflow the viewport so pull-to-refresh can engage.
+    final manyRacquets = List.generate(
+      24,
+      (i) => sampleRacquets.first.copyWith(id: 100 + i, name: 'Racquet $i'),
+    );
+
+    Future<void> pumpBag(
+      WidgetTester tester,
+      BagState state, {
+      Size size = const Size(400, 800),
+    }) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      when(() => mockBagBloc.state).thenReturn(state);
+      when(() => mockBagBloc.stream).thenAnswer((_) => const Stream.empty());
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: CourtMidnightTheme.themeData,
+          home: VirtualBagScreen(
+            bagBloc: mockBagBloc,
+            healthSyncService: fakeHealth,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('pull-to-refresh on the mobile list dispatches LoadBag', (
+      tester,
+    ) async {
+      await pumpBag(tester, BagLoaded(manyRacquets));
+
+      await tester.fling(
+        find.byKey(VirtualBagScreen.keyRacquetList),
+        const Offset(0, 300),
+        1000,
+      );
+      await tester.pumpAndSettle();
+
+      verify(() => mockBagBloc.add(const LoadBag())).called(1);
+    });
+
+    testWidgets('pull-to-refresh on the tablet grid dispatches LoadBag', (
+      tester,
+    ) async {
+      await pumpBag(
+        tester,
+        BagLoaded(manyRacquets),
+        size: const Size(900, 1200),
+      );
+
+      await tester.fling(
+        find.byKey(VirtualBagScreen.keyRacquetGrid),
+        const Offset(0, 300),
+        1000,
+      );
+      await tester.pumpAndSettle();
+
+      verify(() => mockBagBloc.add(const LoadBag())).called(1);
+    });
+
+    testWidgets('tapping the Add Racquet FAB opens AddRacquetModal', (
+      tester,
+    ) async {
+      // Default test surface: the modal header overflows the 400dp phone width
+      // under the test font, which is unrelated to the FAB wiring under test.
+      await pumpBag(
+        tester,
+        BagLoaded(sampleRacquets),
+        size: const Size(800, 600),
+      );
+      expect(find.byType(AddRacquetModal), findsNothing);
+
+      await tester.tap(find.byKey(const Key('virtual_bag_fab_add')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AddRacquetModal), findsOneWidget);
+    });
+
+    testWidgets(
+      'navigation rail switches between Bag and the Sessions placeholder',
+      (tester) async {
+        await pumpBag(
+          tester,
+          BagLoaded(sampleRacquets),
+          size: const Size(900, 1200),
+        );
+        final rail = find.byKey(VirtualBagScreen.keyNavigationRail);
+        NavigationRail railWidget() =>
+            tester.widget<NavigationRail>(find.byType(NavigationRail));
+
+        expect(railWidget().selectedIndex, 0);
+        expect(find.text('COURT SESSIONS'), findsNothing);
+
+        await tester.tap(
+          find.descendant(of: rail, matching: find.text('Sessions')),
+        );
+        await tester.pumpAndSettle();
+
+        expect(railWidget().selectedIndex, 1);
+        expect(find.text('COURT SESSIONS'), findsOneWidget);
+        expect(find.byKey(VirtualBagScreen.keyRacquetGrid), findsNothing);
+
+        await tester.tap(find.descendant(of: rail, matching: find.text('Bag')));
+        await tester.pumpAndSettle();
+
+        expect(railWidget().selectedIndex, 0);
+        expect(find.text('COURT SESSIONS'), findsNothing);
+        expect(find.byKey(VirtualBagScreen.keyRacquetGrid), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'bottom navigation switches between Bag and the Sessions placeholder',
+      (tester) async {
+        await pumpBag(tester, BagLoaded(sampleRacquets));
+        final nav = find.byKey(VirtualBagScreen.keyBottomNav);
+
+        await tester.tap(
+          find.descendant(of: nav, matching: find.text('Sessions')),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('COURT SESSIONS'), findsOneWidget);
+        expect(find.byKey(VirtualBagScreen.keyRacquetList), findsNothing);
+
+        await tester.tap(find.descendant(of: nav, matching: find.text('Bag')));
+        await tester.pumpAndSettle();
+
+        expect(find.text('COURT SESSIONS'), findsNothing);
+        expect(find.byKey(VirtualBagScreen.keyRacquetList), findsOneWidget);
+      },
+    );
+  });
 }

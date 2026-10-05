@@ -653,4 +653,55 @@ void main() {
       handle.dispose();
     });
   });
+
+  group('Epic 3 retro 3: advanced options wiring', () {
+    testWidgets('tapping a selected surface chip again clears the surface', (
+      tester,
+    ) async {
+      await tester.pumpWidget(buildDetectedSheet());
+      await tester.tap(find.text('Open Detected Sheet'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(WorkoutAssignmentSheet.keyAdvancedToggle));
+      await tester.pumpAndSettle();
+
+      final clay = find.byKey(WorkoutAssignmentSheet.keySurfaceChip('Clay'));
+      await tester.tap(clay);
+      await tester.pumpAndSettle();
+
+      await tester.tap(clay);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(WorkoutAssignmentSheet.keyConfirmButton));
+      await tester.pumpAndSettle();
+
+      final logged =
+          verify(
+                () => mockBagBloc.add(captureAny(that: isA<LogSession>())),
+              ).captured.single
+              as LogSession;
+      expect(logged.courtSurface, isNull);
+    });
+
+    testWidgets('tapping the advanced toggle again collapses the panel', (
+      tester,
+    ) async {
+      await tester.pumpWidget(buildDetectedSheet());
+      await tester.tap(find.text('Open Detected Sheet'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(WorkoutAssignmentSheet.keyAdvancedToggle));
+      await tester.pumpAndSettle();
+      expect(find.byKey(WorkoutAssignmentSheet.keyNotesField), findsOneWidget);
+
+      await tester.tap(find.byKey(WorkoutAssignmentSheet.keyAdvancedToggle));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(WorkoutAssignmentSheet.keyNotesField), findsNothing);
+      expect(
+        find.byKey(WorkoutAssignmentSheet.keySurfaceChip('Clay')),
+        findsNothing,
+      );
+    });
+  });
 }
