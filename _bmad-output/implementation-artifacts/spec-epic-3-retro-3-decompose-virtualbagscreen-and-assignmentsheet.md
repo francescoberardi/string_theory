@@ -2,7 +2,8 @@
 title: 'Epic 3 retro item 3: Decompose VirtualBagScreen and WorkoutAssignmentSheet'
 type: 'refactor'
 created: '2026-10-05'
-status: 'ready-for-dev'
+status: 'done'
+baseline_commit: '678e877f08a999928b7d64bc9f2ef6c28a5d11db'
 route: 'dispatch'
 review_loop_iteration: 0
 context:
@@ -44,14 +45,14 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `lib/domain/workout_formatting.dart` -- add `formatWorkoutDuration(int)` and `formatWorkoutStartTime(DateTime, {DateTime? now})`, moved verbatim from the two files -- dedupes helper, makes it unit-testable
-- [ ] `test/domain/workout_formatting_test.dart` -- cover `1h 30m`/`2h`/`45m`, today vs other-date start time, 12am/12pm -- guards the moved logic
-- [ ] `lib/widgets/bag/` -- extract `BagBottomNav`, `BagNavigationRail`, `BagLoadingIndicator`, `BagErrorView`, `PendingSyncBanner`, `BagEmptyState`, `SessionsPlaceholder`, `BagRacquetList` (list on mobile, grid on wider), `SimulateWorkoutBadge`, `LogSessionFab`, `AddRacquetFab` -- one file each, owning their keys
-- [ ] `lib/widgets/bag/bag_snack_bars.dart` -- extract detection, info and error SnackBar builders -- the "detection banners"
-- [ ] `lib/screens/virtual_bag_screen.dart` -- replace `_build*` methods with the extracted widgets; alias keys; delegate `formatWorkoutDuration` -- target under ~350 lines
-- [ ] `lib/widgets/workout_assignment/` -- extract `AssignmentSheetFrame` (container, drag pill, inset padding), `DetectedWorkoutHeader`, `ManualLogHeader`, `DurationSelector`, `RacquetSelector` (tile included), `AdvancedOptionsToggle`, `AdvancedOptionsPanel` (`CourtSurfaceSelector` + notes field), `ConfirmButton`
-- [ ] `lib/widgets/workout_assignment_sheet.dart` -- compose the extracted widgets; alias keys -- target under ~250 lines
-- [ ] `_bmad-output/implementation-artifacts/sprint-status.yaml` -- set `epic-3-retro-item-3-decompose-virtualbagscreen-and-assignmentsheet` to `done`, bump `last_updated`
+- [x] `lib/domain/workout_formatting.dart` -- add `formatWorkoutDuration(int)` and `formatWorkoutStartTime(DateTime, {DateTime? now})`, moved verbatim from the two files -- dedupes helper, makes it unit-testable
+- [x] `test/domain/workout_formatting_test.dart` -- cover `1h 30m`/`2h`/`45m`, today vs other-date start time, 12am/12pm -- guards the moved logic
+- [x] `lib/widgets/bag/` -- extract `BagBottomNav`, `BagNavigationRail`, `BagLoadingIndicator`, `BagErrorView`, `PendingSyncBanner`, `BagEmptyState`, `SessionsPlaceholder`, `BagRacquetList` (list on mobile, grid on wider), `SimulateWorkoutBadge`, `LogSessionFab`, `AddRacquetFab` -- one file each, owning their keys
+- [x] `lib/widgets/bag/bag_snack_bars.dart` -- extract detection, info and error SnackBar builders -- the "detection banners"
+- [x] `lib/screens/virtual_bag_screen.dart` -- replace `_build*` methods with the extracted widgets; alias keys; delegate `formatWorkoutDuration` -- target under ~350 lines
+- [x] `lib/widgets/workout_assignment/` -- extract `AssignmentSheetFrame` (container, drag pill, inset padding), `DetectedWorkoutHeader`, `ManualLogHeader`, `DurationSelector`, `RacquetSelector` (tile included), `AdvancedOptionsToggle`, `AdvancedOptionsPanel` (`CourtSurfaceSelector` + notes field), `ConfirmButton`
+- [x] `lib/widgets/workout_assignment_sheet.dart` -- compose the extracted widgets; alias keys -- target under ~250 lines
+- [x] `_bmad-output/implementation-artifacts/sprint-status.yaml` -- set `epic-3-retro-item-3-decompose-virtualbagscreen-and-assignmentsheet` to `done`, bump `last_updated`
 
 **Acceptance Criteria:**
 - Given the refactor is applied, when the full Flutter suite runs, then all pre-existing tests pass unmodified.
