@@ -70,6 +70,29 @@ SnackBar buildInfoSnackBar({
   );
 }
 
+/// Celebratory green SnackBar relaying a bloc success message.
+SnackBar buildSuccessSnackBar(String message) {
+  return SnackBar(
+    backgroundColor: CourtMidnightTheme.healthOptimal,
+    behavior: SnackBarBehavior.floating,
+    content: Row(
+      children: [
+        const Icon(Icons.check_circle_outline, color: Colors.black, size: 20),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            message,
+            style: GoogleFonts.inter(
+              color: Colors.black,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 /// SnackBar relaying a bloc error message.
 SnackBar buildErrorSnackBar(String message) {
   return SnackBar(

@@ -134,6 +134,40 @@ class LogSession extends BagEvent {
   ];
 }
 
+/// Retires the active stringbed of [racquetId] and mounts a fresh one at 100%
+/// health. With [keepSame] the previous specs carry over; otherwise the given
+/// specs apply, falling back to the previous value for any left null.
+class RestringRacquet extends BagEvent {
+  final int racquetId;
+  final bool keepSame;
+  final StringMaterialCategory? materialCategory;
+  final String? stringBrand;
+  final String? stringModel;
+  final double? tension;
+  final double? maxRatedHours;
+
+  const RestringRacquet(
+    this.racquetId, {
+    this.keepSame = true,
+    this.materialCategory,
+    this.stringBrand,
+    this.stringModel,
+    this.tension,
+    this.maxRatedHours,
+  });
+
+  @override
+  List<Object?> get props => [
+    racquetId,
+    keepSame,
+    materialCategory,
+    stringBrand,
+    stringModel,
+    tension,
+    maxRatedHours,
+  ];
+}
+
 /// Drains the offline session queue to the server and reconciles the bag with
 /// the authoritative server state.
 class SyncOfflineSessions extends BagEvent {

@@ -17,6 +17,15 @@ class BagBloc extends Bloc<BagEvent, BagState> {
   static const offlineSavedMessage =
       'Session saved offline. Will sync when back online.';
 
+  /// Toast shown once the server has confirmed a restring.
+  static const restringSuccessMessage =
+      'Fresh stringbed mounted! Restrung to 100% health.';
+
+  /// Error shown when restringing [racquetName] fails.
+  static String restringFailureMessage(String racquetName) =>
+      'Could not restring "$racquetName". '
+      'Check your connection and try again.';
+
   final Client client;
 
   /// Sessions logged while the server is unreachable.
@@ -27,6 +36,10 @@ class BagBloc extends Bloc<BagEvent, BagState> {
 
   /// Last status reported by the connectivity monitor; null until reported.
   bool? _isOnline;
+
+  /// Racquets whose restring is still awaiting the server, so a double tap
+  /// cannot retire two stringbeds.
+  final _restringsInFlight = <int>{};
 
   /// [offlineQueue] defaults to a volatile in-memory queue; the app passes one
   /// backed by `SharedPreferences`.
@@ -44,6 +57,7 @@ class BagBloc extends Bloc<BagEvent, BagState> {
     on<BagStreamReceived>(_onBagStreamReceived);
     on<LogSession>(_onLogSession);
     on<SyncOfflineSessions>(_onSyncOfflineSessions);
+    on<RestringRacquet>(_onRestringRacquet);
     _listenToConnectivity();
   }
 
@@ -80,16 +94,47 @@ class BagBloc extends Bloc<BagEvent, BagState> {
     }).toList();
   }
 
+  /// Returns [racquets] with the restring in [event] applied to its active
+  /// stringbed: health 100, no court hours, stringing date [now] and, unless
+  /// [RestringRacquet.keepSame], the new specs.
+  static List<Racquet> applyOptimisticRestring(
+    List<Racquet> racquets,
+    RestringRacquet event, {
+    DateTime? now,
+  }) {
+    return racquets.map((r) {
+      final job = r.activeStringJob;
+      if (r.id != event.racquetId || job == null) return r;
+      final fresh = job.copyWith(
+        stringingDate: (now ?? DateTime.now()).toUtc(),
+        totalCourtHours: 0.0,
+        currentHealthScore: 100,
+      );
+      if (event.keepSame) return r.copyWith(activeStringJob: fresh);
+      return r.copyWith(
+        activeStringJob: fresh.copyWith(
+          materialCategory: event.materialCategory ?? job.materialCategory,
+          brand: event.stringBrand ?? job.brand,
+          model: event.stringModel ?? job.model,
+          installedTension: event.tension ?? job.installedTension,
+          maxRatedHours: event.maxRatedHours ?? job.maxRatedHours,
+        ),
+      );
+    }).toList();
+  }
+
   /// Builds a [BagLoaded] carrying the current offline queue size.
   BagLoaded _loaded(
     List<Racquet> racquets, {
     String? errorMessage,
     String? infoMessage,
+    String? successMessage,
   }) {
     return BagLoaded(
       racquets,
       errorMessage: errorMessage,
       infoMessage: infoMessage,
+      successMessage: successMessage,
       pendingSyncCount: offlineQueue.pendingCount,
     );
   }
@@ -477,6 +522,63 @@ class BagBloc extends Bloc<BagEvent, BagState> {
         optimistic ?? (latest is BagLoaded ? latest.racquets : null);
     if (racquets != null) {
       emit(_loaded(racquets, infoMessage: offlineSavedMessage));
+    }
+  }
+
+  Future<void> _onRestringRacquet(
+    RestringRacquet event,
+    Emitter<BagState> emit,
+  ) async {
+    final previous = state;
+    if (previous is! BagLoaded) return;
+    final original = previous.racquets
+        .where((r) => r.id == event.racquetId && r.activeStringJob != null)
+        .firstOrNull;
+    if (original == null || !_restringsInFlight.add(event.racquetId)) return;
+
+    List<Racquet> replaceTarget(Racquet replacement) {
+      final latest = state;
+      final racquets = latest is BagLoaded
+          ? latest.racquets
+          : previous.racquets;
+      return racquets
+          .map((r) => r.id == event.racquetId ? replacement : r)
+          .toList();
+    }
+
+    // Optimistic reset, applied before any network round trip.
+    emit(_loaded(applyOptimisticRestring(previous.racquets, event)));
+    try {
+      final updated = await client.bag.restringRacquet(
+        racquetId: event.racquetId,
+        keepSame: event.keepSame,
+        materialCategory: event.materialCategory,
+        stringBrand: event.stringBrand,
+        stringModel: event.stringModel,
+        tension: event.tension,
+        maxRatedHours: event.maxRatedHours,
+      );
+      // Like every other server adoption, keep reflecting play still queued
+      // offline: the server attributes it to the active (now fresh) stringbed.
+      emit(
+        _loaded(
+          replaceTarget(_withPending([updated]).first),
+          successMessage: restringSuccessMessage,
+        ),
+      );
+    } catch (e) {
+      debugPrint('BagBloc: restringRacquet failed: $e');
+      final reverted = replaceTarget(original);
+      // Clear first so a repeated identical error is still a new state.
+      emit(_loaded(reverted));
+      emit(
+        _loaded(
+          reverted,
+          errorMessage: restringFailureMessage(original.name),
+        ),
+      );
+    } finally {
+      _restringsInFlight.remove(event.racquetId);
     }
   }
 

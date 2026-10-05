@@ -1435,4 +1435,443 @@ void main() {
       monitor.setConnected(true);
     });
   });
+
+  group('Story 4.2: RestringRacquet', () {
+    StringJob jobFor({
+      required int id,
+      int health = 30,
+      double hours = 18.0,
+      String brand = 'Luxilon',
+      String model = 'ALU Power',
+      StringMaterialCategory category = StringMaterialCategory.coPoly,
+      double tension = 52.0,
+      double maxHours = 20.0,
+      DateTime? stringingDate,
+    }) {
+      return StringJob(
+        id: id,
+        userId: 1,
+        racquetId: 1,
+        materialCategory: category,
+        brand: brand,
+        model: model,
+        stringingDate: stringingDate ?? DateTime.utc(2026, 8, 1),
+        installedTension: tension,
+        maxRatedHours: maxHours,
+        totalCourtHours: hours,
+        currentHealthScore: health,
+        isActive: true,
+        createdAt: DateTime.utc(2026, 8, 1),
+      );
+    }
+
+    final deadRacquet = sampleRacquet.copyWith(
+      activeStringJob: jobFor(id: 10),
+    );
+    final freshRacquet = sampleRacquet.copyWith(
+      activeStringJob: jobFor(
+        id: 11,
+        health: 100,
+        hours: 0.0,
+        stringingDate: DateTime.utc(2026, 10, 5),
+      ),
+    );
+
+    void stubRestring(Future<Racquet> Function() answer) {
+      when(
+        () => mockBagEndpoint.restringRacquet(
+          racquetId: any(named: 'racquetId'),
+          keepSame: any(named: 'keepSame'),
+          newSpecs: any(named: 'newSpecs'),
+          materialCategory: any(named: 'materialCategory'),
+          stringBrand: any(named: 'stringBrand'),
+          stringModel: any(named: 'stringModel'),
+          tension: any(named: 'tension'),
+          maxRatedHours: any(named: 'maxRatedHours'),
+          restringDate: any(named: 'restringDate'),
+          simulateFailure: any(named: 'simulateFailure'),
+        ),
+      ).thenAnswer((_) => answer());
+    }
+
+    Future<(BagBloc, List<BagState>)> loadedBloc() async {
+      when(
+        () => mockBagEndpoint.getVirtualBag(),
+      ).thenAnswer((_) async => [deadRacquet]);
+      final bloc = BagBloc(client: mockClient);
+      bloc.add(const LoadBag());
+      await pumpEventQueue();
+      final states = <BagState>[];
+      bloc.stream.listen(states.add);
+      return (bloc, states);
+    }
+
+    test('RestringRacquet defaults to keepSame and has value equality', () {
+      expect(const RestringRacquet(1).keepSame, isTrue);
+      expect(
+        const RestringRacquet(1, stringBrand: 'Head'),
+        const RestringRacquet(1, stringBrand: 'Head'),
+      );
+      expect(
+        const RestringRacquet(1),
+        isNot(const RestringRacquet(2)),
+      );
+    });
+
+    test('BagLoaded includes successMessage in equality', () {
+      expect(
+        const BagLoaded([], successMessage: 'a'),
+        isNot(const BagLoaded([], successMessage: 'b')),
+      );
+    });
+
+    test(
+      'keep same: resets the gauge optimistically, then adopts the server racquet and announces success',
+      () async {
+        final completer = Completer<Racquet>();
+        stubRestring(() => completer.future);
+        final (bloc, states) = await loadedBloc();
+
+        bloc.add(const RestringRacquet(1));
+        await pumpEventQueue();
+
+        final optimistic = (states.single as BagLoaded).racquets.single;
+        expect(optimistic.activeStringJob!.currentHealthScore, 100);
+        expect(optimistic.activeStringJob!.totalCourtHours, 0.0);
+        expect(optimistic.activeStringJob!.brand, 'Luxilon');
+        expect((states.single as BagLoaded).successMessage, isNull);
+
+        completer.complete(freshRacquet);
+        await pumpEventQueue();
+
+        expect(
+          states.last,
+          BagLoaded([
+            freshRacquet,
+          ], successMessage: BagBloc.restringSuccessMessage),
+        );
+        verify(
+          () => mockBagEndpoint.restringRacquet(
+            racquetId: 1,
+            keepSame: true,
+            newSpecs: null,
+            materialCategory: null,
+            stringBrand: null,
+            stringModel: null,
+            tension: null,
+            maxRatedHours: null,
+            restringDate: null,
+            simulateFailure: null,
+          ),
+        ).called(1);
+        await bloc.close();
+      },
+    );
+
+    test('success message is the exact celebratory copy', () {
+      expect(
+        BagBloc.restringSuccessMessage,
+        'Fresh stringbed mounted! Restrung to 100% health.',
+      );
+    });
+
+    test(
+      'change specs: forwards the new specs and shows them optimistically',
+      () async {
+        final completer = Completer<Racquet>();
+        stubRestring(() => completer.future);
+        final (bloc, states) = await loadedBloc();
+
+        bloc.add(
+          const RestringRacquet(
+            1,
+            keepSame: false,
+            materialCategory: StringMaterialCategory.multifilament,
+            stringBrand: 'Head',
+            stringModel: 'Velocity MLT',
+            tension: 55.5,
+            maxRatedHours: 35.0,
+          ),
+        );
+        await pumpEventQueue();
+
+        final job =
+            (states.single as BagLoaded).racquets.single.activeStringJob!;
+        expect(job.brand, 'Head');
+        expect(job.model, 'Velocity MLT');
+        expect(job.installedTension, 55.5);
+        expect(job.materialCategory, StringMaterialCategory.multifilament);
+        expect(job.maxRatedHours, 35.0);
+        expect(job.currentHealthScore, 100);
+        verify(
+          () => mockBagEndpoint.restringRacquet(
+            racquetId: 1,
+            keepSame: false,
+            newSpecs: null,
+            materialCategory: StringMaterialCategory.multifilament,
+            stringBrand: 'Head',
+            stringModel: 'Velocity MLT',
+            tension: 55.5,
+            maxRatedHours: 35.0,
+            restringDate: null,
+            simulateFailure: null,
+          ),
+        ).called(1);
+
+        completer.complete(freshRacquet);
+        await pumpEventQueue();
+        await bloc.close();
+      },
+    );
+
+    test(
+      'failure: reverts the gauge, reports a plain-words error and no success message',
+      () async {
+        stubRestring(() async => throw Exception('socket closed'));
+        final (bloc, states) = await loadedBloc();
+
+        bloc.add(const RestringRacquet(1));
+        await pumpEventQueue();
+
+        final last = states.last as BagLoaded;
+        expect(last.racquets, [deadRacquet]);
+        expect(last.successMessage, isNull);
+        expect(
+          last.errorMessage,
+          'Could not restring "${deadRacquet.name}". '
+          'Check your connection and try again.',
+        );
+        expect(last.errorMessage, isNot(contains('socket closed')));
+        await bloc.close();
+      },
+    );
+
+    test('ignores a second restring while one is in flight', () async {
+      final completer = Completer<Racquet>();
+      stubRestring(() => completer.future);
+      final (bloc, _) = await loadedBloc();
+
+      bloc.add(const RestringRacquet(1));
+      bloc.add(const RestringRacquet(1));
+      await pumpEventQueue();
+      completer.complete(freshRacquet);
+      await pumpEventQueue();
+
+      verify(
+        () => mockBagEndpoint.restringRacquet(
+          racquetId: any(named: 'racquetId'),
+          keepSame: any(named: 'keepSame'),
+          newSpecs: any(named: 'newSpecs'),
+          materialCategory: any(named: 'materialCategory'),
+          stringBrand: any(named: 'stringBrand'),
+          stringModel: any(named: 'stringModel'),
+          tension: any(named: 'tension'),
+          maxRatedHours: any(named: 'maxRatedHours'),
+          restringDate: any(named: 'restringDate'),
+          simulateFailure: any(named: 'simulateFailure'),
+        ),
+      ).called(1);
+
+      // The guard is released afterwards: a later restring goes through.
+      clearInteractions(mockBagEndpoint);
+      stubRestring(() async => freshRacquet);
+      bloc.add(const RestringRacquet(1));
+      await pumpEventQueue();
+      verify(
+        () => mockBagEndpoint.restringRacquet(
+          racquetId: any(named: 'racquetId'),
+          keepSame: any(named: 'keepSame'),
+          newSpecs: any(named: 'newSpecs'),
+          materialCategory: any(named: 'materialCategory'),
+          stringBrand: any(named: 'stringBrand'),
+          stringModel: any(named: 'stringModel'),
+          tension: any(named: 'tension'),
+          maxRatedHours: any(named: 'maxRatedHours'),
+          restringDate: any(named: 'restringDate'),
+          simulateFailure: any(named: 'simulateFailure'),
+        ),
+      ).called(1);
+      await bloc.close();
+    });
+
+    test(
+      'applyOptimisticRestring falls back to old specs for unset fields',
+      () {
+        final result = BagBloc.applyOptimisticRestring(
+          [deadRacquet],
+          const RestringRacquet(1, keepSame: false, stringBrand: 'Head'),
+          now: DateTime.utc(2026, 10, 5),
+        );
+
+        final job = result.single.activeStringJob!;
+        expect(job.brand, 'Head');
+        expect(job.model, 'ALU Power');
+        expect(job.installedTension, 52.0);
+        expect(job.materialCategory, StringMaterialCategory.coPoly);
+        expect(job.maxRatedHours, 20.0);
+        expect(job.currentHealthScore, 100);
+        expect(job.totalCourtHours, 0.0);
+        expect(job.stringingDate, DateTime.utc(2026, 10, 5));
+      },
+    );
+
+    test(
+      'applyOptimisticRestring leaves other and unstrung racquets alone',
+      () {
+        final bare = sampleRacquet.copyWith(id: 2);
+        final other = deadRacquet.copyWith(id: 3);
+        final result = BagBloc.applyOptimisticRestring(
+          [bare, other],
+          const RestringRacquet(2),
+        );
+        expect(result, [bare, other]);
+        expect(
+          BagBloc.applyOptimisticRestring([other], const RestringRacquet(99)),
+          [other],
+        );
+      },
+    );
+
+    test(
+      'ignores a restring for a racquet that is not in the loaded bag',
+      () async {
+        final (bloc, states) = await loadedBloc();
+
+        bloc.add(const RestringRacquet(99));
+        await pumpEventQueue();
+
+        expect(states, isEmpty);
+        verifyNever(
+          () => mockBagEndpoint.restringRacquet(
+            racquetId: any(named: 'racquetId'),
+            keepSame: any(named: 'keepSame'),
+          ),
+        );
+        await bloc.close();
+      },
+    );
+
+    group('with another racquet updated mid-flight', () {
+      final otherRacquet = deadRacquet.copyWith(
+        id: 2,
+        name: 'Head Radical MP',
+        activeStringJob: jobFor(id: 20, health: 60, hours: 8.0).copyWith(
+          racquetId: 2,
+        ),
+      );
+
+      Future<(BagBloc, List<BagState>)> twoRacquetBloc() async {
+        when(
+          () => mockBagEndpoint.getVirtualBag(),
+        ).thenAnswer((_) async => [deadRacquet, otherRacquet]);
+        final bloc = BagBloc(client: mockClient);
+        bloc.add(const LoadBag());
+        await pumpEventQueue();
+        final states = <BagState>[];
+        bloc.stream.listen(states.add);
+        return (bloc, states);
+      }
+
+      final otherUpdate = BagStreamMessage(
+        eventType: 'sessionLogged',
+        racquetId: 2,
+        healthScore: 55,
+        totalCourtHours: 9.0,
+        timestamp: DateTime.utc(2026, 10, 5),
+      );
+
+      test('success keeps the other racquet\'s update', () async {
+        final completer = Completer<Racquet>();
+        stubRestring(() => completer.future);
+        final (bloc, states) = await twoRacquetBloc();
+
+        bloc.add(const RestringRacquet(1));
+        await pumpEventQueue();
+        bloc.add(BagStreamReceived(otherUpdate));
+        await pumpEventQueue();
+        completer.complete(freshRacquet);
+        await pumpEventQueue();
+
+        final racquets = (states.last as BagLoaded).racquets;
+        expect(racquets.first, freshRacquet);
+        expect(racquets.last.activeStringJob!.currentHealthScore, 55);
+        expect(racquets.last.activeStringJob!.totalCourtHours, 9.0);
+        await bloc.close();
+      });
+
+      test('failure reverts only the target and keeps the update', () async {
+        final completer = Completer<Racquet>();
+        stubRestring(() => completer.future);
+        final (bloc, states) = await twoRacquetBloc();
+
+        bloc.add(const RestringRacquet(1));
+        await pumpEventQueue();
+        bloc.add(BagStreamReceived(otherUpdate));
+        await pumpEventQueue();
+        completer.completeError(Exception('offline'));
+        await pumpEventQueue();
+
+        final last = states.last as BagLoaded;
+        expect(last.racquets.first, deadRacquet);
+        expect(last.racquets.last.activeStringJob!.currentHealthScore, 55);
+        expect(last.errorMessage, isNotNull);
+        await bloc.close();
+      });
+    });
+
+    test(
+      'success still reflects sessions queued offline on the fresh stringbed',
+      () async {
+        final queue = OfflineSessionQueue(
+          storage: InMemorySessionQueueStorage(),
+        );
+        await queue.enqueue(
+          SessionLog(
+            userId: 0,
+            racquetId: 1,
+            startTime: DateTime.utc(2026, 10, 4, 18),
+            durationMinutes: 90,
+            source: 'manual',
+            externalWorkoutId: 'queued-1',
+          ),
+        );
+        stubRestring(() async => freshRacquet);
+        when(
+          () => mockBagEndpoint.getVirtualBag(),
+        ).thenAnswer((_) async => [deadRacquet]);
+        final bloc = BagBloc(client: mockClient, offlineQueue: queue);
+        bloc.add(const LoadBag());
+        await pumpEventQueue();
+
+        bloc.add(const RestringRacquet(1));
+        await pumpEventQueue();
+
+        final state = bloc.state as BagLoaded;
+        expect(state.pendingSyncCount, 1);
+        expect(state.successMessage, BagBloc.restringSuccessMessage);
+        expect(
+          state.racquets.single.activeStringJob!.totalCourtHours,
+          closeTo(1.5, 1e-9),
+        );
+        await bloc.close();
+      },
+    );
+
+    test('a restring after a failure is allowed again', () async {
+      stubRestring(() async => throw Exception('offline'));
+      final (bloc, states) = await loadedBloc();
+      bloc.add(const RestringRacquet(1));
+      await pumpEventQueue();
+
+      stubRestring(() async => freshRacquet);
+      bloc.add(const RestringRacquet(1));
+      await pumpEventQueue();
+
+      expect(
+        (states.last as BagLoaded).successMessage,
+        BagBloc.restringSuccessMessage,
+      );
+      await bloc.close();
+    });
+  });
 }

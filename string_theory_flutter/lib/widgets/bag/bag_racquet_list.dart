@@ -21,6 +21,10 @@ class BagRacquetList extends StatelessWidget {
   static const keyRacquetList = Key('virtual_bag_racquet_list');
   static const keyRacquetGrid = Key('virtual_bag_racquet_grid');
 
+  /// Height of a grid card: room for the gauge, specs, the dead-stringbed
+  /// badge and the `[Restrung Today]` button.
+  static const gridCardExtent = 176.0;
+
   Future<void> _onRefresh() async {
     bloc.add(const LoadBag());
   }
@@ -66,7 +70,7 @@ class BagRacquetList extends StatelessWidget {
           crossAxisCount: 2,
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
-          mainAxisExtent: 140,
+          mainAxisExtent: gridCardExtent,
         ),
         itemCount: racquets.length,
         itemBuilder: (context, index) {

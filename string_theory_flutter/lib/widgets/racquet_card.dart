@@ -5,6 +5,7 @@ import 'package:string_theory_flutter/bloc/bag_bloc.dart';
 import 'package:string_theory_flutter/domain/decay_engine.dart';
 import 'package:string_theory_flutter/theme/court_midnight_theme.dart';
 import 'package:string_theory_flutter/widgets/radial_health_gauge.dart';
+import 'package:string_theory_flutter/widgets/restring_sheet.dart';
 
 /// Athletic racquet card displaying stringbed health, specs, and status badges.
 ///
@@ -21,6 +22,62 @@ class RacquetCard extends StatelessWidget {
     required this.bloc,
     this.onTap,
   });
+
+  /// Key of the `[Restrung Today]` button on the card of racquet [racquetId].
+  static Key restrungTodayKey(int racquetId) =>
+      Key('racquet_restrung_today_$racquetId');
+
+  /// `[Restrung Today]` CTA: filled and prominent on a dead stringbed,
+  /// outlined otherwise (UX-DR5).
+  Widget _buildRestrungButton(
+    BuildContext context, {
+    required bool isCritical,
+  }) {
+    void open() => RestringSheet.show(context, racquet: racquet, bagBloc: bloc);
+    const icon = Icon(Icons.restart_alt, size: 16);
+    final label = Text(
+      'Restrung Today',
+      style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700),
+    );
+    const padding = EdgeInsets.symmetric(horizontal: 12);
+    const minimumSize = Size(0, 32);
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(8),
+    );
+    final key = RacquetCard.restrungTodayKey(racquet.id!);
+
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: isCritical
+          ? ElevatedButton.icon(
+              key: key,
+              onPressed: open,
+              icon: icon,
+              label: label,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: CourtMidnightTheme.healthCritical,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: padding,
+                minimumSize: minimumSize,
+                shape: shape,
+              ),
+            )
+          : OutlinedButton.icon(
+              key: key,
+              onPressed: open,
+              icon: icon,
+              label: label,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: CourtMidnightTheme.primaryVolt,
+                side: const BorderSide(color: CourtMidnightTheme.primaryMuted),
+                padding: padding,
+                minimumSize: minimumSize,
+                shape: shape,
+              ),
+            ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -192,6 +249,10 @@ class RacquetCard extends StatelessWidget {
                         ],
                       ),
                     ),
+                  ],
+                  if (job != null && racquet.id != null) ...[
+                    const SizedBox(height: 6),
+                    _buildRestrungButton(context, isCritical: isCritical),
                   ],
                 ],
               ),

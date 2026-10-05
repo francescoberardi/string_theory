@@ -26,6 +26,10 @@ class BagLoaded extends BagState {
   /// surface once as an informational SnackBar.
   final String? infoMessage;
 
+  /// Transient confirmation (e.g. a fresh restring) to surface once as a
+  /// celebratory SnackBar.
+  final String? successMessage;
+
   /// Sessions logged offline that are still waiting to reach the server.
   final int pendingSyncCount;
 
@@ -33,6 +37,7 @@ class BagLoaded extends BagState {
     this.racquets, {
     this.errorMessage,
     this.infoMessage,
+    this.successMessage,
     this.pendingSyncCount = 0,
   });
 
@@ -41,6 +46,7 @@ class BagLoaded extends BagState {
     racquets,
     errorMessage,
     infoMessage,
+    successMessage,
     pendingSyncCount,
   ];
 }

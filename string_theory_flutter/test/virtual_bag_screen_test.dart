@@ -1058,4 +1058,84 @@ void main() {
       },
     );
   });
+
+  group('Story 4.2: Restrung Today', () {
+    Future<StreamController<BagState>> pumpWithStream(
+      WidgetTester tester,
+      BagState initial,
+    ) async {
+      tester.view.physicalSize = const Size(400, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      final controller = StreamController<BagState>.broadcast();
+      addTearDown(controller.close);
+      when(() => mockBagBloc.state).thenReturn(initial);
+      when(() => mockBagBloc.stream).thenAnswer((_) => controller.stream);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: CourtMidnightTheme.themeData,
+          home: VirtualBagScreen(
+            bagBloc: mockBagBloc,
+            healthSyncService: fakeHealth,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      return controller;
+    }
+
+    testWidgets('shows the green celebratory toast once the server confirms', (
+      tester,
+    ) async {
+      final controller = await pumpWithStream(
+        tester,
+        BagLoaded(sampleRacquets),
+      );
+
+      final restrung = BagLoaded(
+        sampleRacquets,
+        successMessage: BagBloc.restringSuccessMessage,
+      );
+      when(() => mockBagBloc.state).thenReturn(restrung);
+      controller.add(restrung);
+      await tester.pumpAndSettle();
+
+      final snackBar = tester.widget<SnackBar>(find.byType(SnackBar));
+      expect(snackBar.backgroundColor, CourtMidnightTheme.healthOptimal);
+      expect(
+        find.descendant(
+          of: find.byType(SnackBar),
+          matching: find.text(
+            'Fresh stringbed mounted! Restrung to 100% health.',
+          ),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('shows no success toast for an ordinary state', (tester) async {
+      await pumpWithStream(tester, BagLoaded(sampleRacquets));
+
+      expect(find.byType(SnackBar), findsNothing);
+    });
+
+    testWidgets(
+      'tapping Restrung Today then Keep Same dispatches RestringRacquet for that racquet',
+      (tester) async {
+        await pumpWithStream(tester, BagLoaded(sampleRacquets));
+
+        // Head Radical MP is the 34% (dead) racquet, third in the list.
+        final button = find.byKey(RacquetCard.restrungTodayKey(3));
+        await tester.ensureVisible(button);
+        await tester.tap(button);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Keep Same & Reset'));
+        await tester.pumpAndSettle();
+
+        verify(
+          () => mockBagBloc.add(const RestringRacquet(3, keepSame: true)),
+        ).called(1);
+      },
+    );
+  });
 }

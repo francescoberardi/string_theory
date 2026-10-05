@@ -229,6 +229,11 @@ class _VirtualBagScreenState extends State<VirtualBagScreen> {
               ),
             );
         }
+        if (state is BagLoaded && state.successMessage != null) {
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(buildSuccessSnackBar(state.successMessage!));
+        }
         if (state is BagLoaded && state.errorMessage != null) {
           ScaffoldMessenger.of(
             context,

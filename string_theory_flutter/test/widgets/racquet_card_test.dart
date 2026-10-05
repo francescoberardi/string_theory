@@ -3,8 +3,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:string_theory_client/string_theory_client.dart';
 import 'package:string_theory_flutter/bloc/bag_bloc.dart';
+import 'package:string_theory_flutter/theme/court_midnight_theme.dart';
+import 'package:string_theory_flutter/widgets/bag/bag_racquet_list.dart';
 import 'package:string_theory_flutter/widgets/racquet_card.dart';
 import 'package:string_theory_flutter/widgets/radial_health_gauge.dart';
+import 'package:string_theory_flutter/widgets/restring_sheet.dart';
 
 class MockBagBloc extends Mock implements BagBloc {}
 
@@ -325,5 +328,105 @@ void main() {
         expect(find.text('Fast-Forward 30 Days'), findsNothing);
       },
     );
+  });
+
+  group('Story 4.2 - Restrung Today button', () {
+    Future<void> pumpCard(WidgetTester tester, Racquet racquet) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: CourtMidnightTheme.themeData,
+          home: Scaffold(
+            body: RacquetCard(racquet: racquet, bloc: mockBagBloc),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('is prominent (filled) when health is below 40%', (
+      tester,
+    ) async {
+      await pumpCard(
+        tester,
+        createRacquet(id: 4, name: 'Dead', healthScore: 20),
+      );
+
+      final button = find.byKey(RacquetCard.restrungTodayKey(4));
+      expect(button, findsOneWidget);
+      expect(find.text('Restrung Today'), findsOneWidget);
+      expect(tester.widget(button), isA<ElevatedButton>());
+    });
+
+    testWidgets('is a quieter outlined button on a healthy racquet', (
+      tester,
+    ) async {
+      await pumpCard(
+        tester,
+        createRacquet(id: 5, name: 'Fresh', healthScore: 90),
+      );
+
+      final button = find.byKey(RacquetCard.restrungTodayKey(5));
+      expect(button, findsOneWidget);
+      expect(tester.widget(button), isA<OutlinedButton>());
+    });
+
+    testWidgets('is hidden when the racquet has no active string job', (
+      tester,
+    ) async {
+      await pumpCard(tester, createRacquet(id: 6, name: 'Bare'));
+
+      expect(find.byKey(RacquetCard.restrungTodayKey(6)), findsNothing);
+      expect(find.text('Restrung Today'), findsNothing);
+    });
+
+    testWidgets('opens the restring sheet with both options', (tester) async {
+      await pumpCard(
+        tester,
+        createRacquet(id: 4, name: 'Dead', healthScore: 20),
+      );
+
+      await tester.tap(find.byKey(RacquetCard.restrungTodayKey(4)));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(RestringSheet.keySheet), findsOneWidget);
+      expect(find.text('Keep Same & Reset'), findsOneWidget);
+      expect(find.text('Change Specs'), findsOneWidget);
+    });
+
+    testWidgets('opens the same sheet from a healthy racquet', (tester) async {
+      await pumpCard(
+        tester,
+        createRacquet(id: 5, name: 'Fresh', healthScore: 90),
+      );
+
+      await tester.tap(find.byKey(RacquetCard.restrungTodayKey(5)));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(RestringSheet.keySheet), findsOneWidget);
+      expect(find.text('Keep Same & Reset'), findsOneWidget);
+    });
+
+    testWidgets('fits a tablet grid cell with the dead-stringbed badge', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: CourtMidnightTheme.themeData,
+          home: Scaffold(
+            body: SizedBox(
+              width: 400,
+              height: BagRacquetList.gridCardExtent,
+              child: RacquetCard(
+                racquet: createRacquet(id: 4, name: 'Dead', healthScore: 20),
+                bloc: mockBagBloc,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+    });
   });
 }
