@@ -22,8 +22,11 @@ import 'package:string_theory_client/src/protocol/bag_stream_message.dart'
 import 'package:string_theory_client/src/protocol/greetings/greeting.dart'
     as _iowftvok;
 import 'package:string_theory_client/src/protocol/racquet.dart' as _ib48ci23;
+import 'package:string_theory_client/src/protocol/restring_event.dart'
+    as _idge5k9f;
 import 'package:string_theory_client/src/protocol/session_log.dart'
     as _iz65gy0p;
+import 'package:string_theory_client/src/protocol/string_job.dart' as _itfs33k5;
 import 'package:string_theory_client/src/protocol/string_material_category.dart'
     as _iwafl9xb;
 import 'protocol.dart' as _il2as5qe;
@@ -380,6 +383,51 @@ class EndpointBag extends _isc.EndpointRef {
       'racquetId': racquetId,
       'days': days,
     },
+  );
+
+  /// Restrings a racquet atomically within a single database transaction.
+  ///
+  /// Marks the current active string job inactive, records a [RestringEvent]
+  /// snapshot with final hours and days active, creates a new active string job
+  /// initialized to 100% health and 0 court hours, updates the racquet's
+  /// [Racquet.activeStringJobId], and broadcasts a [BagStreamMessage]
+  /// with [BagChannels.restrung] to `user_{userId}_bag`.
+  _ida.Future<_ib48ci23.Racquet> restringRacquet({
+    required int racquetId,
+    bool? keepSame,
+    _itfs33k5.StringJob? newSpecs,
+    _iwafl9xb.StringMaterialCategory? materialCategory,
+    String? stringBrand,
+    String? stringModel,
+    double? tension,
+    double? maxRatedHours,
+    DateTime? restringDate,
+    bool? simulateFailure,
+  }) => caller.callServerEndpoint<_ib48ci23.Racquet>(
+    'bag',
+    'restringRacquet',
+    {
+      'racquetId': racquetId,
+      'keepSame': keepSame,
+      'newSpecs': newSpecs,
+      'materialCategory': materialCategory,
+      'stringBrand': stringBrand,
+      'stringModel': stringModel,
+      'tension': tension,
+      'maxRatedHours': maxRatedHours,
+      'restringDate': restringDate,
+      'simulateFailure': simulateFailure,
+    },
+  );
+
+  /// Returns all restring events for the specified [racquetId] owned by
+  /// the authenticated user, ordered in descending order by restring date.
+  _ida.Future<List<_idge5k9f.RestringEvent>> getRestringHistory({
+    required int racquetId,
+  }) => caller.callServerEndpoint<List<_idge5k9f.RestringEvent>>(
+    'bag',
+    'getRestringHistory',
+    {'racquetId': racquetId},
   );
 }
 

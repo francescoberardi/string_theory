@@ -19,6 +19,8 @@ bag:
   - deleteRacquet:
   - triggerDailyDecayNow:
   - fastForwardRacquetAge:
+  - restringRacquet:
+  - getRestringHistory:
 session:
   - logSession:
   - getSessionLogs:

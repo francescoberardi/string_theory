@@ -24,8 +24,12 @@ import 'package:string_theory_server/src/generated/future_calls.dart'
 import 'package:string_theory_server/src/generated/greetings/greeting.dart'
     as _i6qn1rsc;
 import 'package:string_theory_server/src/generated/racquet.dart' as _iwugozzn;
+import 'package:string_theory_server/src/generated/restring_event.dart'
+    as _ired0jse;
 import 'package:string_theory_server/src/generated/session_log.dart'
     as _iyc5nsr4;
+import 'package:string_theory_server/src/generated/string_job.dart'
+    as _ibw4mfm1;
 import 'package:string_theory_server/src/generated/string_material_category.dart'
     as _iqkmcx65;
 import 'package:string_theory_server/src/generated/protocol.dart';
@@ -817,6 +821,88 @@ class _BagEndpoint {
                   _localCallContext.arguments,
                 )
                 as _ida.Future<_iwugozzn.Racquet>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _ida.Future<_iwugozzn.Racquet> restringRacquet(
+    _ist.TestSessionBuilder sessionBuilder, {
+    required int racquetId,
+    bool? keepSame,
+    _ibw4mfm1.StringJob? newSpecs,
+    _iqkmcx65.StringMaterialCategory? materialCategory,
+    String? stringBrand,
+    String? stringModel,
+    double? tension,
+    double? maxRatedHours,
+    DateTime? restringDate,
+    bool? simulateFailure,
+  }) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'bag',
+            method: 'restringRacquet',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'bag',
+          methodName: 'restringRacquet',
+          parameters: _ist.testObjectToJson({
+            'racquetId': racquetId,
+            'keepSame': keepSame,
+            'newSpecs': newSpecs,
+            'materialCategory': materialCategory,
+            'stringBrand': stringBrand,
+            'stringModel': stringModel,
+            'tension': tension,
+            'maxRatedHours': maxRatedHours,
+            'restringDate': restringDate,
+            'simulateFailure': simulateFailure,
+          }),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<_iwugozzn.Racquet>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _ida.Future<List<_ired0jse.RestringEvent>> getRestringHistory(
+    _ist.TestSessionBuilder sessionBuilder, {
+    required int racquetId,
+  }) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'bag',
+            method: 'getRestringHistory',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'bag',
+          methodName: 'getRestringHistory',
+          parameters: _ist.testObjectToJson({'racquetId': racquetId}),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<List<_ired0jse.RestringEvent>>);
         return _localReturnValue;
       } finally {
         await _localUniqueSession.close();

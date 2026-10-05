@@ -1,0 +1,19 @@
+class: RestringEvent
+table: restring_event
+fields:
+  userId: int
+  racquetId: int, relation(parent=racquet, onDelete=Cascade)
+  stringJobId: int, relation(parent=string_job, onDelete=Cascade)
+  stringDescription: String
+  materialCategory: StringMaterialCategory
+  stringingDate: DateTime
+  restringDate: DateTime
+  finalCourtHours: double
+  finalDaysActive: int
+  finalHealthScore: int
+  createdAt: DateTime, default=now
+indexes:
+  restring_event_user_id_idx:
+    fields: userId
+  restring_event_racquet_id_idx:
+    fields: racquetId

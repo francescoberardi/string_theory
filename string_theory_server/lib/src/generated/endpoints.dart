@@ -19,6 +19,8 @@ import 'package:string_theory_server/src/generated/future_calls.dart'
     as _ireyqaq4;
 import 'package:string_theory_server/src/generated/session_log.dart'
     as _iyc5nsr4;
+import 'package:string_theory_server/src/generated/string_job.dart'
+    as _ibw4mfm1;
 import 'package:string_theory_server/src/generated/string_material_category.dart'
     as _iqkmcx65;
 import '../auth/anonymous_idp_endpoint.dart' as _in0zita6;
@@ -459,6 +461,98 @@ class Endpoints extends _is.EndpointDispatch {
                     session,
                     racquetId: params['racquetId'],
                     days: params['days'],
+                  ),
+        ),
+        'restringRacquet': _is.MethodConnector(
+          name: 'restringRacquet',
+          params: {
+            'racquetId': _is.ParameterDescription(
+              name: 'racquetId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+            'keepSame': _is.ParameterDescription(
+              name: 'keepSame',
+              type: _is.getType<bool?>(),
+              nullable: true,
+            ),
+            'newSpecs': _is.ParameterDescription(
+              name: 'newSpecs',
+              type: _is.getType<_ibw4mfm1.StringJob?>(),
+              nullable: true,
+            ),
+            'materialCategory': _is.ParameterDescription(
+              name: 'materialCategory',
+              type: _is.getType<_iqkmcx65.StringMaterialCategory?>(),
+              nullable: true,
+            ),
+            'stringBrand': _is.ParameterDescription(
+              name: 'stringBrand',
+              type: _is.getType<String?>(),
+              nullable: true,
+            ),
+            'stringModel': _is.ParameterDescription(
+              name: 'stringModel',
+              type: _is.getType<String?>(),
+              nullable: true,
+            ),
+            'tension': _is.ParameterDescription(
+              name: 'tension',
+              type: _is.getType<double?>(),
+              nullable: true,
+            ),
+            'maxRatedHours': _is.ParameterDescription(
+              name: 'maxRatedHours',
+              type: _is.getType<double?>(),
+              nullable: true,
+            ),
+            'restringDate': _is.ParameterDescription(
+              name: 'restringDate',
+              type: _is.getType<DateTime?>(),
+              nullable: true,
+            ),
+            'simulateFailure': _is.ParameterDescription(
+              name: 'simulateFailure',
+              type: _is.getType<bool?>(),
+              nullable: true,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['bag'] as _i30u42n8.BagEndpoint).restringRacquet(
+                    session,
+                    racquetId: params['racquetId'],
+                    keepSame: params['keepSame'],
+                    newSpecs: params['newSpecs'],
+                    materialCategory: params['materialCategory'],
+                    stringBrand: params['stringBrand'],
+                    stringModel: params['stringModel'],
+                    tension: params['tension'],
+                    maxRatedHours: params['maxRatedHours'],
+                    restringDate: params['restringDate'],
+                    simulateFailure: params['simulateFailure'],
+                  ),
+        ),
+        'getRestringHistory': _is.MethodConnector(
+          name: 'getRestringHistory',
+          params: {
+            'racquetId': _is.ParameterDescription(
+              name: 'racquetId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['bag'] as _i30u42n8.BagEndpoint)
+                  .getRestringHistory(
+                    session,
+                    racquetId: params['racquetId'],
                   ),
         ),
         'bagUpdates': _is.MethodStreamConnector(

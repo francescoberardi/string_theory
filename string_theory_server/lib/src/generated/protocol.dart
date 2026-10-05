@@ -18,12 +18,15 @@ import 'package:serverpod_auth_core_server/serverpod_auth_core_server.dart'
 import 'package:serverpod_auth_idp_server/serverpod_auth_idp_server.dart'
     as _iais;
 import 'package:string_theory_server/src/generated/racquet.dart' as _iwugozzn;
+import 'package:string_theory_server/src/generated/restring_event.dart'
+    as _ired0jse;
 import 'package:string_theory_server/src/generated/session_log.dart'
     as _iyc5nsr4;
 import 'bag_exception.dart' as _ik2s0sst;
 import 'bag_stream_message.dart' as _iwuh6un6;
 import 'greetings/greeting.dart' as _izw8z7ou;
 import 'racquet.dart' as _iiy1gsnd;
+import 'restring_event.dart' as _i3zubmt5;
 import 'session_log.dart' as _ijme2vd8;
 import 'string_job.dart' as _ipf7mlcg;
 import 'string_material_category.dart' as _i5v32zda;
@@ -31,6 +34,7 @@ export 'bag_exception.dart';
 export 'bag_stream_message.dart';
 export 'greetings/greeting.dart';
 export 'racquet.dart';
+export 'restring_event.dart';
 export 'session_log.dart';
 export 'string_job.dart';
 export 'string_material_category.dart';
@@ -128,6 +132,139 @@ class Protocol extends _is.DatabaseSerializationManager {
             _isp.IndexElementDefinition(
               type: _isp.IndexElementDefinitionType.column,
               definition: 'userId',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'restring_event',
+      dartName: 'RestringEvent',
+      schema: 'public',
+      module: 'string_theory',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int?',
+          columnDefault: 'serial',
+        ),
+        _isp.ColumnDefinition(
+          name: 'userId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'racquetId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'stringJobId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'stringDescription',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'materialCategory',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'protocol:StringMaterialCategory',
+        ),
+        _isp.ColumnDefinition(
+          name: 'stringingDate',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+        _isp.ColumnDefinition(
+          name: 'restringDate',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+        _isp.ColumnDefinition(
+          name: 'finalCourtHours',
+          columnType: _isp.ColumnType.doublePrecision,
+          isNullable: false,
+          dartType: 'double',
+        ),
+        _isp.ColumnDefinition(
+          name: 'finalDaysActive',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'finalHealthScore',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+          columnDefault: 'now',
+        ),
+      ],
+      foreignKeys: [
+        _isp.ForeignKeyDefinition(
+          constraintName: 'restring_event_fk_0',
+          columns: ['racquetId'],
+          referenceTable: 'racquet',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+        _isp.ForeignKeyDefinition(
+          constraintName: 'restring_event_fk_1',
+          columns: ['stringJobId'],
+          referenceTable: 'string_job',
+          referenceTableSchema: 'public',
+          referenceColumns: ['id'],
+          onUpdate: _isp.ForeignKeyAction.noAction,
+          onDelete: _isp.ForeignKeyAction.cascade,
+          matchType: null,
+        ),
+      ],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'restring_event_user_id_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'userId',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'restring_event_racquet_id_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'racquetId',
             ),
           ],
           type: 'btree',
@@ -439,6 +576,9 @@ class Protocol extends _is.DatabaseSerializationManager {
     if (t == _iiy1gsnd.Racquet) {
       return _iiy1gsnd.Racquet.fromJson(data) as T;
     }
+    if (t == _i3zubmt5.RestringEvent) {
+      return _i3zubmt5.RestringEvent.fromJson(data) as T;
+    }
     if (t == _ijme2vd8.SessionLog) {
       return _ijme2vd8.SessionLog.fromJson(data) as T;
     }
@@ -461,6 +601,10 @@ class Protocol extends _is.DatabaseSerializationManager {
     if (t == _is.getType<_iiy1gsnd.Racquet?>()) {
       return (data != null ? _iiy1gsnd.Racquet.fromJson(data) : null) as T;
     }
+    if (t == _is.getType<_i3zubmt5.RestringEvent?>()) {
+      return (data != null ? _i3zubmt5.RestringEvent.fromJson(data) : null)
+          as T;
+    }
     if (t == _is.getType<_ijme2vd8.SessionLog?>()) {
       return (data != null ? _ijme2vd8.SessionLog.fromJson(data) : null) as T;
     }
@@ -476,6 +620,12 @@ class Protocol extends _is.DatabaseSerializationManager {
     if (t == List<_iwugozzn.Racquet>) {
       return (data as List)
               .map((e) => deserialize<_iwugozzn.Racquet>(e))
+              .toList()
+          as T;
+    }
+    if (t == List<_ired0jse.RestringEvent>) {
+      return (data as List)
+              .map((e) => deserialize<_ired0jse.RestringEvent>(e))
               .toList()
           as T;
     }
@@ -503,6 +653,7 @@ class Protocol extends _is.DatabaseSerializationManager {
       _iwuh6un6.BagStreamMessage => 'BagStreamMessage',
       _izw8z7ou.Greeting => 'Greeting',
       _iiy1gsnd.Racquet => 'Racquet',
+      _i3zubmt5.RestringEvent => 'RestringEvent',
       _ijme2vd8.SessionLog => 'SessionLog',
       _ipf7mlcg.StringJob => 'StringJob',
       _i5v32zda.StringMaterialCategory => 'StringMaterialCategory',
@@ -531,6 +682,8 @@ class Protocol extends _is.DatabaseSerializationManager {
         return 'Greeting';
       case _iiy1gsnd.Racquet():
         return 'Racquet';
+      case _i3zubmt5.RestringEvent():
+        return 'RestringEvent';
       case _ijme2vd8.SessionLog():
         return 'SessionLog';
       case _ipf7mlcg.StringJob():
@@ -574,6 +727,9 @@ class Protocol extends _is.DatabaseSerializationManager {
     }
     if (dataClassName == 'Racquet') {
       return deserialize<_iiy1gsnd.Racquet>(data['data']);
+    }
+    if (dataClassName == 'RestringEvent') {
+      return deserialize<_i3zubmt5.RestringEvent>(data['data']);
     }
     if (dataClassName == 'SessionLog') {
       return deserialize<_ijme2vd8.SessionLog>(data['data']);
@@ -627,6 +783,8 @@ class Protocol extends _is.DatabaseSerializationManager {
     switch (t) {
       case _iiy1gsnd.Racquet:
         return _iiy1gsnd.Racquet.t;
+      case _i3zubmt5.RestringEvent:
+        return _i3zubmt5.RestringEvent.t;
       case _ijme2vd8.SessionLog:
         return _ijme2vd8.SessionLog.t;
       case _ipf7mlcg.StringJob:
