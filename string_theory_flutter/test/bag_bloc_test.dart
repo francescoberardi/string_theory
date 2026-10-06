@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:bloc_test/bloc_test.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:string_theory_client/string_theory_client.dart';
@@ -144,7 +145,7 @@ void main() {
           equals([
             const BagLoading(),
             const BagError(
-              'Failed to load virtual bag: Exception: Server unreachable',
+              "Couldn't load your bag. Check your connection and try again.",
             ),
           ]),
           reason: 'Must emit BagLoading followed by BagError on RPC failure',
@@ -387,7 +388,8 @@ void main() {
           equals([
             const BagLoading(),
             const BagError(
-              'Failed to seed sample bag: Exception: Network timeout',
+              "Couldn't load the sample bag. "
+              'Check your connection and try again.',
             ),
           ]),
         );
@@ -468,7 +470,8 @@ void main() {
           bloc.state,
           equals(
             const BagError(
-              'Failed to fast-forward racquet age: Exception: RPC failed',
+              "Couldn't fast-forward this racquet. "
+              'Check your connection and try again.',
             ),
           ),
         );
@@ -722,6 +725,7 @@ void main() {
       message: 'Racquet not found or unauthorized',
       statusCode: 404,
     );
+    const goneMessage = 'That racquet is no longer in your bag.';
 
     test(
       'dispatches client.session.logSession and emits BagLoaded with updated racquets',
@@ -829,7 +833,7 @@ void main() {
           equals([
             BagLoaded(
               [sampleRacquet],
-              errorMessage: 'Failed to log session: $rejection',
+              errorMessage: goneMessage,
             ),
           ]),
         );
@@ -864,7 +868,7 @@ void main() {
         expect(
           states,
           equals([
-            BagError('Failed to log session: $rejection'),
+            BagError(goneMessage),
           ]),
         );
 
@@ -902,7 +906,7 @@ void main() {
 
         final errorState = BagLoaded(
           [sampleRacquet],
-          errorMessage: 'Failed to log session: $rejection',
+          errorMessage: goneMessage,
         );
         expect(
           states,
@@ -961,6 +965,294 @@ void main() {
         await bloc.close();
       },
     );
+  });
+
+  group('Friendly error messages', () {
+    const connection = ' Check your connection and try again.';
+    final stringingDate = DateTime.utc(2026, 10, 1);
+    final strung = Racquet(
+      id: 1,
+      userId: 1,
+      name: 'Wilson Blade 98',
+      isPrimary: true,
+      activeStringJob: StringJob(
+        id: 10,
+        userId: 1,
+        racquetId: 1,
+        materialCategory: StringMaterialCategory.coPoly,
+        stringingDate: stringingDate,
+        maxRatedHours: 20.0,
+        totalCourtHours: 5.0,
+        currentHealthScore: 76,
+        isActive: true,
+      ),
+      createdAt: stringingDate,
+      updatedAt: stringingDate,
+    );
+    final unstrung = Racquet(
+      id: 2,
+      userId: 1,
+      name: 'Head Radical MP',
+      isPrimary: false,
+      createdAt: stringingDate,
+      updatedAt: stringingDate,
+    );
+    const rawText = 'internal server detail';
+    BagException rejection(int statusCode) =>
+        BagException(message: rawText, statusCode: statusCode);
+
+    late List<String> printed;
+
+    setUp(() {
+      printed = [];
+      final original = debugPrint;
+      debugPrint = (String? message, {int? wrapWidth}) {
+        if (message != null) printed.add(message);
+      };
+      addTearDown(() => debugPrint = original);
+    });
+
+    Future<(BagBloc, List<BagState>)> loadedBloc({
+      OfflineSessionQueue? queue,
+    }) async {
+      when(
+        () => mockBagEndpoint.getVirtualBag(),
+      ).thenAnswer((_) async => [strung, unstrung]);
+      final bloc = BagBloc(client: mockClient, offlineQueue: queue);
+      bloc.add(const LoadBag());
+      await pumpEventQueue();
+      final states = <BagState>[];
+      final subscription = bloc.stream.listen(states.add);
+      addTearDown(subscription.cancel);
+      return (bloc, states);
+    }
+
+    LogSession logFor(int racquetId) => LogSession(
+      racquetId: racquetId,
+      startTime: DateTime.utc(2026, 10, 4, 18, 0),
+      durationMinutes: 60,
+      source: 'manual',
+    );
+
+    /// Asserts [message] carries none of the raw error.
+    void expectClean(String? message) {
+      expect(message, isNotNull);
+      expect(message, isNot(contains(rawText)));
+      expect(message, isNot(contains('BagException')));
+      expect(message, isNot(contains('statusCode')));
+      expect(message, isNot(contains('Exception')));
+    }
+
+    test(
+      'log session on an unstrung racquet (400) names it and reverts the gauge',
+      () async {
+        when(
+          () => mockSessionEndpoint.logSession(any()),
+        ).thenThrow(rejection(400));
+        final (bloc, states) = await loadedBloc();
+
+        bloc.add(logFor(2));
+        await pumpEventQueue();
+
+        final last = states.last as BagLoaded;
+        expect(last.racquets, [strung, unstrung]);
+        expect(
+          last.errorMessage,
+          '"Head Radical MP" has no strings mounted. '
+          'Restring it before logging a session.',
+        );
+        expectClean(last.errorMessage);
+        expect(
+          printed,
+          contains(
+            'BagBloc: logSession failed: ${rejection(400)}',
+          ),
+        );
+        await bloc.close();
+      },
+    );
+
+    test(
+      'log session duplicate workout (409) keeps the clear-then-emit pattern',
+      () async {
+        when(
+          () => mockSessionEndpoint.logSession(any()),
+        ).thenThrow(rejection(409));
+        final (bloc, states) = await loadedBloc();
+
+        bloc.add(logFor(1));
+        await pumpEventQueue();
+
+        expect(states.length, 3, reason: 'optimistic, cleared, error');
+        expect(
+          states[1],
+          BagLoaded([strung, unstrung]),
+        );
+        final last = states.last as BagLoaded;
+        expect(last.racquets, [strung, unstrung]);
+        expect(
+          last.errorMessage,
+          'This workout is already logged on another account.',
+        );
+        expectClean(last.errorMessage);
+        await bloc.close();
+      },
+    );
+
+    test('offline enqueue failure surfaces a save error', () async {
+      final queue = OfflineSessionQueue(storage: _FailingWriteStorage());
+      when(() => mockSessionEndpoint.logSession(any())).thenThrow(
+        const ServerpodClientNetworkException('offline'),
+      );
+      final (bloc, states) = await loadedBloc(queue: queue);
+
+      bloc.add(logFor(1));
+      await pumpEventQueue();
+
+      final last = states.last as BagLoaded;
+      expect(last.racquets, [strung, unstrung]);
+      expect(
+        last.errorMessage,
+        "Couldn't save this session. Please try again.",
+      );
+      expect(last.errorMessage, isNot(contains('disk full')));
+      expect(
+        printed.where(
+          (line) =>
+              line.startsWith('BagBloc: saveSessionOffline failed:') &&
+              line.contains('disk full'),
+        ),
+        isNotEmpty,
+      );
+      await bloc.close();
+    });
+
+    test('delete of a vanished racquet (404)', () async {
+      when(
+        () => mockBagEndpoint.deleteRacquet(racquetId: 1),
+      ).thenThrow(rejection(404));
+      final (bloc, states) = await loadedBloc();
+
+      bloc.add(const DeleteRacquet(1));
+      await pumpEventQueue();
+
+      expect(states, [
+        const BagError('That racquet is no longer in your bag.'),
+      ]);
+      expect(
+        printed,
+        contains('BagBloc: deleteRacquet failed: ${rejection(404)}'),
+      );
+      await bloc.close();
+    });
+
+    test('add racquet rejected (400) names the racquet', () async {
+      when(
+        () => mockBagEndpoint.createRacquet(
+          racquetName: any(named: 'racquetName'),
+          brand: any(named: 'brand'),
+          model: any(named: 'model'),
+          isPrimary: any(named: 'isPrimary'),
+          materialCategory: any(named: 'materialCategory'),
+          stringBrand: any(named: 'stringBrand'),
+          stringModel: any(named: 'stringModel'),
+          tension: any(named: 'tension'),
+          maxRatedHours: any(named: 'maxRatedHours'),
+          stringingDate: any(named: 'stringingDate'),
+        ),
+      ).thenThrow(rejection(400));
+      final (bloc, states) = await loadedBloc();
+
+      bloc.add(
+        AddRacquet(
+          name: 'Yonex Ezone',
+          stringBrand: 'Yonex',
+          stringModel: 'Poly Tour Pro',
+          tension: 50.0,
+          maxRatedHours: 20.0,
+          stringingDate: DateTime.utc(2026, 10, 1),
+        ),
+      );
+      await pumpEventQueue();
+
+      expect(states, [
+        const BagError(
+          "Couldn't add \"Yonex Ezone\". "
+          'Check the racquet details and try again.',
+        ),
+      ]);
+      await bloc.close();
+    });
+
+    test('set primary network failure', () async {
+      when(
+        () => mockBagEndpoint.setPrimary(racquetId: 2),
+      ).thenThrow(Exception(rawText));
+      final (bloc, states) = await loadedBloc();
+
+      bloc.add(const SetPrimaryRacquet(2));
+      await pumpEventQueue();
+
+      expect(states, [
+        const BagError("Couldn't set your primary racquet.$connection"),
+      ]);
+      expect(
+        printed,
+        contains('BagBloc: setPrimaryRacquet failed: Exception: $rawText'),
+      );
+      await bloc.close();
+    });
+
+    test('expired session (401) on load', () async {
+      when(
+        () => mockBagEndpoint.getVirtualBag(),
+      ).thenThrow(ServerpodClientUnauthorized());
+      final bloc = BagBloc(client: mockClient);
+      final states = <BagState>[];
+      final subscription = bloc.stream.listen(states.add);
+
+      bloc.add(const LoadBag());
+      await pumpEventQueue();
+
+      expect(states, [
+        const BagLoading(),
+        const BagError(
+          'Your session expired. Restart the app to sign in again.',
+        ),
+      ]);
+      expect(
+        printed.where((line) => line.startsWith('BagBloc: loadBag failed:')),
+        isNotEmpty,
+      );
+      await subscription.cancel();
+      await bloc.close();
+    });
+
+    test('restring of a vanished racquet (404) reverts the gauge', () async {
+      when(
+        () => mockBagEndpoint.restringRacquet(
+          racquetId: any(named: 'racquetId'),
+          keepSame: any(named: 'keepSame'),
+          newSpecs: any(named: 'newSpecs'),
+          materialCategory: any(named: 'materialCategory'),
+          stringBrand: any(named: 'stringBrand'),
+          stringModel: any(named: 'stringModel'),
+          tension: any(named: 'tension'),
+          maxRatedHours: any(named: 'maxRatedHours'),
+          restringDate: any(named: 'restringDate'),
+          simulateFailure: any(named: 'simulateFailure'),
+        ),
+      ).thenThrow(rejection(404));
+      final (bloc, states) = await loadedBloc();
+
+      bloc.add(const RestringRacquet(1));
+      await pumpEventQueue();
+
+      final last = states.last as BagLoaded;
+      expect(last.racquets, [strung, unstrung]);
+      expect(last.errorMessage, 'That racquet is no longer in your bag.');
+      await bloc.close();
+    });
   });
 
   group('Story 3.5: Offline session queue & auto-reconnection sync', () {
@@ -1141,7 +1433,7 @@ void main() {
           bloc.state,
           BagLoaded(
             [original],
-            errorMessage: 'Failed to log session: $rejection',
+            errorMessage: "Couldn't log this session. Please try again.",
           ),
         );
         expect(queue.pendingCount, 0);
@@ -1874,4 +2166,14 @@ void main() {
       await bloc.close();
     });
   });
+}
+
+/// Storage whose writes always fail, as when the device is out of space.
+class _FailingWriteStorage implements SessionQueueStorage {
+  @override
+  Future<List<String>> read() async => [];
+
+  @override
+  Future<void> write(List<String> entries) async =>
+      throw Exception('disk full');
 }

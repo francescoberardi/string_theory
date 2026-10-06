@@ -88,3 +88,11 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-3-racquet-detail-screen-restring-history-timeline-ui.md`
   summary: Unconstrained wide-screen layout on tablet/desktop for RacquetDetailScreen.
   evidence: On tablet/desktop viewports, stat cards and headers stretch to window bounds; deferred to Epic 5 (Story 5.1 Responsive Layout & Desktop Grid).
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-3-retro-2-map-raw-exceptions-in-bagbloc.md`
+  summary: Surface an expired session (401) on log session instead of queueing it offline with the "Session saved offline" toast.
+  evidence: `isPermanentSessionRejection` treats 401 as transient, so `BagBloc._onLogSession` queues the session and the mapper's session-expired copy is never shown for this operation; the queue keeps retrying until the app restarts and re-provisions the guest. Pre-existing routing, left unchanged by the friendly-errors story.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-3-retro-2-map-raw-exceptions-in-bagbloc.md`
+  summary: Separate the post-mutation `getVirtualBag` refresh from the mutation in `_onAddRacquet`, `_onDeleteRacquet`, `_onSetPrimaryRacquet` and `_onFastForwardRacquetAge` so a failed refresh is not reported as a failed mutation.
+  evidence: The create/delete/setPrimary RPC and the refresh share one try/catch in `string_theory_flutter/lib/bloc/bag_bloc.dart`; if the RPC succeeds and the refresh throws, the user sees "Couldn't add ..." and retrying creates a duplicate racquet. `_onLogSession` already splits these.

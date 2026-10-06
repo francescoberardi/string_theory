@@ -83,6 +83,14 @@ class SessionSyncResult {
       'remaining: $remaining, interrupted: $interrupted)';
 }
 
+/// The HTTP status code carried by [error], or null when it has none (network
+/// failures, timeouts and anything unknown).
+int? statusCodeOf(Object error) => switch (error) {
+  BagException(:final statusCode) => statusCode,
+  ServerpodClientHttpException(:final statusCode) => statusCode,
+  _ => null,
+};
+
 /// Whether [error] means the server rejected a session for good, so retrying
 /// the same payload can never succeed.
 ///
@@ -90,11 +98,7 @@ class SessionSyncResult {
 /// re-provisioned), 408 and 429. Network failures, timeouts, server errors
 /// and anything unknown are treated as transient.
 bool isPermanentSessionRejection(Object error) {
-  final statusCode = switch (error) {
-    BagException(:final statusCode) => statusCode,
-    ServerpodClientHttpException(:final statusCode) => statusCode,
-    _ => null,
-  };
+  final statusCode = statusCodeOf(error);
   if (statusCode == null) return false;
   if (statusCode < 400 || statusCode >= 500) return false;
   return statusCode != 401 && statusCode != 408 && statusCode != 429;

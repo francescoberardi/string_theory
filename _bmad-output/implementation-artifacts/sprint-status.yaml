@@ -134,7 +134,7 @@ action_items:
     epic: 3
     action: "Map raw exception messages to user-friendly text in BagBloc SnackBars"
     owner: "Amelia (Developer)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-10-04.md"
   - id: "epic-3-retro-item-3-decompose-virtualbagscreen-and-assignmentsheet"
     epic: 3

@@ -362,7 +362,9 @@ void main() {
       'should display error message and reload button when state is BagError',
       (tester) async {
         when(() => mockBagBloc.state).thenReturn(
-          const BagError('Failed to load virtual bag: connection error'),
+          const BagError(
+            "Couldn't load your bag. Check your connection and try again.",
+          ),
         );
         when(() => mockBagBloc.stream).thenAnswer((_) => const Stream.empty());
 
@@ -378,7 +380,9 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(
-          find.text('Failed to load virtual bag: connection error'),
+          find.text(
+            "Couldn't load your bag. Check your connection and try again.",
+          ),
           findsOneWidget,
         );
         expect(find.text('Reload Bag'), findsOneWidget);
@@ -800,13 +804,13 @@ void main() {
         stateController.add(
           BagLoaded(
             sampleRacquets,
-            errorMessage: 'Failed to log session: network timeout',
+            errorMessage: "Couldn't log this session. Please try again.",
           ),
         );
         await tester.pumpAndSettle();
 
         expect(
-          find.text('Failed to log session: network timeout'),
+          find.text("Couldn't log this session. Please try again."),
           findsOneWidget,
         );
         // Racquets are still displayed

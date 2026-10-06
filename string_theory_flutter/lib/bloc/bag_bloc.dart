@@ -6,6 +6,7 @@ import 'package:string_theory_client/string_theory_client.dart';
 
 import '../domain/decay_engine.dart';
 import '../services/offline_session_queue.dart';
+import 'bag_error_messages.dart';
 import 'bag_event.dart';
 import 'bag_state.dart';
 
@@ -20,11 +21,6 @@ class BagBloc extends Bloc<BagEvent, BagState> {
   /// Toast shown once the server has confirmed a restring.
   static const restringSuccessMessage =
       'Fresh stringbed mounted! Restrung to 100% health.';
-
-  /// Error shown when restringing [racquetName] fails.
-  static String restringFailureMessage(String racquetName) =>
-      'Could not restring "$racquetName". '
-      'Check your connection and try again.';
 
   final Client client;
 
@@ -139,6 +135,29 @@ class BagBloc extends Bloc<BagEvent, BagState> {
     );
   }
 
+  /// Logs the raw [error] of a failed [operation] and returns the
+  /// user-facing copy for it. [racquet] is the target as it was before the
+  /// failure; [racquetName] names a racquet not yet in the bag.
+  String _failure(
+    BagOperation operation,
+    Object error, {
+    Racquet? racquet,
+    String? racquetName,
+  }) {
+    debugPrint('BagBloc: ${operation.name} failed: $error');
+    return bagErrorMessage(
+      operation,
+      error,
+      racquet: racquet,
+      racquetName: racquetName,
+    );
+  }
+
+  /// The racquet [racquetId] in the current state, if loaded.
+  Racquet? _racquetIn(BagState state, int racquetId) => state is BagLoaded
+      ? state.racquets.where((r) => r.id == racquetId).firstOrNull
+      : null;
+
   /// Applies still-queued sessions on top of authoritative server
   /// [racquets], so gauges keep reflecting play not yet synced.
   List<Racquet> _withPending(List<Racquet> racquets) {
@@ -251,7 +270,7 @@ class BagBloc extends Bloc<BagEvent, BagState> {
         add(const SyncOfflineSessions());
       }
     } catch (e) {
-      emit(BagError('Failed to load virtual bag: $e'));
+      emit(BagError(_failure(BagOperation.loadBag, e)));
     }
   }
 
@@ -272,7 +291,11 @@ class BagBloc extends Bloc<BagEvent, BagState> {
       final racquets = await client.bag.getVirtualBag();
       emit(_loaded(_withPending(racquets)));
     } catch (e) {
-      emit(BagError('Failed to add racquet: $e'));
+      emit(
+        BagError(
+          _failure(BagOperation.addRacquet, e, racquetName: event.name),
+        ),
+      );
     }
   }
 
@@ -293,7 +316,15 @@ class BagBloc extends Bloc<BagEvent, BagState> {
         emit(_loaded(_withPending(racquets)));
       }
     } catch (e) {
-      emit(BagError('Failed to delete racquet: $e'));
+      emit(
+        BagError(
+          _failure(
+            BagOperation.deleteRacquet,
+            e,
+            racquet: _racquetIn(state, event.racquetId),
+          ),
+        ),
+      );
     }
   }
 
@@ -319,7 +350,15 @@ class BagBloc extends Bloc<BagEvent, BagState> {
         emit(_loaded(_withPending(racquets)));
       }
     } catch (e) {
-      emit(BagError('Failed to set primary racquet: $e'));
+      emit(
+        BagError(
+          _failure(
+            BagOperation.setPrimaryRacquet,
+            e,
+            racquet: _racquetIn(state, event.racquetId),
+          ),
+        ),
+      );
     }
   }
 
@@ -394,7 +433,7 @@ class BagBloc extends Bloc<BagEvent, BagState> {
       }).toList();
       emit(_loaded(seededRacquets));
     } catch (e) {
-      emit(BagError('Failed to seed sample bag: $e'));
+      emit(BagError(_failure(BagOperation.seedSampleBag, e)));
     }
   }
 
@@ -418,7 +457,15 @@ class BagBloc extends Bloc<BagEvent, BagState> {
         emit(_loaded(_withPending(racquets)));
       }
     } catch (e) {
-      emit(BagError('Failed to fast-forward racquet age: $e'));
+      emit(
+        BagError(
+          _failure(
+            BagOperation.fastForwardRacquetAge,
+            e,
+            racquet: _racquetIn(state, event.racquetId),
+          ),
+        ),
+      );
     }
   }
 
@@ -458,7 +505,15 @@ class BagBloc extends Bloc<BagEvent, BagState> {
         await client.session.logSession(log);
       } catch (e) {
         if (isPermanentSessionRejection(e)) {
-          _emitLogFailure(current, e, emit);
+          _emitLogFailure(
+            current,
+            _failure(
+              BagOperation.logSession,
+              e,
+              racquet: _racquetIn(current, event.racquetId),
+            ),
+            emit,
+          );
           return;
         }
         debugPrint('BagBloc: logSession unreachable, queueing offline: $e');
@@ -485,10 +540,9 @@ class BagBloc extends Bloc<BagEvent, BagState> {
   /// Reverts the optimistic gauge and surfaces a failed log.
   void _emitLogFailure(
     BagState previous,
-    Object error,
+    String message,
     Emitter<BagState> emit,
   ) {
-    final message = 'Failed to log session: $error';
     if (previous is BagLoaded) {
       // Clear first so a repeated identical error is still a new state.
       emit(_loaded(previous.racquets));
@@ -510,8 +564,15 @@ class BagBloc extends Bloc<BagEvent, BagState> {
     try {
       await offlineQueue.enqueue(log);
     } catch (e) {
-      debugPrint('BagBloc: failed to queue session offline: $e');
-      _emitLogFailure(previous, e, emit);
+      _emitLogFailure(
+        previous,
+        _failure(
+          BagOperation.saveSessionOffline,
+          e,
+          racquet: _racquetIn(previous, log.racquetId),
+        ),
+        emit,
+      );
       return;
     }
 
@@ -567,16 +628,15 @@ class BagBloc extends Bloc<BagEvent, BagState> {
         ),
       );
     } catch (e) {
-      debugPrint('BagBloc: restringRacquet failed: $e');
+      final message = _failure(
+        BagOperation.restringRacquet,
+        e,
+        racquet: original,
+      );
       final reverted = replaceTarget(original);
       // Clear first so a repeated identical error is still a new state.
       emit(_loaded(reverted));
-      emit(
-        _loaded(
-          reverted,
-          errorMessage: restringFailureMessage(original.name),
-        ),
-      );
+      emit(_loaded(reverted, errorMessage: message));
     } finally {
       _restringsInFlight.remove(event.racquetId);
     }
