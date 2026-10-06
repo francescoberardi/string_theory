@@ -8,12 +8,14 @@ FROM dart:3.12.2 AS build
 WORKDIR /app
 COPY pubspec.lock .
 COPY string_theory_server string_theory_server
+COPY string_theory_decay_engine string_theory_decay_engine
 RUN printf '%s\n' \
   'name: _' \
   'environment:' \
   '  sdk: ^3.12.2' \
   'workspace:' \
   '  - string_theory_server' \
+  '  - string_theory_decay_engine' \
   > pubspec.yaml
 RUN dart pub get
 
