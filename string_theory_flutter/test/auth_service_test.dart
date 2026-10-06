@@ -26,11 +26,28 @@ class FakeEndpointAnonymousIdp implements EndpointAnonymousIdp {
     loginCalls++;
     lastTokenReceived = token;
     if (exceptionToThrow != null) throw exceptionToThrow!;
-    return successToReturn!;
+    final success = successToReturn;
+    if (success == null) {
+      throw StateError(
+        'FakeEndpointAnonymousIdp.login called without successToReturn or '
+        'exceptionToThrow configured',
+      );
+    }
+    return success;
   }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+/// Builds a client against a closed local port so session validation in
+/// `client.auth.initialize()` fails fast with a connection error (which keeps
+/// the restored session) instead of reaching a dev server on :8080.
+Client buildTestClient(ClientAuthSuccessStorage storage) {
+  final client = Client('http://127.0.0.1:1/')
+    ..authSessionManager = FlutterAuthSessionManager(storage: storage);
+  addTearDown(client.close);
+  return client;
 }
 
 void main() {
@@ -49,8 +66,7 @@ void main() {
       'given fresh install (no session), when initialize() is called, then logs in anonymously',
       () async {
         final storage = InMemoryAuthSuccessStorage();
-        final client = Client('http://localhost:8080/')
-          ..authSessionManager = FlutterAuthSessionManager(storage: storage);
+        final client = buildTestClient(storage);
         final fakeEndpoint = FakeEndpointAnonymousIdp()
           ..successToReturn = sampleAuthSuccess;
 
@@ -72,11 +88,10 @@ void main() {
     );
 
     test(
-      'given existing valid session, when initialize() is called, then rehydrates without calling login',
+      'given stored session and unreachable server, when initialize() is called, then rehydrates without calling login',
       () async {
         final storage = InMemoryAuthSuccessStorage(sampleAuthSuccess);
-        final client = Client('http://localhost:8080/')
-          ..authSessionManager = FlutterAuthSessionManager(storage: storage);
+        final client = buildTestClient(storage);
         final fakeEndpoint = FakeEndpointAnonymousIdp();
 
         final authService = AuthService(
@@ -97,8 +112,7 @@ void main() {
       'given fresh install and network failure, when initialize() is called, then error is propagated',
       () async {
         final storage = InMemoryAuthSuccessStorage();
-        final client = Client('http://localhost:8080/')
-          ..authSessionManager = FlutterAuthSessionManager(storage: storage);
+        final client = buildTestClient(storage);
         final fakeEndpoint = FakeEndpointAnonymousIdp()
           ..exceptionToThrow = Exception(
             'Network error connecting to Serverpod',
@@ -109,7 +123,7 @@ void main() {
           anonymousEndpoint: fakeEndpoint,
         );
 
-        expect(authService.initialize(), throwsA(isA<Exception>()));
+        await expectLater(authService.initialize(), throwsA(isA<Exception>()));
       },
     );
 
@@ -117,8 +131,7 @@ void main() {
       'given authenticated user, when signOut() is called, then session is cleared',
       () async {
         final storage = InMemoryAuthSuccessStorage(sampleAuthSuccess);
-        final client = Client('http://localhost:8080/')
-          ..authSessionManager = FlutterAuthSessionManager(storage: storage);
+        final client = buildTestClient(storage);
         final fakeEndpoint = FakeEndpointAnonymousIdp();
 
         final authService = AuthService(
@@ -140,8 +153,7 @@ void main() {
       'given concurrent loginAsGuest calls, then deduplicates in-flight calls to single endpoint invocation',
       () async {
         final storage = InMemoryAuthSuccessStorage();
-        final client = Client('http://localhost:8080/')
-          ..authSessionManager = FlutterAuthSessionManager(storage: storage);
+        final client = buildTestClient(storage);
         final fakeEndpoint = FakeEndpointAnonymousIdp()
           ..successToReturn = sampleAuthSuccess;
 
@@ -165,8 +177,7 @@ void main() {
       'given loginAsGuest with token, then forwards token to anonymous endpoint',
       () async {
         final storage = InMemoryAuthSuccessStorage();
-        final client = Client('http://localhost:8080/')
-          ..authSessionManager = FlutterAuthSessionManager(storage: storage);
+        final client = buildTestClient(storage);
         final fakeEndpoint = FakeEndpointAnonymousIdp()
           ..successToReturn = sampleAuthSuccess;
 

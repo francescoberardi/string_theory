@@ -165,7 +165,7 @@ action_items:
     epic: 5
     action: "Fix FakeEndpointAnonymousIdp null safety in auth_service_test.dart"
     owner: "Amelia (Developer)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-5-retro-2026-10-06.md"
   - id: "epic-5-retro-item-2-consolidate-navigation-destinations"
     epic: 5

@@ -96,3 +96,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-3-retro-2-map-raw-exceptions-in-bagbloc.md`
   summary: Separate the post-mutation `getVirtualBag` refresh from the mutation in `_onAddRacquet`, `_onDeleteRacquet`, `_onSetPrimaryRacquet` and `_onFastForwardRacquetAge` so a failed refresh is not reported as a failed mutation.
   evidence: The create/delete/setPrimary RPC and the refresh share one try/catch in `string_theory_flutter/lib/bloc/bag_bloc.dart`; if the RPC succeeds and the refresh throws, the user sees "Couldn't add ..." and retrying creates a duplicate racquet. `_onLogSession` already splits these.
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-5-retro-1-fix-fake-endpoint-null-safety-in-auth-test.md`
+  summary: Add a fake serverpod_auth_core status caller to auth_service_test so the valid-session and server-rejected-session (guest login fallback) paths are tested without any real network I/O.
+  evidence: The tests now rely on a dead port (127.0.0.1:1) making validation fail, so `isSignedIn() == true` and the signOut→loginAsGuest fallback in `AuthService.initialize()` are never deliberately exercised.
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-5-retro-1-fix-fake-endpoint-null-safety-in-auth-test.md`
+  summary: Correct the `AuthService.initialize()` doc comment, which claims restore happens "without network blocking" although it awaits server validation (up to 2s).
+  evidence: `string_theory_flutter/lib/services/auth_service.dart:36-39` vs serverpod_auth_core_client 4.0.3 `ClientAuthSessionManager.initialize()` awaiting `validateAuthentication(timeout: 2s)`.
