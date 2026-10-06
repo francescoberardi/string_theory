@@ -115,7 +115,7 @@ action_items:
     action: "Extract shared pure Dart domain calculation logic into a shared package
       or client extension"
     owner: "Winston (Architect)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-2-retro-2026-10-04.md"
   - id: "epic-2-retro-item-2-add-batch-pagination-dailydecayfuture"
     epic: 2

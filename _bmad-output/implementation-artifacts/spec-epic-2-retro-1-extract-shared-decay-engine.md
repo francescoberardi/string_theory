@@ -2,7 +2,7 @@
 title: 'Extract Shared Pure Dart Package for DecayEngine & Health Tiers'
 type: 'refactor'
 created: '2026-10-06'
-status: 'in-review'
+status: 'done'
 baseline_commit: '3e5f46a2e71fc25adb8f3c91ad0d8fc4eac2c901'
 route: 'dispatch'
 review_loop_iteration: 0
