@@ -92,6 +92,33 @@ context:
 - Given `RadialHealthGauge`, `RacquetCard`, and `RacquetDetailScreen`, when rendering health scores, then they derive color, critical alert banner, and semantics directly from `HealthTier`.
 - Given the entire workspace, when `dart analyze` and `dart test` are executed across all packages, then zero analyzer warnings and 100% test pass rate are maintained.
 
+### Review Findings
+
+Code review 2026-10-06 of `3e5f46a..07ed33d` (blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor).
+
+- [x] [Review][Patch] (high) Server Docker image can no longer be built: `Dockerfile` builds a minimal workspace containing only `string_theory_server`, but the server now has a sourceless `string_theory_decay_engine:` dependency. Reproduced: `dart pub get` fails with "could not find package string_theory_decay_engine". Fix: `COPY string_theory_decay_engine` and add it to the generated `workspace:` list [string_theory_server/Dockerfile:9]
+- [x] [Review][Patch] (medium) Compile-time exhaustiveness lost and nothing replaces it: a value added to `string_material_category.spy.yaml` silently gets `other` defaults (180d / 20h / "Other") on the server cron, the endpoints and the Flutter optimistic UI. No test feeds the real generated server/client enums through `fromEnum` (this also covers AC1 parity). Fix: in the server and flutter `decay_engine_test.dart`, loop over `StringMaterialCategory.values` and assert each name is in `DomainStringMaterialCategory.values.asNameMap()`, plus equal counts [string_theory_decay_engine/lib/src/string_category_defaults.dart:19]
+- [x] [Review][Patch] (low) I/O matrix row "Dynamic & Calendar Decay" (10h/20h, 75d Co-Poly → 35, Critical) is not tested anywhere [string_theory_decay_engine/test/decay_engine_test.dart]
+- [x] [Review][Patch] (low) The `hoursPlayed == infinity → maxFinite` branch is redundant (the `!totalPenalty.isFinite` guard already returns 0) and causes a bug: infinite hours with infinite max hours gives `maxFinite / infinity = 0` and reports 100% health. Fix: delete the branch [string_theory_decay_engine/lib/src/decay_engine.dart:36]
+- [x] [Review][Patch] (low) Dead guard `rawShelfLife <= 0 ? 180.0`: every shelf life is a positive constant from an exhaustive switch, and the guard is an unnamed second copy of the `other` default. Fix: delete it [string_theory_decay_engine/lib/src/decay_engine.dart:57]
+- [x] [Review][Patch] (low) The class doc still hardcodes the 70% / 40% thresholds that this refactor centralised in `HealthTier`. Fix: reference `HealthTier.optimalThreshold` / `degradedThreshold` [string_theory_flutter/lib/widgets/radial_health_gauge.dart:10]
+
+**Rejected**
+
+- low: No red `test(...)` commit (tests landed with the implementation in `0456f9d` / `6fb99cf`). A real TDD-protocol violation, but the fix would rewrite `main` history, which the trunk rules forbid.
+- low: `materialCategory: Enum` accepts any enum (e.g. `HealthTier`). The spec mandates polymorphic `Enum` input, and the fix would change that design.
+- low: The same lookup is exposed four ways (DecayEngine / StringCategoryDefaults / domain enum getter / flutter extension). All delegate to one switch, so no caller can diverge.
+- low: `getHealthTierOrNull` and the flutter extension's `defaultMaxHours` / `shelfLifeDays` are unused. No named harm.
+- low: UI strings (`description`, `displayName`) live in the domain package. The app has no localization, and the fix is a cross-package move.
+- low: Non-finite guards change behaviour (NaN → 100, early returns). NaN previously crashed in `.round()`, and the early returns equal the old clamp results.
+- low: `maxRatedHours = infinity` never decays. Pre-existing (old code identical), the UI validates `isFinite`, and the fix adds a guard.
+- false: "RacquetCard critical styling untested". `racquet_card_test.dart` covers scores 34 and 39.
+- false: "CI job needlessly installs Flutter". Root `pub get` resolves the whole workspace, including the Flutter package, so it needs the Flutter SDK.
+- false: "Daily decay future call not verified". It calls the shared engine via the re-export (`daily_decay_future_call.dart:34`), and the workspace analyzes clean.
+- false: "AC4 not verifiable". `dart analyze`: no issues. Decay engine package: 18/18 tests pass.
+- Spec edit: tests are duplicated across three packages. The spec mandates test parity.
+- Spec edit: the Implementation Notes and Spec Change Log sections are empty.
+
 ## Implementation Notes
 
 ## Spec Change Log
