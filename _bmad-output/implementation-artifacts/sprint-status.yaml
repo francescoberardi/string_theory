@@ -75,7 +75,7 @@ development_status:
   5-2-keyboard-shortcuts-desktop-mouse-hover-states: done
   5-3-end-to-end-demo-script-verification-walkthrough: done
   5-4-patrol-headless-end-to-end-test-automation-in-ci: done
-  epic-5-retrospective: optional
+  epic-5-retrospective: done
 action_items:
   - id: "epic-1-retro-item-1-extract-racquetcard-and-radialhealthgaug"
     epic: 1
@@ -161,3 +161,21 @@ action_items:
     owner: "Amelia (Developer)"
     status: open
     ref: "_bmad-output/implementation-artifacts/epic-4-retro-2026-10-05.md"
+  - id: "epic-5-retro-item-1-fix-fake-endpoint-null-safety-in-auth-test"
+    epic: 5
+    action: "Fix FakeEndpointAnonymousIdp null safety in auth_service_test.dart"
+    owner: "Amelia (Developer)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-5-retro-2026-10-06.md"
+  - id: "epic-5-retro-item-2-consolidate-navigation-destinations"
+    epic: 5
+    action: "Consolidate navigation destination models across bottom nav, rail, and drawer"
+    owner: "Winston (Architect)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-5-retro-2026-10-06.md"
+  - id: "epic-5-retro-item-3-flexible-aspect-ratio-bagracquetlist"
+    epic: 5
+    action: "Implement flexible aspect ratio or extent in BagRacquetList grid for accessibility scaling"
+    owner: "Amelia (Developer)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-5-retro-2026-10-06.md"
