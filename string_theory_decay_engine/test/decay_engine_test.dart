@@ -90,6 +90,28 @@ void main() {
       );
 
       test(
+        'should reach critical tier after half max hours and a full co-poly shelf life',
+        () {
+          final stringingDate = DateTime(2026, 1, 1);
+          final testNow = stringingDate.add(const Duration(days: 75));
+
+          final healthScore = DecayEngine.calculateHealth(
+            hoursPlayed: 10.0,
+            maxRatedHours: 20.0,
+            stringingDate: stringingDate,
+            materialCategory: DomainStringMaterialCategory.coPoly,
+            now: testNow,
+          );
+
+          expect(healthScore, equals(35));
+          expect(
+            DecayEngine.getHealthTier(healthScore),
+            equals(HealthTier.critical),
+          );
+        },
+      );
+
+      test(
         'should weigh 70% dynamic playtime and 30% static calendar creep independently',
         () {
           final stringingDate = DateTime(2026, 2, 1);
@@ -265,6 +287,18 @@ void main() {
             now: now,
           ),
           equals(100),
+        );
+
+        // Infinity hoursPlayed with infinity maxRatedHours
+        expect(
+          DecayEngine.calculateHealth(
+            hoursPlayed: double.infinity,
+            maxRatedHours: double.infinity,
+            stringingDate: now,
+            materialCategory: DomainStringMaterialCategory.coPoly,
+            now: now,
+          ),
+          equals(0),
         );
       });
     });

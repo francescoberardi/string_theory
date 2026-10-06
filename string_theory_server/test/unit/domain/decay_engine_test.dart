@@ -240,5 +240,29 @@ void main() {
         expect(health, equals(0));
       });
     });
+
+    group('Generated Enum Parity', () {
+      test(
+        'every generated StringMaterialCategory maps to a same-named domain category',
+        () {
+          final domainNames = DomainStringMaterialCategory.values
+              .asNameMap()
+              .keys
+              .toSet();
+          for (final category in StringMaterialCategory.values) {
+            expect(
+              domainNames,
+              contains(category.name),
+              reason:
+                  '${category.name} would silently fall back to `other` decay rules',
+            );
+          }
+          expect(
+            StringMaterialCategory.values.length,
+            equals(DomainStringMaterialCategory.values.length),
+          );
+        },
+      );
+    });
   });
 }
