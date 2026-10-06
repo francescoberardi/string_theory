@@ -6,10 +6,11 @@ import 'package:string_theory_flutter/theme/court_midnight_theme.dart';
 /// Standalone circular radial health gauge widget displaying real-time
 /// tennis stringbed elasticity and tension decay.
 ///
-/// Features smooth 60fps animations and 3-tier glowing status colors:
-/// - Optimal: >= 70% (#10B981)
-/// - Degraded: 40-69% (#F59E0B)
-/// - Critical: < 40% (#EF4444)
+/// Features smooth 60fps animations and 3-tier glowing status colors,
+/// classified by [HealthTier]:
+/// - [HealthTier.optimal]: >= [HealthTier.optimalThreshold] (#10B981)
+/// - [HealthTier.degraded]: >= [HealthTier.degradedThreshold] (#F59E0B)
+/// - [HealthTier.critical]: below [HealthTier.degradedThreshold] (#EF4444)
 ///
 /// Displays Barlow Condensed bold percentage in the center and secondary
 /// tension loss or health helper text below.
