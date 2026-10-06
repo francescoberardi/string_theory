@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:string_theory_client/string_theory_client.dart';
@@ -1345,6 +1346,164 @@ void main() {
           await tester.pumpAndSettle();
           expect(find.byKey(VirtualBagScreen.keyBottomNav), findsOneWidget);
           expect(find.byKey(VirtualBagScreen.keyEmptyState), findsOneWidget);
+        },
+      );
+    },
+  );
+
+  group(
+    'Story 5.2: Keyboard Shortcuts (L, N, S, Esc)',
+    () {
+      testWidgets('pressing L opens WorkoutAssignmentSheet in manual mode', (
+        tester,
+      ) async {
+        fakeHealth = FakeHealthSyncService(supportsSimulation: true);
+
+        when(() => mockBagBloc.state).thenReturn(BagLoaded(sampleRacquets));
+        when(
+          () => mockBagBloc.stream,
+        ).thenAnswer((_) => const Stream.empty());
+
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: CourtMidnightTheme.themeData,
+            home: VirtualBagScreen(
+              bagBloc: mockBagBloc,
+              healthSyncService: fakeHealth,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byType(WorkoutAssignmentSheet), findsNothing);
+
+        // Press 'L'
+        await tester.sendKeyEvent(LogicalKeyboardKey.keyL);
+        await tester.pumpAndSettle();
+
+        expect(find.byType(WorkoutAssignmentSheet), findsOneWidget);
+        expect(find.text('LOG COURT SESSION'), findsOneWidget);
+      });
+
+      testWidgets('pressing N opens AddRacquetModal', (tester) async {
+        fakeHealth = FakeHealthSyncService(supportsSimulation: true);
+
+        when(() => mockBagBloc.state).thenReturn(BagLoaded(sampleRacquets));
+        when(
+          () => mockBagBloc.stream,
+        ).thenAnswer((_) => const Stream.empty());
+
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: CourtMidnightTheme.themeData,
+            home: VirtualBagScreen(
+              bagBloc: mockBagBloc,
+              healthSyncService: fakeHealth,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byType(AddRacquetModal), findsNothing);
+
+        // Press 'N'
+        await tester.sendKeyEvent(LogicalKeyboardKey.keyN);
+        await tester.pumpAndSettle();
+
+        expect(find.byType(AddRacquetModal), findsOneWidget);
+      });
+
+      testWidgets('pressing S triggers workout simulator', (tester) async {
+        fakeHealth = FakeHealthSyncService(supportsSimulation: true);
+
+        when(() => mockBagBloc.state).thenReturn(BagLoaded(sampleRacquets));
+        when(
+          () => mockBagBloc.stream,
+        ).thenAnswer((_) => const Stream.empty());
+
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: CourtMidnightTheme.themeData,
+            home: VirtualBagScreen(
+              bagBloc: mockBagBloc,
+              healthSyncService: fakeHealth,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(fakeHealth.simulateCalls, 0);
+
+        // Press 'S'
+        await tester.sendKeyEvent(LogicalKeyboardKey.keyS);
+        await tester.pumpAndSettle();
+
+        expect(fakeHealth.simulateCalls, 1);
+      });
+
+      testWidgets('pressing Esc closes open modal/sheet', (tester) async {
+        when(() => mockBagBloc.state).thenReturn(BagLoaded(sampleRacquets));
+        when(
+          () => mockBagBloc.stream,
+        ).thenAnswer((_) => const Stream.empty());
+
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: CourtMidnightTheme.themeData,
+            home: VirtualBagScreen(
+              bagBloc: mockBagBloc,
+              healthSyncService: fakeHealth,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Open AddRacquetModal
+        await tester.sendKeyEvent(LogicalKeyboardKey.keyN);
+        await tester.pumpAndSettle();
+        expect(find.byType(AddRacquetModal), findsOneWidget);
+
+        // Press 'Esc'
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await tester.pumpAndSettle();
+        expect(find.byType(AddRacquetModal), findsNothing);
+      });
+
+      testWidgets(
+        'typing l, n, s into a focused text field does NOT trigger root shortcuts',
+        (tester) async {
+          when(() => mockBagBloc.state).thenReturn(BagLoaded(sampleRacquets));
+          when(
+            () => mockBagBloc.stream,
+          ).thenAnswer((_) => const Stream.empty());
+
+          await tester.pumpWidget(
+            MaterialApp(
+              theme: CourtMidnightTheme.themeData,
+              home: VirtualBagScreen(
+                bagBloc: mockBagBloc,
+                healthSyncService: fakeHealth,
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+
+          // Open AddRacquetModal first
+          await tester.sendKeyEvent(LogicalKeyboardKey.keyN);
+          await tester.pumpAndSettle();
+          expect(find.byType(AddRacquetModal), findsOneWidget);
+
+          // Focus name field
+          await tester.tap(find.byKey(AddRacquetModal.keyNameField));
+          await tester.pumpAndSettle();
+
+          // Type 'l' into name field
+          await tester.enterText(find.byKey(AddRacquetModal.keyNameField), 'l');
+          await tester.pumpAndSettle();
+
+          // WorkoutAssignmentSheet must NOT be opened
+          expect(find.byType(WorkoutAssignmentSheet), findsNothing);
+          expect(fakeHealth.simulateCalls, 0);
         },
       );
     },

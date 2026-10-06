@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:string_theory_client/string_theory_client.dart';
 
@@ -219,6 +220,37 @@ class _VirtualBagScreenState extends State<VirtualBagScreen> {
     return context.read<BagBloc>();
   }
 
+  bool _isTextEditingActive() {
+    final focus = FocusManager.instance.primaryFocus;
+    if (focus == null) return false;
+    final widget = focus.context?.widget;
+    if (widget is EditableText) return true;
+    return focus.context?.findAncestorWidgetOfExactType<EditableText>() != null;
+  }
+
+  void _handleLogShortcut(BagState state) {
+    if (_isTextEditingActive()) return;
+    final bloc = _resolveBloc(context);
+    final racquets = (state is BagLoaded) ? state.racquets : <Racquet>[];
+    _openManualAssignmentSheet(racquets, bloc);
+  }
+
+  void _handleNewRacquetShortcut() {
+    if (_isTextEditingActive()) return;
+    AddRacquetModal.show(context, bagBloc: _resolveBloc(context));
+  }
+
+  void _handleSimulateShortcut() {
+    if (_isTextEditingActive()) return;
+    if (_healthSyncService?.supportsSimulation ?? false) {
+      _healthSyncService?.simulateWorkout();
+    }
+  }
+
+  void _handleEscapeShortcut() {
+    Navigator.maybePop(context);
+  }
+
   @override
   Widget build(BuildContext context) {
     final effectiveBloc = widget.bagBloc ?? context.read<BagBloc>();
@@ -256,8 +288,9 @@ class _VirtualBagScreenState extends State<VirtualBagScreen> {
             ? const SessionsPlaceholder()
             : _buildBodyForState(context, state, isMobile, crossAxisCount);
 
+        final Widget scaffold;
         if (isMobile) {
-          return Scaffold(
+          scaffold = Scaffold(
             backgroundColor: CourtMidnightTheme.background,
             body: SafeArea(child: content),
             bottomNavigationBar: BagBottomNav(
@@ -266,10 +299,8 @@ class _VirtualBagScreenState extends State<VirtualBagScreen> {
             ),
             floatingActionButton: _buildFab(context, state),
           );
-        }
-
-        if (isDesktop) {
-          return Scaffold(
+        } else if (isDesktop) {
+          scaffold = Scaffold(
             backgroundColor: CourtMidnightTheme.background,
             body: SafeArea(
               child: Row(
@@ -285,29 +316,46 @@ class _VirtualBagScreenState extends State<VirtualBagScreen> {
             ),
             floatingActionButton: _buildFab(context, state),
           );
+        } else {
+          // Tablet layout (600dp <= width <= 1024dp)
+          scaffold = Scaffold(
+            backgroundColor: CourtMidnightTheme.background,
+            body: SafeArea(
+              child: Row(
+                children: [
+                  BagNavigationRail(
+                    selectedIndex: _navIndex,
+                    onDestinationSelected: (index) =>
+                        _onNavigationTapped(context, index),
+                  ),
+                  const VerticalDivider(
+                    width: 1,
+                    thickness: 1,
+                    color: CourtMidnightTheme.surfaceBorder,
+                  ),
+                  Expanded(child: content),
+                ],
+              ),
+            ),
+            floatingActionButton: _buildFab(context, state),
+          );
         }
 
-        // Tablet layout (600dp <= width <= 1024dp)
-        return Scaffold(
-          backgroundColor: CourtMidnightTheme.background,
-          body: SafeArea(
-            child: Row(
-              children: [
-                BagNavigationRail(
-                  selectedIndex: _navIndex,
-                  onDestinationSelected: (index) =>
-                      _onNavigationTapped(context, index),
-                ),
-                const VerticalDivider(
-                  width: 1,
-                  thickness: 1,
-                  color: CourtMidnightTheme.surfaceBorder,
-                ),
-                Expanded(child: content),
-              ],
-            ),
+        return CallbackShortcuts(
+          bindings: <ShortcutActivator, VoidCallback>{
+            const SingleActivator(LogicalKeyboardKey.keyL): () =>
+                _handleLogShortcut(state),
+            const SingleActivator(LogicalKeyboardKey.keyN):
+                _handleNewRacquetShortcut,
+            const SingleActivator(LogicalKeyboardKey.keyS):
+                _handleSimulateShortcut,
+            const SingleActivator(LogicalKeyboardKey.escape):
+                _handleEscapeShortcut,
+          },
+          child: Focus(
+            autofocus: true,
+            child: scaffold,
           ),
-          floatingActionButton: _buildFab(context, state),
         );
       },
     );

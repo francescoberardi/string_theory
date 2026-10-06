@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -522,5 +524,83 @@ void main() {
 
       expect(find.byType(RacquetDetailScreen), findsOneWidget);
     });
+  });
+
+  group('Story 5.2: Mouse Hover States', () {
+    testWidgets(
+      'hovering over racquet card brightens border and applies box shadow',
+      (
+        tester,
+      ) async {
+        final racquet = createRacquet(
+          id: 99,
+          name: 'Hover Test Racquet',
+          healthScore: 80,
+        );
+
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: CourtMidnightTheme.themeData,
+            home: Scaffold(
+              body: Center(
+                child: RacquetCard(
+                  racquet: racquet,
+                  bloc: mockBagBloc,
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Find AnimatedContainer
+        final containerFinder = find.byType(AnimatedContainer);
+        expect(containerFinder, findsOneWidget);
+
+        AnimatedContainer container = tester.widget(containerFinder);
+        BoxDecoration decoration = container.decoration as BoxDecoration;
+        Border border = decoration.border as Border;
+
+        // Before hover: surfaceBorder, 1.0 width, no shadow
+        expect(border.top.color, CourtMidnightTheme.surfaceBorder);
+        expect(border.top.width, 1.0);
+        expect(decoration.boxShadow, isEmpty);
+
+        // Perform mouse hover enter
+        final gesture = await tester.createGesture(
+          kind: PointerDeviceKind.mouse,
+        );
+        await gesture.addPointer(location: Offset.zero);
+        addTearDown(gesture.removePointer);
+
+        await gesture.moveTo(tester.getCenter(find.text('Hover Test Racquet')));
+        await tester.pumpAndSettle();
+
+        container = tester.widget(containerFinder);
+        decoration = container.decoration as BoxDecoration;
+        border = decoration.border as Border;
+
+        // On hover: primaryVolt with alpha, 1.5 width, box shadow present
+        expect(
+          border.top.color,
+          CourtMidnightTheme.primaryVolt.withValues(alpha: 0.6),
+        );
+        expect(border.top.width, 1.5);
+        expect(decoration.boxShadow, isNotEmpty);
+
+        // Exit mouse hover
+        await gesture.moveTo(Offset.zero);
+        await tester.pumpAndSettle();
+
+        container = tester.widget(containerFinder);
+        decoration = container.decoration as BoxDecoration;
+        border = decoration.border as Border;
+
+        // After exit: back to surfaceBorder, 1.0 width, no shadow
+        expect(border.top.color, CourtMidnightTheme.surfaceBorder);
+        expect(border.top.width, 1.0);
+        expect(decoration.boxShadow, isEmpty);
+      },
+    );
   });
 }
