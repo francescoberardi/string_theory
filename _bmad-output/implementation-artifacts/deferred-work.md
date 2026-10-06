@@ -102,3 +102,6 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-5-retro-1-fix-fake-endpoint-null-safety-in-auth-test.md`
   summary: Correct the `AuthService.initialize()` doc comment, which claims restore happens "without network blocking" although it awaits server validation (up to 2s).
   evidence: `string_theory_flutter/lib/services/auth_service.dart:36-39` vs serverpod_auth_core_client 4.0.3 `ClientAuthSessionManager.initialize()` awaiting `validateAuthentication(timeout: 2s)`.
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-4-retro-13-update-stale-sessions-placeholder-copy.md`
+  summary: Add an action to the Sessions placeholder (switch to the Bag tab or open the session logger) or replace it with a real session history screen.
+  evidence: The Epic 4 retro suggested linking to active session logs. The copy fix only gives instructions, so users must navigate by hand.

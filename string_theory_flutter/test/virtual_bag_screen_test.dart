@@ -1106,6 +1106,12 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.text('COURT SESSIONS'), findsOneWidget);
+        expect(
+          find.textContaining('log a match with + Log Session'),
+          findsOneWidget,
+        );
+        expect(find.textContaining('Epic'), findsNothing);
+        expect(find.textContaining('coming soon'), findsNothing);
         expect(find.byKey(VirtualBagScreen.keyRacquetList), findsNothing);
 
         await tester.tap(find.descendant(of: nav, matching: find.text('Bag')));

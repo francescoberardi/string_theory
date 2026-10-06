@@ -42,13 +42,19 @@ class SessionsPlaceholder extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
-            Text(
-              'Session logging & Apple Health sync coming soon in Epic 2.',
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                color: CourtMidnightTheme.textSecondary,
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Text(
+                'Your session history will appear here. Add a racquet, then '
+                'log a match with + Log Session on the Bag tab. On iPhone and '
+                'Android, tennis workouts from Apple Health or Health Connect '
+                'are detected for you to assign.',
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  color: CourtMidnightTheme.textSecondary,
+                ),
+                textAlign: TextAlign.center,
               ),
-              textAlign: TextAlign.center,
             ),
           ],
         ),
