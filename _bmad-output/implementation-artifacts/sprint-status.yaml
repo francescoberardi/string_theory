@@ -147,7 +147,7 @@ action_items:
     epic: 4
     action: "Add dedicated unit tests for TenantResolver"
     owner: "Amelia (Developer)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-4-retro-2026-10-05.md"
   - id: "epic-4-retro-item-12-add-cross-tenant-bagupdates-stream-isola"
     epic: 4
