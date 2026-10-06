@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:serverpod_test/serverpod_test_public_exports.dart'
     as serverpod_test;
 import 'package:string_theory_server/src/generated/protocol.dart';
+import 'package:string_theory_server/src/messaging/bag_channels.dart';
 import 'package:test/test.dart';
 
 import 'test_tools/serverpod_test_tools.dart';
@@ -94,7 +95,7 @@ void main() {
       );
 
       test(
-        '[P0] should not deliver user 1 events to a user 2 subscriber',
+        '[P0] should not deliver user 1 sessionLogged events to a user 2 subscriber',
         () async {
           final racquet = await endpoints.bag.createRacquet(
             user1Session,
@@ -116,6 +117,104 @@ void main() {
 
           await user1.sub.cancel();
           await user2.sub.cancel();
+        },
+      );
+
+      test(
+        '[P0] should not deliver user 1 restring events to a user 2 subscriber',
+        () async {
+          final racquet = await endpoints.bag.createRacquet(
+            user1Session,
+            racquetName: 'Prince Phantom 100X',
+          );
+          final user2Racquet = await endpoints.bag.createRacquet(
+            user2Session,
+            racquetName: "User 2's Frame",
+          );
+
+          final user2 = collect(endpoints.bag.bagUpdates(user2Session));
+          final user1 = collect(endpoints.bag.bagUpdates(user1Session));
+          await settle();
+
+          try {
+            await endpoints.bag.restringRacquet(
+              user1Session,
+              racquetId: racquet.id!,
+            );
+            await settle();
+
+            expect(user1.messages, hasLength(1));
+            expect(
+              user1.messages.single.eventType,
+              equals(BagChannels.restrung),
+            );
+            expect(user1.messages.single.racquetId, equals(racquet.id));
+            expect(user2.messages, isEmpty);
+
+            // Positive control: user 2's stream is live and receives its own
+            // restring, which in turn never reaches user 1.
+            await endpoints.bag.restringRacquet(
+              user2Session,
+              racquetId: user2Racquet.id!,
+            );
+            await settle();
+
+            expect(user2.messages, hasLength(1));
+            expect(
+              user2.messages.single.eventType,
+              equals(BagChannels.restrung),
+            );
+            expect(user2.messages.single.racquetId, equals(user2Racquet.id));
+            expect(user1.messages, hasLength(1));
+          } finally {
+            await user1.sub.cancel();
+            await user2.sub.cancel();
+          }
+        },
+      );
+
+      test(
+        '[P0] should deliver nothing to either user when user 2 restrings user 1 racquet',
+        () async {
+          final racquet = await endpoints.bag.createRacquet(
+            user1Session,
+            racquetName: 'Tecnifibre TF40',
+          );
+
+          final user2 = collect(endpoints.bag.bagUpdates(user2Session));
+          final user1 = collect(endpoints.bag.bagUpdates(user1Session));
+          await settle();
+
+          try {
+            await expectLater(
+              endpoints.bag.restringRacquet(
+                user2Session,
+                racquetId: racquet.id!,
+              ),
+              throwsA(
+                isA<BagException>().having((e) => e.statusCode, 'status', 404),
+              ),
+            );
+            await settle();
+
+            expect(user1.messages, isEmpty);
+            expect(user2.messages, isEmpty);
+
+            // Positive control: user 1's stream is live, so the empty check
+            // above means the rejected restring published nothing.
+            await endpoints.bag.restringRacquet(
+              user1Session,
+              racquetId: racquet.id!,
+            );
+            await settle();
+
+            expect(user1.messages, hasLength(1));
+            expect(user1.messages.single.racquetId, equals(racquet.id));
+            expect(user2.messages, isEmpty);
+          } finally {
+            await user1.sub.cancel();
+            await user2.sub.cancel();
+          }
         },
       );
 
