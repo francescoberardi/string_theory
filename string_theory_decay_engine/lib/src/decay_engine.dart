@@ -33,8 +33,6 @@ class DecayEngine {
     final double effectiveHours;
     if (hoursPlayed.isNaN || hoursPlayed <= 0.0) {
       effectiveHours = 0.0;
-    } else if (hoursPlayed == double.infinity) {
-      effectiveHours = double.maxFinite;
     } else {
       effectiveHours = hoursPlayed;
     }
@@ -53,8 +51,7 @@ class DecayEngine {
     final daysElapsed = diffMs <= 0
         ? 0.0
         : diffMs / Duration.millisecondsPerDay;
-    final rawShelfLife = getShelfLifeDays(materialCategory);
-    final shelfLife = rawShelfLife <= 0 ? 180.0 : rawShelfLife.toDouble();
+    final shelfLife = getShelfLifeDays(materialCategory).toDouble();
     final calendarPenalty = (daysElapsed / shelfLife) * 30.0;
 
     final totalPenalty = dynamicPenalty + calendarPenalty;
