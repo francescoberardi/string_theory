@@ -105,3 +105,19 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-4-retro-13-update-stale-sessions-placeholder-copy.md`
   summary: Add an action to the Sessions placeholder (switch to the Bag tab or open the session logger) or replace it with a real session history screen.
   evidence: The Epic 4 retro suggested linking to active session logs. The copy fix only gives instructions, so users must navigate by hand.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-2-retro-2-add-batch-pagination-dailydecayfuturecall.md`
+  summary: Make DailyDecayService score writes conditional on the hours/active state read with the page (or lock rows) so a concurrent logSession or restring is not overwritten by a stale score.
+  evidence: The service computes the score from `totalCourtHours` read with the page and writes it later; a session logged in between gets its lower score replaced by the stale higher one until the next run.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-2-retro-2-add-batch-pagination-dailydecayfuturecall.md`
+  summary: Add tests for DailyDecayService's per-job calculation error boundary and its row-by-row fallback after a failed batch write.
+  evidence: Both paths are untested because DecayEngine never throws and the batch write has no injectable seam to force a failure.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-2-retro-2-add-batch-pagination-dailydecayfuturecall.md`
+  summary: Prevent overlapping DailyDecayService runs (scheduled cron vs. triggerDailyDecayNow), e.g. with a Postgres advisory lock.
+  evidence: Concurrent runs scan and write the same rows, which widens the stale-score race.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-2-retro-2-add-batch-pagination-dailydecayfuturecall.md`
+  summary: Publish BagStreamMessage health updates to affected users when the daily decay run changes scores.
+  evidence: Session logging pushes new health scores over the bag stream, but the cron writes silently, so connected clients show stale scores until they reload.

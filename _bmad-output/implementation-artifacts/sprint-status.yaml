@@ -121,7 +121,7 @@ action_items:
     epic: 2
     action: "Add keyset/offset pagination and batch chunking to DailyDecayFutureCall"
     owner: "Amelia (Developer)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-2-retro-2026-10-04.md"
   - id: "epic-3-retro-item-1-extract-shared-tenant-resolver-helper"
     epic: 3

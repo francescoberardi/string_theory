@@ -1,3 +1,4 @@
+import 'package:serverpod/serverpod.dart';
 import 'package:serverpod_test/serverpod_test_public_exports.dart'
     as serverpod_test;
 import 'package:string_theory_server/src/domain/decay_engine.dart';
@@ -179,6 +180,116 @@ void main() {
           expect(immediateSecondRun, equals(0));
         },
       );
+
+      group('batch pagination', () {
+        final now = DateTime.now().toUtc();
+        final thirtyDaysAgo = now.subtract(const Duration(days: 30));
+        final expectedHealth = DecayEngine.calculateHealth(
+          hoursPlayed: 0.0,
+          maxRatedHours: 20.0,
+          stringingDate: thirtyDaysAgo,
+          materialCategory: StringMaterialCategory.coPoly,
+          now: now,
+        );
+
+        Future<List<StringJob>> seedJobs(
+          Session session, {
+          required int active,
+          int inactive = 0,
+        }) async {
+          final racquet = await Racquet.db.insertRow(
+            session,
+            Racquet(
+              userId: 101,
+              name: 'Babolat Pure Aero',
+              isPrimary: true,
+              createdAt: thirtyDaysAgo,
+              updatedAt: thirtyDaysAgo,
+            ),
+          );
+          // Interleave inactive rows so pages straddle filtered-out ids.
+          final activeFlags = [
+            for (var i = 0; i < active || i < inactive; i++) ...[
+              if (i < active) true,
+              if (i < inactive) false,
+            ],
+          ];
+          return StringJob.db.insert(session, [
+            for (final isActive in activeFlags)
+              StringJob(
+                userId: 101,
+                racquetId: racquet.id!,
+                materialCategory: StringMaterialCategory.coPoly,
+                stringingDate: thirtyDaysAgo,
+                maxRatedHours: 20.0,
+                totalCourtHours: 0.0,
+                currentHealthScore: 100,
+                isActive: isActive,
+                createdAt: thirtyDaysAgo,
+              ),
+          ]);
+        }
+
+        test(
+          '[P1] should update every active job exactly once across several pages and skip inactive ones',
+          () async {
+            final session = sessionBuilder.build();
+            final jobs = await seedJobs(session, active: 5, inactive: 2);
+
+            final updatedCount =
+                await DailyDecayService.performDecayCalculation(
+                  session,
+                  now: now,
+                  batchSize: 2,
+                );
+
+            expect(updatedCount, equals(5));
+            for (final job in jobs) {
+              final reloaded = await StringJob.db.findById(session, job.id!);
+              expect(
+                reloaded!.currentHealthScore,
+                equals(job.isActive ? expectedHealth : 100),
+              );
+            }
+          },
+        );
+
+        test(
+          '[P1] should handle a batch size that divides the active row count exactly',
+          () async {
+            final session = sessionBuilder.build();
+            final jobs = await seedJobs(session, active: 4);
+
+            final updatedCount =
+                await DailyDecayService.performDecayCalculation(
+                  session,
+                  now: now,
+                  batchSize: 2,
+                );
+
+            expect(updatedCount, equals(4));
+            for (final job in jobs) {
+              final reloaded = await StringJob.db.findById(session, job.id!);
+              expect(reloaded!.currentHealthScore, equals(expectedHealth));
+            }
+          },
+        );
+
+        test(
+          '[P2] should reject a non-positive batch size',
+          () async {
+            final session = sessionBuilder.build();
+
+            expect(
+              () => DailyDecayService.performDecayCalculation(
+                session,
+                batchSize: 0,
+              ),
+              throwsArgumentError,
+            );
+          },
+        );
+      });
     },
   );
 }
