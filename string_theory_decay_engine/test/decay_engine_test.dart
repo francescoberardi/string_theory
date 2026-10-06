@@ -51,6 +51,19 @@ void main() {
         expect(tier.isCritical, isTrue);
         expect(tier.description, equals('Critical condition, high shock risk'));
       });
+
+      test('should support getHealthTierOrNull helper for nullable scores', () {
+        expect(DecayEngine.getHealthTierOrNull(null), isNull);
+        expect(DecayEngine.getHealthTierOrNull(85), equals(HealthTier.optimal));
+        expect(
+          DecayEngine.getHealthTierOrNull(55),
+          equals(HealthTier.degraded),
+        );
+        expect(
+          DecayEngine.getHealthTierOrNull(25),
+          equals(HealthTier.critical),
+        );
+      });
     });
 
     group('Composite Health Score Calculation', () {
@@ -93,6 +106,19 @@ void main() {
           expect(health, equals(30));
         },
       );
+
+      test('should use current system time when now is omitted', () {
+        final stringingDate = DateTime.now().subtract(const Duration(hours: 1));
+        final health = DecayEngine.calculateHealth(
+          hoursPlayed: 0.0,
+          maxRatedHours: 20.0,
+          stringingDate: stringingDate,
+          materialCategory: DomainStringMaterialCategory.coPoly,
+        );
+
+        // Strings strung 1 hour ago with 0 hours played should be ~100%
+        expect(health, equals(100));
+      });
 
       test('should accept polymorphic Enum inputs from external packages', () {
         final stringingDate = DateTime(2026, 1, 1);
@@ -177,6 +203,70 @@ void main() {
           equals(0),
         );
       });
+
+      test('should safely handle non-finite inputs without throwing', () {
+        final now = DateTime(2026, 3, 1);
+
+        // NaN hoursPlayed
+        expect(
+          DecayEngine.calculateHealth(
+            hoursPlayed: double.nan,
+            maxRatedHours: 20.0,
+            stringingDate: now,
+            materialCategory: DomainStringMaterialCategory.coPoly,
+            now: now,
+          ),
+          equals(100),
+        );
+
+        // Infinity hoursPlayed
+        expect(
+          DecayEngine.calculateHealth(
+            hoursPlayed: double.infinity,
+            maxRatedHours: 20.0,
+            stringingDate: now,
+            materialCategory: DomainStringMaterialCategory.coPoly,
+            now: now,
+          ),
+          equals(0),
+        );
+
+        // Negative infinity hoursPlayed
+        expect(
+          DecayEngine.calculateHealth(
+            hoursPlayed: double.negativeInfinity,
+            maxRatedHours: 20.0,
+            stringingDate: now,
+            materialCategory: DomainStringMaterialCategory.coPoly,
+            now: now,
+          ),
+          equals(100),
+        );
+
+        // NaN maxRatedHours
+        expect(
+          DecayEngine.calculateHealth(
+            hoursPlayed: 10.0,
+            maxRatedHours: double.nan,
+            stringingDate: now,
+            materialCategory: DomainStringMaterialCategory.coPoly,
+            now: now,
+          ),
+          equals(0),
+        );
+
+        // Infinity maxRatedHours
+        expect(
+          DecayEngine.calculateHealth(
+            hoursPlayed: 10.0,
+            maxRatedHours: double.infinity,
+            stringingDate: now,
+            materialCategory: DomainStringMaterialCategory.coPoly,
+            now: now,
+          ),
+          equals(100),
+        );
+      });
     });
 
     group('Tension Loss Formatting', () {
@@ -204,6 +294,59 @@ void main() {
           equals('~0.0 kg / ~0.0 lbs drop'),
         );
       });
+
+      test('should safely handle non-finite installed tension', () {
+        expect(
+          DecayEngine.calculateTensionLossText(
+            healthScore: 50,
+            installedTensionLbs: double.nan,
+          ),
+          equals('~0.0 kg / ~0.0 lbs drop'),
+        );
+        expect(
+          DecayEngine.calculateTensionLossText(
+            healthScore: 50,
+            installedTensionLbs: double.negativeInfinity,
+          ),
+          equals('~0.0 kg / ~0.0 lbs drop'),
+        );
+      });
+    });
+
+    group('DomainStringMaterialCategory Instance Getters', () {
+      test(
+        'should provide direct instance getters without circular lookup',
+        () {
+          for (final category in DomainStringMaterialCategory.values) {
+            expect(category.shelfLifeDays, isPositive);
+            expect(category.defaultMaxHours, isPositive);
+            expect(category.displayName, isNotEmpty);
+          }
+
+          expect(DomainStringMaterialCategory.coPoly.shelfLifeDays, equals(75));
+          expect(
+            DomainStringMaterialCategory.coPoly.defaultMaxHours,
+            equals(20.0),
+          );
+          expect(
+            DomainStringMaterialCategory.coPoly.displayName,
+            equals('Co-Polyester'),
+          );
+
+          expect(
+            DomainStringMaterialCategory.naturalGut.shelfLifeDays,
+            equals(365),
+          );
+          expect(
+            DomainStringMaterialCategory.naturalGut.defaultMaxHours,
+            equals(50.0),
+          );
+          expect(
+            DomainStringMaterialCategory.naturalGut.displayName,
+            equals('Natural Gut'),
+          );
+        },
+      );
     });
 
     group('StringCategoryDefaults', () {

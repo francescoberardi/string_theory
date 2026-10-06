@@ -2,7 +2,7 @@
 title: 'Extract Shared Pure Dart Package for DecayEngine & Health Tiers'
 type: 'refactor'
 created: '2026-10-06'
-status: 'completed'
+status: 'in-review'
 baseline_commit: '3e5f46a2e71fc25adb8f3c91ad0d8fc4eac2c901'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -105,6 +105,17 @@ context:
   - CI job: Add dedicated `decay-engine-tests` job to `.github/workflows/tests.yml` -- accepted and incorporated.
 - 2026-10-06 -- User feedback:
   - Renamed package from `string_theory_domain` to `string_theory_decay_engine` to be specifically scoped to the decay engine.
+- 2026-10-06 -- Implementation Code Review:
+  - `string_theory_decay_engine/lib/src/decay_engine.dart`: low -- non-finite checks for `hoursPlayed`, `maxRatedHours`, `installedTensionLbs` and zero shelfLife guard -- patch.
+  - `string_theory_decay_engine/analysis_options.yaml`: low -- add missing package analysis_options.yaml with package:lints/recommended.yaml -- patch.
+  - `string_theory_decay_engine/lib/src/string_category_defaults.dart`: low -- avoid circular enum map lookup in DomainStringMaterialCategory getters -- patch.
+  - `string_theory_flutter/lib/domain/decay_engine.dart`: low -- add defaultMaxHours and shelfLifeDays getters on StringMaterialCategoryExtension -- patch.
+  - `string_theory_decay_engine/lib/src/decay_engine.dart`: low -- add getHealthTierOrNull(int? score) helper -- patch.
+  - `string_theory_decay_engine/test/decay_engine_test.dart`: low -- add tests for DomainStringMaterialCategory instance getters, getHealthTierOrNull, and default now -- patch.
+  - `.github/workflows/tests.yml`: false -- analyze and format workflows already cover the entire workspace recursively at root.
+  - `string_theory_decay_engine/lib/src/decay_engine.dart`: false -- numeric tension drop methods are out of scope and not required.
+  - `string_theory_flutter/test/screens/racquet_detail_screen_test.dart`: low -- verification gap: assert critical vs non-critical CTA button in detail screen -- patch.
+  - `string_theory_flutter/test/widgets/radial_health_gauge_test.dart`: low -- verification gap: assert semanticsLabel description for HealthTier -- patch.
 
 ## Design Notes
 

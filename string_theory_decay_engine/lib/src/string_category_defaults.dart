@@ -19,23 +19,8 @@ enum DomainStringMaterialCategory {
       _nameMap[category.name] ?? DomainStringMaterialCategory.other;
 
   /// Default shelf life in calendar days.
-  int get shelfLifeDays => StringCategoryDefaults.shelfLifeDays(this);
-
-  /// Default manufacturer recommended maximum court play hours.
-  double get defaultMaxHours => StringCategoryDefaults.maxHours(this);
-
-  /// Formatted display name.
-  String get displayName => StringCategoryDefaults.displayName(this);
-}
-
-/// Centralized decay rules and smart defaults for tennis string material categories.
-///
-/// Accepts polymorphic [Enum] inputs to seamlessly support Serverpod server models,
-/// client protocol models, and pure domain enums.
-class StringCategoryDefaults {
-  /// Default shelf life in days per string material category.
-  static int shelfLifeDays(Enum category) {
-    switch (DomainStringMaterialCategory.fromEnum(category)) {
+  int get shelfLifeDays {
+    switch (this) {
       case DomainStringMaterialCategory.coPoly:
         return 75;
       case DomainStringMaterialCategory.multifilament:
@@ -51,9 +36,9 @@ class StringCategoryDefaults {
     }
   }
 
-  /// Default manufacturer recommended maximum court hours per string category.
-  static double maxHours(Enum category) {
-    switch (DomainStringMaterialCategory.fromEnum(category)) {
+  /// Default manufacturer recommended maximum court play hours.
+  double get defaultMaxHours {
+    switch (this) {
       case DomainStringMaterialCategory.coPoly:
         return 20.0;
       case DomainStringMaterialCategory.multifilament:
@@ -71,9 +56,9 @@ class StringCategoryDefaults {
     }
   }
 
-  /// User-friendly display names for string material categories.
-  static String displayName(Enum category) {
-    switch (DomainStringMaterialCategory.fromEnum(category)) {
+  /// Formatted display name.
+  String get displayName {
+    switch (this) {
       case DomainStringMaterialCategory.coPoly:
         return 'Co-Polyester';
       case DomainStringMaterialCategory.multifilament:
@@ -90,4 +75,22 @@ class StringCategoryDefaults {
         return 'Other';
     }
   }
+}
+
+/// Centralized decay rules and smart defaults for tennis string material categories.
+///
+/// Accepts polymorphic [Enum] inputs to seamlessly support Serverpod server models,
+/// client protocol models, and pure domain enums.
+class StringCategoryDefaults {
+  /// Default shelf life in days per string material category.
+  static int shelfLifeDays(Enum category) =>
+      DomainStringMaterialCategory.fromEnum(category).shelfLifeDays;
+
+  /// Default manufacturer recommended maximum court hours per string category.
+  static double maxHours(Enum category) =>
+      DomainStringMaterialCategory.fromEnum(category).defaultMaxHours;
+
+  /// User-friendly display names for string material categories.
+  static String displayName(Enum category) =>
+      DomainStringMaterialCategory.fromEnum(category).displayName;
 }

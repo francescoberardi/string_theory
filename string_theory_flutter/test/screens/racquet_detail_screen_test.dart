@@ -144,9 +144,51 @@ void main() {
       expect(find.text('~1.4 kg / ~3.1 lbs drop'), findsOneWidget);
 
       // Restrung Today button
-      expect(find.byKey(RacquetDetailKeys.restrungTodayButton), findsOneWidget);
+      final ctaFinder = find.byKey(RacquetDetailKeys.restrungTodayButton);
+      expect(ctaFinder, findsOneWidget);
       expect(find.text('Restrung Today'), findsOneWidget);
+      final nonCriticalBtn = tester.widget<ElevatedButton>(ctaFinder);
+      expect(
+        nonCriticalBtn.style?.backgroundColor?.resolve({}),
+        equals(CourtMidnightTheme.primaryVolt),
+      );
+      expect(
+        nonCriticalBtn.style?.foregroundColor?.resolve({}),
+        equals(Colors.black),
+      );
     });
+
+    testWidgets(
+      'renders critical red CTA button styling when stringbed health < 40%',
+      (tester) async {
+        final criticalRacquet = createRacquet(
+          healthScore: 35,
+        );
+
+        when(() => mockBagBloc.state).thenReturn(
+          BagLoaded([criticalRacquet]),
+        );
+
+        when(
+          () => mockBag.getRestringHistory(racquetId: any(named: 'racquetId')),
+        ).thenAnswer((_) async => []);
+
+        await tester.pumpWidget(buildSubject(racquet: criticalRacquet));
+        await tester.pumpAndSettle();
+
+        final ctaFinder = find.byKey(RacquetDetailKeys.restrungTodayButton);
+        expect(ctaFinder, findsOneWidget);
+        final criticalBtn = tester.widget<ElevatedButton>(ctaFinder);
+        expect(
+          criticalBtn.style?.backgroundColor?.resolve({}),
+          equals(CourtMidnightTheme.healthCritical),
+        );
+        expect(
+          criticalBtn.style?.foregroundColor?.resolve({}),
+          equals(Colors.white),
+        );
+      },
+    );
 
     testWidgets('tapping [Restrung Today] opens RestringSheet', (tester) async {
       final racquet = createRacquet();

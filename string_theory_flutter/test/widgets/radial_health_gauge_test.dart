@@ -98,6 +98,14 @@ void main() {
         final valueColor =
             progress.valueColor as AlwaysStoppedAnimation<Color>?;
         expect(valueColor?.value, equals(CourtMidnightTheme.healthOptimal));
+
+        // Verify semantics label contains Optimal condition description
+        final semanticsFinder = find.byWidgetPredicate(
+          (w) =>
+              w is Semantics &&
+              (w.properties.label?.contains('Optimal condition') ?? false),
+        );
+        expect(semanticsFinder, findsOneWidget);
       },
     );
 
@@ -128,6 +136,14 @@ void main() {
         final valueColor =
             progress.valueColor as AlwaysStoppedAnimation<Color>?;
         expect(valueColor?.value, equals(CourtMidnightTheme.healthDegraded));
+
+        // Verify semantics label contains Degraded condition description
+        final semanticsFinder = find.byWidgetPredicate(
+          (w) =>
+              w is Semantics &&
+              (w.properties.label?.contains('Degraded condition') ?? false),
+        );
+        expect(semanticsFinder, findsOneWidget);
       },
     );
 
@@ -158,6 +174,17 @@ void main() {
         final valueColor =
             progress.valueColor as AlwaysStoppedAnimation<Color>?;
         expect(valueColor?.value, equals(CourtMidnightTheme.healthCritical));
+
+        // Verify semantics label contains Critical condition description
+        final semanticsFinder = find.byWidgetPredicate(
+          (w) =>
+              w is Semantics &&
+              (w.properties.label?.contains(
+                    'Critical condition, high shock risk',
+                  ) ??
+                  false),
+        );
+        expect(semanticsFinder, findsOneWidget);
       },
     );
 
@@ -180,6 +207,12 @@ void main() {
 
         expect(find.text('--'), findsOneWidget);
         expect(find.text('UNSTRUNG'), findsOneWidget);
+
+        // Verify semantics label describes unstrung racquet
+        final semanticsFinder = find.byWidgetPredicate(
+          (w) => w is Semantics && w.properties.label == 'Unstrung racquet',
+        );
+        expect(semanticsFinder, findsOneWidget);
       },
     );
 
@@ -205,6 +238,14 @@ void main() {
 
         expect(find.text('65%'), findsOneWidget);
         expect(find.text(tensionLossText), findsOneWidget);
+
+        // Verify semantics label includes tension loss text
+        final semanticsFinder = find.byWidgetPredicate(
+          (w) =>
+              w is Semantics &&
+              (w.properties.label?.contains(tensionLossText) ?? false),
+        );
+        expect(semanticsFinder, findsOneWidget);
       },
     );
   });

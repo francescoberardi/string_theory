@@ -14,6 +14,10 @@ class DecayEngine {
   static HealthTier getHealthTier(int healthScore) =>
       HealthTier.fromScore(healthScore);
 
+  /// Resolves the [HealthTier] for a nullable [score], returning `null` if [score] is null.
+  static HealthTier? getHealthTierOrNull(int? score) =>
+      score != null ? HealthTier.fromScore(score) : null;
+
   /// Calculates composite health score (0-100%) based on:
   /// - 70% dynamic court play hours penalty: (hoursPlayed / maxRatedHours) * 70
   /// - 30% static calendar shelf-life penalty: (daysElapsed / shelfLife) * 30
@@ -26,8 +30,22 @@ class DecayEngine {
     required Enum materialCategory,
     DateTime? now,
   }) {
-    final effectiveHours = hoursPlayed <= 0 ? 0.0 : hoursPlayed;
-    final effectiveMaxHours = maxRatedHours <= 0 ? 1.0 : maxRatedHours;
+    final double effectiveHours;
+    if (hoursPlayed.isNaN || hoursPlayed <= 0.0) {
+      effectiveHours = 0.0;
+    } else if (hoursPlayed == double.infinity) {
+      effectiveHours = double.maxFinite;
+    } else {
+      effectiveHours = hoursPlayed;
+    }
+
+    final double effectiveMaxHours;
+    if (maxRatedHours.isNaN || maxRatedHours <= 0.0) {
+      effectiveMaxHours = 1.0;
+    } else {
+      effectiveMaxHours = maxRatedHours;
+    }
+
     final dynamicPenalty = (effectiveHours / effectiveMaxHours) * 70.0;
 
     final currentTime = now ?? DateTime.now();
@@ -35,12 +53,19 @@ class DecayEngine {
     final daysElapsed = diffMs <= 0
         ? 0.0
         : diffMs / Duration.millisecondsPerDay;
-    final shelfLife = getShelfLifeDays(materialCategory).toDouble();
+    final rawShelfLife = getShelfLifeDays(materialCategory);
+    final shelfLife = rawShelfLife <= 0 ? 180.0 : rawShelfLife.toDouble();
     final calendarPenalty = (daysElapsed / shelfLife) * 30.0;
 
     final totalPenalty = dynamicPenalty + calendarPenalty;
-    final rawHealth = 100.0 - totalPenalty;
+    if (!totalPenalty.isFinite || totalPenalty >= 100.0) {
+      return 0;
+    }
+    if (totalPenalty <= 0.0) {
+      return 100;
+    }
 
+    final rawHealth = 100.0 - totalPenalty;
     return rawHealth.round().clamp(0, 100);
   }
 
@@ -56,7 +81,8 @@ class DecayEngine {
     }
 
     final healthDropFraction = (100 - clampedScore) / 100.0;
-    final effectiveTension = installedTensionLbs <= 0
+    final effectiveTension =
+        !installedTensionLbs.isFinite || installedTensionLbs <= 0
         ? 0.0
         : installedTensionLbs;
     // Maximum expected elasticity tension loss when strings are fully dead (0% health)
