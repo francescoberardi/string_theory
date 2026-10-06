@@ -5,7 +5,6 @@ import 'package:string_theory_client/string_theory_client.dart';
 import '../bloc/bag_bloc.dart';
 import '../domain/decay_engine.dart';
 import '../theme/court_midnight_theme.dart';
-import 'add_racquet_modal.dart' show StringCategoryDefaults;
 import 'workout_assignment/assignment_sheet_frame.dart';
 
 /// "Restrung Today" decision sheet (Story 4.2): reset the stringbed to 100%

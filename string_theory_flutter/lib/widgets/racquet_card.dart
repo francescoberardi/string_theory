@@ -100,7 +100,8 @@ class _RacquetCardState extends State<RacquetCard> {
     final hasJob = job != null;
     final health = hasJob ? job.currentHealthScore : null;
 
-    final isCritical = health != null && health < 40;
+    final isCritical =
+        health != null && DecayEngine.getHealthTier(health).isCritical;
     final cardBg = isCritical
         ? CourtMidnightTheme.healthCriticalBg
         : (_isHovered

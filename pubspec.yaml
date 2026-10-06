@@ -8,4 +8,5 @@ workspace:
   - string_theory_client
   - string_theory_server
   - string_theory_flutter
+  - string_theory_decay_engine
 

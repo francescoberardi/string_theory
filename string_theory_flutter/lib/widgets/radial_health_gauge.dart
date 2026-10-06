@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:string_theory_flutter/domain/decay_engine.dart';
 import 'package:string_theory_flutter/theme/court_midnight_theme.dart';
 
 /// Standalone circular radial health gauge widget displaying real-time
@@ -32,12 +33,15 @@ class RadialHealthGauge extends StatelessWidget {
   static Color getStatusColor(int? health) {
     if (health == null) {
       return CourtMidnightTheme.textTertiary;
-    } else if (health >= 70) {
-      return CourtMidnightTheme.healthOptimal;
-    } else if (health >= 40) {
-      return CourtMidnightTheme.healthDegraded;
-    } else {
-      return CourtMidnightTheme.healthCritical;
+    }
+    final tier = DecayEngine.getHealthTier(health);
+    switch (tier) {
+      case HealthTier.optimal:
+        return CourtMidnightTheme.healthOptimal;
+      case HealthTier.degraded:
+        return CourtMidnightTheme.healthDegraded;
+      case HealthTier.critical:
+        return CourtMidnightTheme.healthCritical;
     }
   }
 
@@ -56,11 +60,7 @@ class RadialHealthGauge extends StatelessWidget {
         : Duration.zero;
 
     final semanticsLabel = health != null
-        ? 'Stringbed health: $health percent. ${health >= 70
-              ? "Optimal condition"
-              : health >= 40
-              ? "Degraded condition"
-              : "Critical condition, high shock risk"}.${tensionLossText != null ? " Tension loss: $tensionLossText." : ""}'
+        ? 'Stringbed health: $health percent. ${DecayEngine.getHealthTier(health).description}.${tensionLossText != null ? " Tension loss: $tensionLossText." : ""}'
         : 'Unstrung racquet';
 
     return Semantics(

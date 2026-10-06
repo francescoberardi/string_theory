@@ -42,29 +42,6 @@ class RacquetPreset {
   );
 }
 
-/// Helper mapping string categories to manufacturer max play hour defaults.
-class StringCategoryDefaults {
-  /// Returns smart default play hours for a given string material category.
-  static double maxHours(StringMaterialCategory category) {
-    switch (category) {
-      case StringMaterialCategory.coPoly:
-        return 20.0;
-      case StringMaterialCategory.multifilament:
-        return 35.0;
-      case StringMaterialCategory.syntheticGut:
-        return 30.0;
-      case StringMaterialCategory.naturalGut:
-        return 50.0;
-      case StringMaterialCategory.kevlar:
-        return 25.0;
-      case StringMaterialCategory.hybrid:
-        return 25.0;
-      case StringMaterialCategory.other:
-        return 20.0;
-    }
-  }
-}
-
 /// Modal bottom sheet / dialog form for adding a new racquet to the virtual bag (Story 1.4).
 class AddRacquetModal extends StatefulWidget {
   final BagBloc? bagBloc;

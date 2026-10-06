@@ -14,6 +14,26 @@ permissions:
   contents: read
 
 jobs:
+  decay-engine-tests:
+    name: Decay Engine Package Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.4'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run tests
+        working-directory: string_theory_decay_engine
+        run: dart test
+
   server-tests:
     name: Serverpod Backend Tests
     runs-on: ubuntu-latest

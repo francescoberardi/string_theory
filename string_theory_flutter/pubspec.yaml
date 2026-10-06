@@ -32,6 +32,7 @@ dependencies:
   google_fonts: ^8.2.1
   string_theory_client:
     path: ../string_theory_client
+  string_theory_decay_engine:
   serverpod_flutter: 4.0.3
   serverpod_auth_idp_flutter: 4.0.3
   flutter_bloc: ^9.1.1

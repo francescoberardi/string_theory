@@ -198,7 +198,8 @@ class _RacquetDetailScreenState extends State<RacquetDetailScreen> {
   ) {
     final job = racquet.activeStringJob;
     final health = job?.currentHealthScore;
-    final isCritical = health != null && health < 40;
+    final isCritical =
+        health != null && DecayEngine.getHealthTier(health).isCritical;
 
     final stringTitle = [
       if (job?.brand != null && job!.brand!.trim().isNotEmpty)
