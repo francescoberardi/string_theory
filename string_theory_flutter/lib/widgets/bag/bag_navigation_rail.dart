@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../theme/court_midnight_theme.dart';
+import 'app_navigation_destination.dart';
 
 /// Tablet / desktop navigation rail: Bag, Sessions, Account.
 class BagNavigationRail extends StatelessWidget {
@@ -38,20 +39,9 @@ class BagNavigationRail extends StatelessWidget {
         color: CourtMidnightTheme.textSecondary,
         fontSize: 12,
       ),
-      destinations: const [
-        NavigationRailDestination(
-          icon: Icon(Icons.sports_tennis),
-          label: Text('Bag'),
-        ),
-        NavigationRailDestination(
-          icon: Icon(Icons.history),
-          label: Text('Sessions'),
-        ),
-        NavigationRailDestination(
-          icon: Icon(Icons.manage_accounts_outlined),
-          label: Text('Account'),
-        ),
-      ],
+      destinations: AppNavigationDestination.values
+          .map((dest) => dest.toNavigationRailDestination())
+          .toList(),
     );
   }
 }

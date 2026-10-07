@@ -11,6 +11,7 @@ import '../services/health/health_sync_service.dart';
 import '../theme/court_midnight_theme.dart';
 import '../widgets/add_racquet_modal.dart';
 import '../widgets/bag/add_racquet_fab.dart';
+import '../widgets/bag/app_navigation_destination.dart';
 import '../widgets/bag/bag_bottom_nav.dart';
 import '../widgets/bag/bag_empty_state.dart';
 import '../widgets/bag/bag_error_view.dart';
@@ -67,7 +68,7 @@ class VirtualBagScreen extends StatefulWidget {
 }
 
 class _VirtualBagScreenState extends State<VirtualBagScreen> {
-  int _navIndex = 0;
+  int _navIndex = AppNavigationDestination.bag.index;
   HealthSyncService? _healthSyncService;
   StreamSubscription<DetectedWorkout>? _workoutSubscription;
 
@@ -179,7 +180,8 @@ class _VirtualBagScreenState extends State<VirtualBagScreen> {
     // Auto-open only over the bag tab itself; otherwise the Assign action
     // below remains the way in.
     final isBagVisible =
-        _navIndex == 0 && (ModalRoute.of(context)?.isCurrent ?? true);
+        _navIndex == AppNavigationDestination.bag.index &&
+        (ModalRoute.of(context)?.isCurrent ?? true);
     if (racquets.isNotEmpty && isBagVisible) {
       _openDetectedAssignmentSheet(batch.first, racquets, bloc);
     }
@@ -284,9 +286,10 @@ class _VirtualBagScreenState extends State<VirtualBagScreen> {
         }
       },
       builder: (context, state) {
-        final content = _navIndex == 1
-            ? const SessionsPlaceholder()
-            : _buildBodyForState(context, state, isMobile, crossAxisCount);
+        final content = switch (AppNavigationDestination.fromIndex(_navIndex)) {
+          AppNavigationDestination.sessions => const SessionsPlaceholder(),
+          _ => _buildBodyForState(context, state, isMobile, crossAxisCount),
+        };
 
         final Widget scaffold;
         if (isMobile) {
@@ -362,21 +365,26 @@ class _VirtualBagScreenState extends State<VirtualBagScreen> {
   }
 
   void _onNavigationTapped(BuildContext context, int index) {
-    if (index == 2) {
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => SettingsScreen(
-            bagBloc: _resolveBloc(context),
+    final destination = AppNavigationDestination.fromIndex(index);
+    if (destination == null) return;
+
+    switch (destination) {
+      case AppNavigationDestination.account:
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => SettingsScreen(
+              bagBloc: _resolveBloc(context),
+            ),
           ),
-        ),
-      );
-    } else {
-      setState(() => _navIndex = index);
+        );
+      case AppNavigationDestination.bag:
+      case AppNavigationDestination.sessions:
+        setState(() => _navIndex = destination.index);
     }
   }
 
   Widget? _buildFab(BuildContext context, BagState state) {
-    if (_navIndex != 0) return null;
+    if (_navIndex != AppNavigationDestination.bag.index) return null;
     final racquets = state is BagLoaded ? state.racquets : const <Racquet>[];
     final hasRacquets = racquets.isNotEmpty;
     final showBadge = _healthSyncService?.supportsSimulation ?? false;

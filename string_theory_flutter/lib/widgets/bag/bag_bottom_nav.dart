@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../theme/court_midnight_theme.dart';
+import 'app_navigation_destination.dart';
 
 /// Mobile bottom navigation: Bag, Sessions, Account.
 class BagBottomNav extends StatelessWidget {
@@ -25,20 +26,9 @@ class BagBottomNav extends StatelessWidget {
       unselectedItemColor: CourtMidnightTheme.textSecondary,
       currentIndex: currentIndex,
       onTap: onTap,
-      items: const [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.sports_tennis),
-          label: 'Bag',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.history),
-          label: 'Sessions',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.manage_accounts_outlined),
-          label: 'Account',
-        ),
-      ],
+      items: AppNavigationDestination.values
+          .map((dest) => dest.toBottomNavigationBarItem())
+          .toList(),
     );
   }
 }

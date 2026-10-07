@@ -171,7 +171,7 @@ action_items:
     epic: 5
     action: "Consolidate navigation destination models across bottom nav, rail, and drawer"
     owner: "Winston (Architect)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-5-retro-2026-10-06.md"
   - id: "epic-5-retro-item-3-flexible-aspect-ratio-bagracquetlist"
     epic: 5

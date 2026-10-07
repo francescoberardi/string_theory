@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../theme/court_midnight_theme.dart';
+import 'app_navigation_destination.dart';
 
 /// Persistent side navigation drawer for desktop / web (>1024dp):
 /// Bag, Sessions, Account.
@@ -22,15 +23,7 @@ class BagNavigationDrawer extends StatelessWidget {
     return Container(
       key: keyNavigationDrawer,
       width: 240,
-      decoration: const BoxDecoration(
-        color: CourtMidnightTheme.surface,
-        border: Border(
-          right: BorderSide(
-            color: CourtMidnightTheme.surfaceBorder,
-            width: 1,
-          ),
-        ),
-      ),
+      decoration: _borderDecoration,
       child: NavigationDrawerTheme(
         data: NavigationDrawerThemeData(
           backgroundColor: CourtMidnightTheme.surface,
@@ -100,21 +93,22 @@ class BagNavigationDrawer extends StatelessWidget {
               color: CourtMidnightTheme.surfaceBorder,
             ),
             const SizedBox(height: 12),
-            const NavigationDrawerDestination(
-              icon: Icon(Icons.sports_tennis),
-              label: Text('Bag'),
-            ),
-            const NavigationDrawerDestination(
-              icon: Icon(Icons.history),
-              label: Text('Sessions'),
-            ),
-            const NavigationDrawerDestination(
-              icon: Icon(Icons.manage_accounts_outlined),
-              label: Text('Account'),
+            ...AppNavigationDestination.values.map(
+              (dest) => dest.toNavigationDrawerDestination(),
             ),
           ],
         ),
       ),
     );
   }
+
+  static const _borderDecoration = BoxDecoration(
+    color: CourtMidnightTheme.surface,
+    border: Border(
+      right: BorderSide(
+        color: CourtMidnightTheme.surfaceBorder,
+        width: 1,
+      ),
+    ),
+  );
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:string_theory_flutter/theme/court_midnight_theme.dart';
+import 'package:string_theory_flutter/widgets/bag/app_navigation_destination.dart';
 import 'package:string_theory_flutter/widgets/bag/bag_navigation_drawer.dart';
 
 void main() {
@@ -15,7 +16,7 @@ void main() {
             theme: CourtMidnightTheme.themeData,
             home: Scaffold(
               body: BagNavigationDrawer(
-                selectedIndex: 0,
+                selectedIndex: AppNavigationDestination.bag.index,
                 onDestinationSelected: (_) {},
               ),
             ),
@@ -37,16 +38,16 @@ void main() {
           theme: CourtMidnightTheme.themeData,
           home: Scaffold(
             body: BagNavigationDrawer(
-              selectedIndex: 0,
+              selectedIndex: AppNavigationDestination.bag.index,
               onDestinationSelected: (_) {},
             ),
           ),
         ),
       );
 
-      expect(find.text('Bag'), findsOneWidget);
-      expect(find.text('Sessions'), findsOneWidget);
-      expect(find.text('Account'), findsOneWidget);
+      for (final dest in AppNavigationDestination.values) {
+        expect(find.text(dest.label), findsOneWidget);
+      }
     });
 
     testWidgets('triggers onDestinationSelected when destination tapped', (
@@ -58,24 +59,24 @@ void main() {
           theme: CourtMidnightTheme.themeData,
           home: Scaffold(
             body: BagNavigationDrawer(
-              selectedIndex: 0,
+              selectedIndex: AppNavigationDestination.bag.index,
               onDestinationSelected: (index) => tappedIndex = index,
             ),
           ),
         ),
       );
 
-      await tester.tap(find.text('Sessions'));
+      await tester.tap(find.text(AppNavigationDestination.sessions.label));
       await tester.pumpAndSettle();
-      expect(tappedIndex, 1);
+      expect(tappedIndex, AppNavigationDestination.sessions.index);
 
-      await tester.tap(find.text('Account'));
+      await tester.tap(find.text(AppNavigationDestination.account.label));
       await tester.pumpAndSettle();
-      expect(tappedIndex, 2);
+      expect(tappedIndex, AppNavigationDestination.account.index);
 
-      await tester.tap(find.text('Bag'));
+      await tester.tap(find.text(AppNavigationDestination.bag.label));
       await tester.pumpAndSettle();
-      expect(tappedIndex, 0);
+      expect(tappedIndex, AppNavigationDestination.bag.index);
     });
   });
 }
