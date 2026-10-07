@@ -177,5 +177,5 @@ action_items:
     epic: 5
     action: "Implement flexible aspect ratio or extent in BagRacquetList grid for accessibility scaling"
     owner: "Amelia (Developer)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-5-retro-2026-10-06.md"

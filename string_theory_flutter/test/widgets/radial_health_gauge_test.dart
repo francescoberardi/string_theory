@@ -248,5 +248,32 @@ void main() {
         expect(semanticsFinder, findsOneWidget);
       },
     );
+
+    testWidgets(
+      'renders without overflow under 1.5x and 2.0x text scaling',
+      (tester) async {
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: MediaQuery(
+              data: MediaQueryData(textScaler: TextScaler.linear(2.0)),
+              child: Scaffold(
+                body: Center(
+                  child: RadialHealthGauge(
+                    healthScore: 50,
+                    tensionLossText: '~1.5 kg / ~3.3 lbs drop',
+                    size: 54,
+                    animate: false,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull);
+        expect(find.text('50%'), findsOneWidget);
+      },
+    );
   });
 }
