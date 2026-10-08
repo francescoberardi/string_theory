@@ -2,6 +2,7 @@ import 'package:serverpod/serverpod.dart';
 
 import '../domain/decay_engine.dart';
 import '../generated/protocol.dart';
+import '../messaging/bag_channels.dart';
 
 /// Serverpod FutureCall that executes daily tension relaxation and health decay
 /// across all active [StringJob] records in the database.
@@ -50,7 +51,8 @@ class DailyDecayService {
   /// `currentHealthScore` column. Each write is conditional on the job's
   /// `totalCourtHours` being unchanged since the page was read, so a score a
   /// session wrote in the meantime is never overwritten; such a job is not
-  /// counted and decays on the next run.
+  /// counted and decays on the next run. Every written score is published as
+  /// a [BagChannels.decayed] message on its owner's bag channel.
   ///
   /// [afterPageRead] is a test seam called with each page after it is read
   /// and before its scores are written, to simulate concurrent updates.
@@ -117,6 +119,7 @@ class DailyDecayService {
       await afterPageRead?.call(page);
       final written = await _updatePage(session, page, effectiveNow);
       updatedCount += written.length;
+      await _publishDecayed(session, written);
 
       if (page.length < batchSize) break;
     }
@@ -205,6 +208,43 @@ class DailyDecayService {
       }
     }
     return written;
+  }
+
+  /// Posts a [BagChannels.decayed] message to each written job owner's bag
+  /// channel. Scores are integer percentages, so every written change is at
+  /// least 1%. A publish failure is logged and never fails the run.
+  static Future<void> _publishDecayed(
+    Session session,
+    List<StringJob> written,
+  ) async {
+    for (final job in written) {
+      try {
+        final posted = await session.messages.postMessage(
+          BagChannels.forUser(job.userId),
+          BagStreamMessage(
+            eventType: BagChannels.decayed,
+            racquetId: job.racquetId,
+            healthScore: job.currentHealthScore,
+            totalCourtHours: job.totalCourtHours,
+            timestamp: DateTime.now().toUtc(),
+          ),
+        );
+        if (!posted) {
+          session.log(
+            'Failed to publish decayed for StringJob #${job.id}: '
+            'postMessage returned false',
+            level: LogLevel.warning,
+          );
+        }
+      } catch (e, stack) {
+        session.log(
+          'Failed to publish decayed for StringJob #${job.id}: $e',
+          level: LogLevel.warning,
+          exception: e,
+          stackTrace: stack,
+        );
+      }
+    }
   }
 
   static void _logJobError(

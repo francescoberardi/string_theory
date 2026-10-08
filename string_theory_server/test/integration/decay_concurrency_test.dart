@@ -1,6 +1,7 @@
 import 'package:string_theory_server/src/domain/decay_engine.dart';
 import 'package:string_theory_server/src/future_calls/daily_decay_future_call.dart';
 import 'package:string_theory_server/src/generated/protocol.dart';
+import 'package:string_theory_server/src/messaging/bag_channels.dart';
 import 'package:test/test.dart';
 
 import 'support/test_tenants.dart';
@@ -15,6 +16,9 @@ void main() {
     (sessionBuilder, endpoints) {
       final tenantA = sessionBuilder.copyWith(
         authentication: TestTenants.auth(TestTenants.a),
+      );
+      final tenantB = sessionBuilder.copyWith(
+        authentication: TestTenants.auth(TestTenants.b),
       );
 
       test(
@@ -168,7 +172,75 @@ void main() {
             await endpoints.bag.deleteRacquet(tenantA, racquetId: racquetId);
           }
         },
-        skip: tddRedPhaseReason,
+      );
+
+      test(
+        '[P1] AC-6 should publish nothing when decay leaves the score unchanged',
+        () async {
+          final racquet = await endpoints.bag.createRacquet(
+            tenantA,
+            racquetName: 'Babolat Pure Strike',
+          );
+          final racquetId = racquet.id!;
+          final messages = <BagStreamMessage>[];
+          final sub = endpoints.bag.bagUpdates(tenantA).listen(messages.add);
+
+          try {
+            await Future<void>.delayed(const Duration(milliseconds: 200));
+
+            final updated = await DailyDecayService.performDecayCalculation(
+              sessionBuilder.build(),
+            );
+            await Future<void>.delayed(const Duration(milliseconds: 200));
+
+            expect(updated, equals(0));
+            expect(messages, isEmpty);
+          } finally {
+            await sub.cancel();
+            await endpoints.bag.deleteRacquet(tenantA, racquetId: racquetId);
+          }
+        },
+      );
+
+      test(
+        '[P1] AC-6 should publish nothing on another tenant channel',
+        () async {
+          final now = DateTime.now().toUtc();
+          final racquet = await endpoints.bag.createRacquet(
+            tenantA,
+            racquetName: 'Wilson Shift 99',
+            stringingDate: now.subtract(const Duration(days: 30)),
+          );
+          final racquetId = racquet.id!;
+          final tenantAMessages = <BagStreamMessage>[];
+          final tenantBMessages = <BagStreamMessage>[];
+          final subA = endpoints.bag
+              .bagUpdates(tenantA)
+              .listen(tenantAMessages.add);
+          final subB = endpoints.bag
+              .bagUpdates(tenantB)
+              .listen(tenantBMessages.add);
+
+          try {
+            await Future<void>.delayed(const Duration(milliseconds: 200));
+
+            await DailyDecayService.performDecayCalculation(
+              sessionBuilder.build(),
+              now: now.add(const Duration(days: 30)),
+            );
+            await Future<void>.delayed(const Duration(milliseconds: 200));
+
+            expect(
+              tenantAMessages.map((m) => (m.eventType, m.racquetId)),
+              contains((BagChannels.decayed, racquetId)),
+            );
+            expect(tenantBMessages, isEmpty);
+          } finally {
+            await subA.cancel();
+            await subB.cancel();
+            await endpoints.bag.deleteRacquet(tenantA, racquetId: racquetId);
+          }
+        },
       );
     },
     rollbackDatabase: RollbackDatabase.disabled,
