@@ -146,6 +146,29 @@ void main() {
       expect(result.single.startTime, localStart.toUtc());
     });
 
+    test(
+      'emits a 360-minute workout and skips a 361-minute one',
+      () async {
+        gateway.points = [
+          tennis(
+            'six-hours',
+            DateTime.utc(2026, 10, 4, 6, 0),
+            const Duration(minutes: 360),
+          ),
+          tennis(
+            'too-long',
+            DateTime.utc(2026, 10, 3, 6, 0),
+            const Duration(minutes: 361),
+          ),
+        ];
+
+        final result = await service.syncWorkouts();
+
+        expect(result.map((w) => w.externalWorkoutId), ['six-hours']);
+        expect(result.single.durationMinutes, 360);
+      },
+    );
+
     test('skips workouts that have not completed yet', () async {
       gateway.points = [
         tennis(

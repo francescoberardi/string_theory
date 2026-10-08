@@ -85,6 +85,9 @@ class NativeHealthSyncService implements HealthSyncService {
   /// How far back the first sync of a launch looks.
   static const defaultInitialLookback = Duration(days: 7);
 
+  /// Longest workout emitted, matching the server's `logSession` limit.
+  static const maxWorkoutMinutes = 360;
+
   /// Later syncs start this long before the previous sync, so matches still
   /// in progress during a sync, or saved late by a watch, are not lost.
   /// Already seen workouts are skipped by id.
@@ -165,7 +168,7 @@ class NativeHealthSyncService implements HealthSyncService {
     if (point.dateTo.isAfter(now)) return null;
 
     final minutes = point.dateTo.difference(point.dateFrom).inMinutes;
-    if (minutes <= 0) return null;
+    if (minutes <= 0 || minutes > maxWorkoutMinutes) return null;
 
     return DetectedWorkout(
       externalWorkoutId: point.uuid,
