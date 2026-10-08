@@ -10,6 +10,7 @@ inputDocuments:
   - "_bmad-output/planning-artifacts/architecture/architecture-string_theory-2026-10-02/SOLUTION-DESIGN.md"
   - "_bmad-output/planning-artifacts/ux/ux-string_theory-2026-10-02/DESIGN.md"
   - "_bmad-output/planning-artifacts/ux/ux-string_theory-2026-10-02/EXPERIENCE.md"
+  - "_bmad-output/implementation-artifacts/deferred-work.md"
 ---
 
 # string_theory - Epic Breakdown
@@ -73,6 +74,23 @@ This document provides the complete epic and story breakdown for string_theory, 
 - **UX-DR5**: "Restrung Today" 2-option sheet: [Keep Same & Reset] (1-tap reset) vs [Change Specs] (expandable specs form) + Toast notification.
 - **UX-DR6**: Multi-platform input accommodations: >=48dp touch targets on mobile + keyboard shortcuts (L = Log, N = New, S = Simulate, Esc = Close) and mouse hover states on web.
 
+### Technical Debt & Production Hardening Requirements
+
+- **TD-1**: In `BagBloc`, decouple the mutation RPC (`addRacquet`, `deleteRacquet`, `setPrimaryRacquet`, `fastForwardRacquetAge`) from the subsequent `getVirtualBag` refresh so a failed refresh never misreports a successful creation as failed.
+- **TD-2**: `VirtualBagScreen.onRefresh` must await the asynchronous `BagLoaded` / `BagError` resolution rather than firing-and-forgetting `LoadBag`.
+- **TD-3**: In `BagBloc`, handle HTTP 401 unauthorized errors explicitly instead of routing them to the transient offline queue with the "saved offline" toast.
+- **TD-4**: Observe `AppLifecycleState.resumed` to trigger workout sync when the user returns to the app, with debounce/concurrency locking and a 60-second cooldown gate against simultaneous plugin queries.
+- **TD-5**: Buffer workouts arriving while the assignment modal or bag loading is active, allowing sequential assignment rather than discarding unhandled items.
+- **TD-6**: Detect and surface missing Health Connect or denied permissions in the UI; persist seen external workout IDs to prevent re-alerting on cold start.
+- **TD-7**: Non-blocking PostgreSQL advisory locks (`pg_try_advisory_lock(7421893)`) inside `DailyDecayService` to prevent concurrent execution between cron FutureCalls and dev triggers.
+- **TD-8**: Optimistic conditional score updates on `totalCourtHours` in decay batches (`WHERE id = @jobId AND "totalCourtHours" = @readCourtHours`), skipping jobs concurrently updated by user sessions.
+- **TD-9**: Delta-gated live WebSocket broadcasts (`BagStreamMessage`) when decay changes scores by >= 1%.
+- **TD-10**: Clean data schema: migrate `userId` across `Racquet`, `StringJob`, `SessionLog`, and `RestringEvent` to `UuidValue` with database indices, add composite unique index `(userId, externalWorkoutId)` on `SessionLog`, and refactor `TenantResolver` to natively return `UuidValue` without hashing.
+- **TD-11**: Replace `SessionsPlaceholder` with a dedicated, interactive Sessions history screen with direct quick-log shortcuts.
+- **TD-12**: Relocate `RacquetPreset` and `StringCategoryDefaults` from UI widgets into pure domain models in the domain layer.
+- **TD-13**: Serverpod auth secrets and IDP password environment variables match consistently across CI test matrices, with directory-scoped `git diff --exit-code` checks.
+- **TD-14**: Fake `serverpod_auth_core` status caller in `auth_service_test.dart` to verify valid-session and guest fallback branches deterministically without real network timeouts.
+
 ### FR Coverage Map
 
 - **FR-1**: Epic 1 — Anonymous Guest Session (instant auth without login wall)
@@ -94,6 +112,7 @@ This document provides the complete epic and story breakdown for string_theory, 
 - **FR-17**: Epic 4 — Restring history timeline view on racquet detail screen
 - **FR-18**: Epic 3 & Epic 5 — One-click tennis workout simulator for judges and web testers
 - **FR-19**: Epic 2 & Epic 5 — Fast-forward 30 days time-warp aging simulator
+- **TD-1 through TD-14**: Epic 6 — Technical Debt, Concurrency & Production Polish
 
 ## Epic List
 
@@ -120,6 +139,10 @@ When strings go dead (<40%), players receive clear in-app alerts and can execute
 ### Epic 5: Hackathon Polish, Multi-Platform Adaptations & Judge Showcase Controls
 Hackathon judges and web testers can evaluate the complete system across mobile, tablet, and desktop/web with responsive layouts (NavigationRail on tablet/web), keyboard shortcuts (L, N, S, Esc), and unified demo controls.
 **UX/NFRs covered:** UX-DR3, UX-DR6, NFR-1, NFR-2, NFR-3
+
+### Epic 6: Technical Debt, Concurrency & Production Polish
+The system eliminates pre-release technical debt and concurrency vulnerabilities: aligns native UUID tenant identifiers across all Serverpod models and endpoints, secures daily decay background workers with PostgreSQL advisory locks and optimistic score writes, broadcasts live WebSocket health decay updates, decouples BLoC mutation errors from background reloads, hardens health workout queueing and lifecycle sync, delivers a dedicated Sessions history screen, and establishes CI parity and deterministic authentication tests.
+**Requirements covered:** TD-1, TD-2, TD-3, TD-4, TD-5, TD-6, TD-7, TD-8, TD-9, TD-10, TD-11, TD-12, TD-13, TD-14
 
 ---
 
@@ -519,3 +542,93 @@ So that end-to-end user flows, native dialogs, and simulated workouts are verifi
 - **Then** the Patrol E2E test suite runs headlessly against the Flutter client,
 - **And** it verifies the critical path (guest onboarding, virtual bag rendering, and sample workout simulation),
 - **And** any failure in the Patrol integration run blocks PR merge.
+
+---
+
+## Epic 6: Technical Debt, Concurrency & Production Polish
+
+The system eliminates pre-release technical debt and concurrency vulnerabilities: aligns native UUID tenant identifiers across all Serverpod models and endpoints, secures daily decay background workers with PostgreSQL advisory locks and optimistic score writes, broadcasts live WebSocket health decay updates, decouples BLoC mutation errors from background reloads, hardens health workout queueing and lifecycle sync, delivers a dedicated Sessions history screen, and establishes CI parity and deterministic authentication tests.
+
+### Story 6.1: State Management Resilience (Mutation Refresh Decoupling, Async Pull-to-Refresh & Auth 401 Routing)
+
+As a tennis player,  
+I want racquets added, deleted, made primary, or aged without false error SnackBars when network reloads fluctuate, and pull-to-refresh to wait for the latest bag data,  
+So that I have total confidence in my virtual gear bag's state and interactions.
+
+**Requirements Covered:** TD-1, TD-2, TD-3
+
+**Acceptance Criteria:**
+- **Given** the player performs `AddRacquet`, `DeleteRacquet`, `SetPrimaryRacquet`, or `FastForwardRacquetAge`,
+- **When** the backend mutation RPC succeeds but the subsequent `getVirtualBag` reload fails or times out,
+- **Then** `BagBloc` does NOT emit an error SnackBar claiming the operation failed; it retains the updated state and schedules a background re-sync,
+- **And** when the player pulls to refresh on `VirtualBagScreen`, `RefreshIndicator.onRefresh` awaits the asynchronous emission of `BagLoaded` or `BagError` (with an 8-second safety timeout) before dismissing the spinner,
+- **And** when `logSession` encounters an HTTP 401 Unauthorized, `BagBloc` treats it as permanent authentication expiry, prompts re-authentication immediately, and does NOT queue the session with the "saved offline" toast.
+
+### Story 6.2: Health Ingestion Hardening (Lifecycle Resumed Sync, Workout Arrival Queue & Permission Feedback)
+
+As a tennis player with an Apple Watch or WearOS device,  
+I want matches detected immediately when returning to the app without dropping multi-match batches,  
+So that all on-court hours are captured effortlessly into my string decay tracking.
+
+**Requirements Covered:** TD-4, TD-5, TD-6
+
+**Acceptance Criteria:**
+- **Given** `NativeHealthSyncService` attached to the virtual bag,
+- **When** the application transitions from background to foreground (`AppLifecycleState.resumed`),
+- **Then** workout sync executes automatically, provided at least 60 seconds have elapsed since the prior sync (cooldown gate),
+- **And** `syncWorkouts()` enforces a 5-second timeout and guarantees `_isSyncing = false` in a `finally` block,
+- **And** when multiple tennis sessions arrive in a single batch, or workouts arrive while an assignment sheet is active, `BagBloc` buffers them in a FIFO pending queue and presents each sequentially upon sheet completion or dismissal,
+- **And** when Health Connect or HealthKit permissions are missing or denied, the UI surfaces clear informational guidance rather than a silent empty list,
+- **And** processed or dismissed workout IDs are stored in persistent storage so app restarts do not re-alert on previously handled workouts.
+
+### Story 6.3: Native UUID Tenant Migration, Backend Concurrency & Live Updates
+
+As a backend engineer and system architect,  
+I want clean UUID tenant identifiers, non-blocking advisory locking, and optimistic concurrency for decay updates,  
+So that the database schema is production-ready, race conditions are eliminated, and live clients receive real-time decay broadcasts.
+
+**Requirements Covered:** TD-7, TD-8, TD-9, TD-10
+
+**Acceptance Criteria:**
+- **Given** Serverpod models `Racquet`, `StringJob`, `SessionLog`, and `RestringEvent`,
+- **When** the schema is migrated,
+- **Then** all `userId` columns are typed as `UuidValue` with database indices,
+- **And** `SessionLog` includes a composite unique index `(userId, externalWorkoutId)` isolating tenants,
+- **And** `TenantResolver` returns `session.authenticated?.authUserId` directly without custom hash or modulus workarounds,
+- **And** `DailyDecayService` acquires a non-blocking PostgreSQL advisory lock (`pg_try_advisory_lock(7421893)`); if busy, dev triggers return 409 and background cron exits gracefully,
+- **And** decay batch updates execute optimistic conditional writes (`WHERE id = @jobId AND "totalCourtHours" = @readCourtHours`), skipping jobs concurrently updated by user sessions,
+- **And** when stringbed health score changes by >= 1%, `DailyDecayService` publishes a `BagStreamMessage` to the user's stream channel,
+- **And** `SessionEndpoint.logSession` validates `1 <= durationMinutes <= 360` and `startTime <= now() + 5 minutes`.
+
+### Story 6.4: Dedicated Sessions History Screen & Domain Model Extraction
+
+As a tennis player,  
+I want a dedicated Sessions tab showing my full match and practice history with quick-logging shortcuts,  
+So that I can review all logged court hours and gear usage in one organized view.
+
+**Requirements Covered:** TD-11, TD-12
+
+**Acceptance Criteria:**
+- **Given** the app navigation (BottomNav, NavigationRail, and Drawer),
+- **When** the player selects the "Sessions" tab,
+- **Then** the app renders a dedicated `SessionsScreen` (replacing the temporary `SessionsPlaceholder`),
+- **And** it displays a chronological list of logged sessions with date, duration, racquet name, and court hours added,
+- **And** it provides a prominent `[+ Log Session]` action button,
+- **And** `RacquetPreset` and `StringCategoryDefaults` are relocated from UI widgets into pure domain models in the domain layer, with presentation files referencing the domain contracts.
+
+### Story 6.5: CI Environment Parity & Deterministic Auth Testing
+
+As a developer and CI engineer,  
+I want CI workflows to run with consistent auth environment configurations and deterministic unit tests,  
+So that pull requests are verified without flakiness or network timeouts.
+
+**Requirements Covered:** TD-13, TD-14
+
+**Acceptance Criteria:**
+- **Given** GitHub Actions workflow definitions,
+- **When** automated test steps execute across `string_theory_server` and `string_theory_flutter`,
+- **Then** Serverpod auth secrets and IDP password environment variables match consistently across test matrices,
+- **And** `git diff --exit-code` checks are scoped to individual package directories to prevent spurious drift alerts,
+- **And** `auth_service_test.dart` introduces a fake/mock `serverpod_auth_core` status caller,
+- **And** both valid-session and guest fallback branches are verified deterministically without awaiting live socket timeouts.
+
