@@ -266,6 +266,9 @@ void main() {
           );
           final racquetId = racquet.id!;
           int? scoreWrittenBySession;
+          final messages = <BagStreamMessage>[];
+          final sub = endpoints.bag.bagUpdates(tenantA).listen(messages.add);
+          await Future<void>.delayed(const Duration(milliseconds: 200));
 
           await DailyDecayService.performDecayCalculation(
             sessionBuilder.build(),
@@ -287,6 +290,53 @@ void main() {
           final job = bag.firstWhere((r) => r.id == racquetId).activeStringJob!;
           expect(job.currentHealthScore, equals(scoreWrittenBySession));
           expect(job.totalCourtHours, closeTo(1.5, 0.001));
+
+          await Future<void>.delayed(const Duration(milliseconds: 200));
+          await sub.cancel();
+          expect(
+            messages
+                .where((m) => m.racquetId == racquetId)
+                .map((m) => m.eventType),
+            equals([BagChannels.sessionLogged]),
+          );
+        },
+      );
+
+      test(
+        '[P0] AC-5 should not write or broadcast a job retired by a restring between decay read and write',
+        () async {
+          final now = DateTime.now().toUtc();
+          final racquet = await endpoints.bag.createRacquet(
+            tenantA,
+            racquetName: 'Prince Tour 100',
+            materialCategory: StringMaterialCategory.coPoly,
+            maxRatedHours: 20.0,
+            stringingDate: now.subtract(const Duration(days: 30)),
+          );
+          final racquetId = racquet.id!;
+          final messages = <BagStreamMessage>[];
+          final sub = endpoints.bag.bagUpdates(tenantA).listen(messages.add);
+          await Future<void>.delayed(const Duration(milliseconds: 200));
+
+          final updated = await DailyDecayService.performDecayCalculation(
+            sessionBuilder.build(),
+            now: now.add(const Duration(days: 30)),
+            afterPageRead: (_) => endpoints.bag.restringRacquet(
+              tenantA,
+              racquetId: racquetId,
+            ),
+          );
+
+          await Future<void>.delayed(const Duration(milliseconds: 200));
+          await sub.cancel();
+          expect(updated, equals(0));
+          expect(
+            messages.where((m) => m.eventType == BagChannels.decayed),
+            isEmpty,
+          );
+          final bag = await endpoints.bag.getVirtualBag(tenantA);
+          final job = bag.firstWhere((r) => r.id == racquetId).activeStringJob!;
+          expect(job.currentHealthScore, equals(100));
         },
       );
 

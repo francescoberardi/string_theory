@@ -134,10 +134,11 @@ class DailyDecayService {
 
   /// Recalculates health for one page and persists the changed rows.
   ///
-  /// Each write is conditional on the job's `totalCourtHours` still matching
-  /// the value read with the page. A job whose hours a session changed in the
-  /// meantime keeps the score that session wrote and is decayed on the next
-  /// run.
+  /// Each write is conditional on the job still being active and its
+  /// `totalCourtHours` still matching the value read with the page. A job
+  /// whose hours a session changed in the meantime keeps the score that
+  /// session wrote and is decayed on the next run; a job retired by a restring
+  /// in the meantime is left alone.
   ///
   /// Returns the jobs written, with their new scores.
   static Future<List<StringJob>> _updatePage(
@@ -170,6 +171,7 @@ class DailyDecayService {
         'FROM unnest(@ids::bigint[], @scores::bigint[], '
         '@hours::double precision[]) AS v(id, score, hours) '
         'WHERE j.id = v.id AND j."totalCourtHours" = v.hours '
+        'AND j."isActive" '
         'RETURNING j.id',
         parameters: QueryParameters.named({
           'ids': [for (final job in changed) job.id!],
@@ -200,7 +202,8 @@ class DailyDecayService {
           columnValues: (t) => [t.currentHealthScore(job.currentHealthScore)],
           where: (t) =>
               t.id.equals(job.id!) &
-              t.totalCourtHours.equals(job.totalCourtHours),
+              t.totalCourtHours.equals(job.totalCourtHours) &
+              t.isActive.equals(true),
         );
         if (updated.isNotEmpty) written.add(job);
       } catch (e, stack) {
