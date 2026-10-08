@@ -6,6 +6,7 @@ import 'package:string_theory_server/src/generated/protocol.dart';
 import 'package:string_theory_server/src/messaging/bag_channels.dart';
 import 'package:test/test.dart';
 
+import 'support/test_tenants.dart';
 import 'test_tools/serverpod_test_tools.dart';
 
 void main() {
@@ -13,18 +14,10 @@ void main() {
     'Given BagEndpoint.bagUpdates real-time stream',
     (sessionBuilder, endpoints) {
       final user1Session = sessionBuilder.copyWith(
-        authentication:
-            serverpod_test.AuthenticationOverride.authenticationInfo(
-              '1',
-              {},
-            ),
+        authentication: TestTenants.auth(TestTenants.a),
       );
       final user2Session = sessionBuilder.copyWith(
-        authentication:
-            serverpod_test.AuthenticationOverride.authenticationInfo(
-              '2',
-              {},
-            ),
+        authentication: TestTenants.auth(TestTenants.b),
       );
       final unauthenticatedSession = sessionBuilder.copyWith(
         authentication: serverpod_test.AuthenticationOverride.unauthenticated(),
@@ -41,19 +34,6 @@ void main() {
 
       Future<void> settle() =>
           Future<void>.delayed(const Duration(milliseconds: 200));
-
-      SessionLog sessionLogFor(
-        int racquetId, {
-        int durationMinutes = 90,
-        String? externalWorkoutId,
-      }) => SessionLog(
-        userId: 1,
-        racquetId: racquetId,
-        startTime: DateTime.now().toUtc(),
-        durationMinutes: durationMinutes,
-        source: 'HealthKit',
-        externalWorkoutId: externalWorkoutId,
-      );
 
       test(
         '[P0] should deliver a sessionLogged message with new health and hours within 300 ms',
@@ -321,11 +301,7 @@ void main() {
     'Given concurrent logSession calls racing on the same external workout',
     (sessionBuilder, endpoints) {
       final userSession = sessionBuilder.copyWith(
-        authentication:
-            serverpod_test.AuthenticationOverride.authenticationInfo(
-              '3201',
-              {},
-            ),
+        authentication: TestTenants.auth(TestTenants.e),
       );
 
       test(
@@ -347,7 +323,7 @@ void main() {
             await Future<void>.delayed(const Duration(milliseconds: 200));
 
             final logInput = SessionLog(
-              userId: 3201,
+              userId: TestTenants.eUserId,
               racquetId: racquetId,
               startTime: DateTime.now().toUtc(),
               durationMinutes: 90,

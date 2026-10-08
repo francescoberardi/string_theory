@@ -4,6 +4,7 @@ import 'package:string_theory_server/src/generated/protocol.dart';
 import 'package:string_theory_server/src/messaging/bag_channels.dart';
 import 'package:test/test.dart';
 
+import 'support/test_tenants.dart';
 import 'test_tools/serverpod_test_tools.dart';
 
 void main() {
@@ -11,18 +12,10 @@ void main() {
     'Given BagEndpoint and Racquet/StringJob database persistence',
     (sessionBuilder, endpoints) {
       final user1Session = sessionBuilder.copyWith(
-        authentication:
-            serverpod_test.AuthenticationOverride.authenticationInfo(
-              '1',
-              {},
-            ),
+        authentication: TestTenants.auth(TestTenants.a),
       );
       final user2Session = sessionBuilder.copyWith(
-        authentication:
-            serverpod_test.AuthenticationOverride.authenticationInfo(
-              '2',
-              {},
-            ),
+        authentication: TestTenants.auth(TestTenants.b),
       );
       final unauthenticatedSession = sessionBuilder.copyWith(
         authentication: serverpod_test.AuthenticationOverride.unauthenticated(),
@@ -37,13 +30,13 @@ void main() {
           expect(StringMaterialCategory.kevlar, isNotNull);
 
           final racquet = Racquet(
-            userId: 1,
+            userId: TestTenants.aUserId,
             name: 'Babolat Pure Aero',
             isPrimary: true,
             createdAt: DateTime.now().toUtc(),
             updatedAt: DateTime.now().toUtc(),
           );
-          expect(racquet.userId, equals(1));
+          expect(racquet.userId, equals(TestTenants.aUserId));
           expect(racquet.name, equals('Babolat Pure Aero'));
         },
       );
@@ -80,12 +73,18 @@ void main() {
 
           final user1Bag = await endpoints.bag.getVirtualBag(user1Session);
           expect(user1Bag, isNotEmpty);
-          expect(user1Bag.every((r) => r.userId == 1), isTrue);
+          expect(
+            user1Bag.every((r) => r.userId == TestTenants.aUserId),
+            isTrue,
+          );
           expect(user1Bag.every((r) => r.activeStringJob != null), isTrue);
 
           final user2Bag = await endpoints.bag.getVirtualBag(user2Session);
           expect(user2Bag, isNotEmpty);
-          expect(user2Bag.every((r) => r.userId == 2), isTrue);
+          expect(
+            user2Bag.every((r) => r.userId == TestTenants.bUserId),
+            isTrue,
+          );
           expect(user2Bag.every((r) => r.activeStringJob != null), isTrue);
         },
       );
@@ -379,7 +378,7 @@ void main() {
           final unstrungRacquet = await Racquet.db.insertRow(
             session,
             Racquet(
-              userId: 1,
+              userId: TestTenants.aUserId,
               name: 'Unstrung Frame',
               createdAt: now,
               updatedAt: now,
@@ -510,7 +509,7 @@ void main() {
           );
           expect(history, hasLength(1));
           final event = history.first;
-          expect(event.userId, equals(1));
+          expect(event.userId, equals(TestTenants.aUserId));
           expect(event.racquetId, equals(racquetId));
           expect(event.stringJobId, equals(originalJobId));
           expect(event.stringDescription, equals('Luxilon ALU Power 125'));
@@ -591,7 +590,7 @@ void main() {
           final racquetId = racquet.id!;
 
           final customSpecs = StringJob(
-            userId: 1,
+            userId: TestTenants.aUserId,
             racquetId: racquetId,
             materialCategory: StringMaterialCategory.naturalGut,
             brand: 'Babolat',
@@ -747,7 +746,7 @@ void main() {
           await endpoints.session.logSession(
             user1Session,
             SessionLog(
-              userId: 1,
+              userId: TestTenants.aUserId,
               racquetId: racquetId,
               startTime: DateTime.now().toUtc(),
               durationMinutes: 90,
@@ -870,7 +869,7 @@ void main() {
           final unstrungRacquet = await Racquet.db.insertRow(
             session,
             Racquet(
-              userId: 1,
+              userId: TestTenants.aUserId,
               name: 'Unstrung Frame For Restring',
               createdAt: now,
               updatedAt: now,

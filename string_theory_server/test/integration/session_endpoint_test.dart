@@ -11,18 +11,10 @@ void main() {
     'Given SessionEndpoint and SessionLog database persistence',
     (sessionBuilder, endpoints) {
       final user1Session = sessionBuilder.copyWith(
-        authentication:
-            serverpod_test.AuthenticationOverride.authenticationInfo(
-              '1',
-              {},
-            ),
+        authentication: TestTenants.auth(TestTenants.a),
       );
       final user2Session = sessionBuilder.copyWith(
-        authentication:
-            serverpod_test.AuthenticationOverride.authenticationInfo(
-              '2',
-              {},
-            ),
+        authentication: TestTenants.auth(TestTenants.b),
       );
       final unauthenticatedSession = sessionBuilder.copyWith(
         authentication: serverpod_test.AuthenticationOverride.unauthenticated(),
@@ -68,7 +60,7 @@ void main() {
           final racquetId = racquet.id!;
 
           final logInput = SessionLog(
-            userId: 1,
+            userId: TestTenants.aUserId,
             racquetId: racquetId,
             startTime: DateTime.now().toUtc().subtract(
               const Duration(hours: 2),
@@ -86,7 +78,7 @@ void main() {
           );
 
           expect(logged.id, isNotNull);
-          expect(logged.userId, equals(1));
+          expect(logged.userId, equals(TestTenants.aUserId));
           expect(logged.racquetId, equals(racquetId));
           expect(logged.durationMinutes, equals(90));
           expect(logged.externalWorkoutId, equals('hk-1'));
@@ -117,7 +109,7 @@ void main() {
           final racquetId = racquet.id!;
 
           final logInput = SessionLog(
-            userId: 1,
+            userId: TestTenants.aUserId,
             racquetId: racquetId,
             startTime: DateTime.now().toUtc(),
             durationMinutes: 90,
@@ -172,7 +164,7 @@ void main() {
           final racquetId = racquet.id!;
 
           final manual1 = SessionLog(
-            userId: 1,
+            userId: TestTenants.aUserId,
             racquetId: racquetId,
             startTime: DateTime.now().toUtc().subtract(const Duration(days: 1)),
             durationMinutes: 60,
@@ -180,7 +172,7 @@ void main() {
             externalWorkoutId: '',
           );
           final manual2 = SessionLog(
-            userId: 1,
+            userId: TestTenants.aUserId,
             racquetId: racquetId,
             startTime: DateTime.now().toUtc(),
             durationMinutes: 60,
@@ -222,7 +214,7 @@ void main() {
           );
 
           final invalidZero = SessionLog(
-            userId: 1,
+            userId: TestTenants.aUserId,
             racquetId: racquet.id!,
             startTime: DateTime.now().toUtc(),
             durationMinutes: 0,
@@ -241,7 +233,7 @@ void main() {
           );
 
           final invalidNegative = SessionLog(
-            userId: 1,
+            userId: TestTenants.aUserId,
             racquetId: racquet.id!,
             startTime: DateTime.now().toUtc(),
             durationMinutes: -30,
@@ -272,7 +264,7 @@ void main() {
 
           // User 1 attempts to log against user 2's racquet
           final unauthorizedLog = SessionLog(
-            userId: 1,
+            userId: TestTenants.aUserId,
             racquetId: user2Racquet.id!,
             startTime: DateTime.now().toUtc(),
             durationMinutes: 60,
@@ -292,7 +284,7 @@ void main() {
 
           // Non-existent racquet ID
           final nonExistentLog = SessionLog(
-            userId: 1,
+            userId: TestTenants.aUserId,
             racquetId: 999999,
             startTime: DateTime.now().toUtc(),
             durationMinutes: 60,
@@ -326,7 +318,7 @@ void main() {
           );
 
           final log = SessionLog(
-            userId: 1,
+            userId: TestTenants.aUserId,
             racquetId: racquet.id!,
             startTime: DateTime.now().toUtc(),
             durationMinutes: 60,
@@ -350,7 +342,7 @@ void main() {
         '[P1] AC-7 should reject unauthenticated session logging with 401',
         () async {
           final logInput = SessionLog(
-            userId: 1,
+            userId: TestTenants.aUserId,
             racquetId: 1,
             startTime: DateTime.now().toUtc(),
             durationMinutes: 60,
@@ -396,7 +388,7 @@ void main() {
           await endpoints.session.logSession(
             user1Session,
             SessionLog(
-              userId: 1,
+              userId: TestTenants.aUserId,
               racquetId: r1.id!,
               startTime: DateTime.now().toUtc().subtract(
                 const Duration(hours: 3),
@@ -408,7 +400,7 @@ void main() {
           await endpoints.session.logSession(
             user1Session,
             SessionLog(
-              userId: 1,
+              userId: TestTenants.aUserId,
               racquetId: r2.id!,
               startTime: DateTime.now().toUtc().subtract(
                 const Duration(hours: 1),
@@ -422,7 +414,7 @@ void main() {
           await endpoints.session.logSession(
             user2Session,
             SessionLog(
-              userId: 2,
+              userId: TestTenants.bUserId,
               racquetId: rUser2.id!,
               startTime: DateTime.now().toUtc(),
               durationMinutes: 120,
@@ -435,7 +427,10 @@ void main() {
             user1Session,
           );
           expect(user1Logs.length, equals(2));
-          expect(user1Logs.every((l) => l.userId == 1), isTrue);
+          expect(
+            user1Logs.every((l) => l.userId == TestTenants.aUserId),
+            isTrue,
+          );
 
           // Filter by racquetId
           final r1Logs = await endpoints.session.getSessionLogs(
@@ -458,7 +453,7 @@ void main() {
             user2Session,
           );
           expect(user2Logs.length, equals(1));
-          expect(user2Logs.first.userId, equals(2));
+          expect(user2Logs.first.userId, equals(TestTenants.bUserId));
         },
       );
 
@@ -473,7 +468,7 @@ void main() {
           final racquetId = racquet.id!;
 
           final logInput = SessionLog(
-            userId: 1,
+            userId: TestTenants.aUserId,
             racquetId: racquetId,
             startTime: DateTime.now().toUtc(),
             durationMinutes: 60,
@@ -519,7 +514,7 @@ void main() {
           await endpoints.session.logSession(
             user1Session,
             SessionLog(
-              userId: 1,
+              userId: TestTenants.aUserId,
               racquetId: rUser1.id!,
               startTime: DateTime.now().toUtc(),
               durationMinutes: 60,
@@ -533,7 +528,7 @@ void main() {
             endpoints.session.logSession(
               user2Session,
               SessionLog(
-                userId: 2,
+                userId: TestTenants.bUserId,
                 racquetId: rUser2.id!,
                 startTime: DateTime.now().toUtc(),
                 durationMinutes: 60,
@@ -635,21 +630,21 @@ void main() {
           final now = DateTime.now().toUtc();
 
           final oldest = SessionLog(
-            userId: 1,
+            userId: TestTenants.aUserId,
             racquetId: racquet.id!,
             startTime: now.subtract(const Duration(hours: 3)),
             durationMinutes: 30,
             source: 'Manual',
           );
           final middle = SessionLog(
-            userId: 1,
+            userId: TestTenants.aUserId,
             racquetId: racquet.id!,
             startTime: now.subtract(const Duration(hours: 1)),
             durationMinutes: 45,
             source: 'Manual',
           );
           final newest = SessionLog(
-            userId: 1,
+            userId: TestTenants.aUserId,
             racquetId: racquet.id!,
             startTime: now,
             durationMinutes: 60,
@@ -684,7 +679,7 @@ void main() {
           final log = await endpoints.session.logSession(
             user1Session,
             SessionLog(
-              userId: 1,
+              userId: TestTenants.aUserId,
               racquetId: racquetId,
               startTime: DateTime.now().toUtc(),
               durationMinutes: 60,
@@ -717,11 +712,7 @@ void main() {
     'Given concurrent SessionEndpoint calls for the same external workout',
     (sessionBuilder, endpoints) {
       final userSession = sessionBuilder.copyWith(
-        authentication:
-            serverpod_test.AuthenticationOverride.authenticationInfo(
-              '3101',
-              {},
-            ),
+        authentication: TestTenants.auth(TestTenants.d),
       );
 
       test(
@@ -738,7 +729,7 @@ void main() {
 
           try {
             final logInput = SessionLog(
-              userId: 3101,
+              userId: TestTenants.dUserId,
               racquetId: racquetId,
               startTime: DateTime.now().toUtc(),
               durationMinutes: 90,

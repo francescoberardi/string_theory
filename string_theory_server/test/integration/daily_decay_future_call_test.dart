@@ -6,6 +6,7 @@ import 'package:string_theory_server/src/future_calls/daily_decay_future_call.da
 import 'package:string_theory_server/src/generated/protocol.dart';
 import 'package:test/test.dart';
 
+import 'support/test_tenants.dart';
 import 'test_tools/serverpod_test_tools.dart';
 
 void main() {
@@ -13,11 +14,7 @@ void main() {
     'Given DailyDecayFutureCall and BagEndpoint.triggerDailyDecayNow',
     (sessionBuilder, endpoints) {
       final userSession = sessionBuilder.copyWith(
-        authentication:
-            serverpod_test.AuthenticationOverride.authenticationInfo(
-              '101',
-              {},
-            ),
+        authentication: TestTenants.auth(TestTenants.c),
       );
       final unauthenticatedSession = sessionBuilder.copyWith(
         authentication: serverpod_test.AuthenticationOverride.unauthenticated(),
@@ -34,7 +31,7 @@ void main() {
           final racquet = await Racquet.db.insertRow(
             session,
             Racquet(
-              userId: 101,
+              userId: TestTenants.cUserId,
               name: 'Wilson Pro Staff',
               isPrimary: true,
               createdAt: thirtyDaysAgo,
@@ -56,7 +53,7 @@ void main() {
           final activeJob = await StringJob.db.insertRow(
             session,
             StringJob(
-              userId: 101,
+              userId: TestTenants.cUserId,
               racquetId: racquet.id!,
               materialCategory: StringMaterialCategory.coPoly,
               stringingDate: thirtyDaysAgo,
@@ -72,7 +69,7 @@ void main() {
           final inactiveJob = await StringJob.db.insertRow(
             session,
             StringJob(
-              userId: 101,
+              userId: TestTenants.cUserId,
               racquetId: racquet.id!,
               materialCategory: StringMaterialCategory.coPoly,
               stringingDate: thirtyDaysAgo,
@@ -120,7 +117,7 @@ void main() {
           final racquet = await Racquet.db.insertRow(
             session,
             Racquet(
-              userId: 101,
+              userId: TestTenants.cUserId,
               name: 'Yonex EZONE 98',
               isPrimary: false,
               createdAt: fortyDaysAgo,
@@ -131,7 +128,7 @@ void main() {
           final job = await StringJob.db.insertRow(
             session,
             StringJob(
-              userId: 101,
+              userId: TestTenants.cUserId,
               racquetId: racquet.id!,
               materialCategory: StringMaterialCategory.coPoly,
               stringingDate: fortyDaysAgo,
@@ -200,7 +197,7 @@ void main() {
           final racquet = await Racquet.db.insertRow(
             session,
             Racquet(
-              userId: 101,
+              userId: TestTenants.cUserId,
               name: 'Babolat Pure Aero',
               isPrimary: true,
               createdAt: thirtyDaysAgo,
@@ -217,7 +214,7 @@ void main() {
           return StringJob.db.insert(session, [
             for (final isActive in activeFlags)
               StringJob(
-                userId: 101,
+                userId: TestTenants.cUserId,
                 racquetId: racquet.id!,
                 materialCategory: StringMaterialCategory.coPoly,
                 stringingDate: thirtyDaysAgo,
