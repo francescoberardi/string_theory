@@ -89,6 +89,40 @@ jobs:
         working-directory: string_theory_server
         run: dart test
 
+  migration-verify:
+    name: UUID Tenant Migration Verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    services:
+      postgres:
+        image: ghcr.io/serverpod/postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: postgres
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Seeds a database at the last bigint-tenant migration, applies the
+      # later migrations, and checks data and schema against definition.sql.
+      - name: Verify migration on a populated database
+        working-directory: string_theory_server
+        run: ./tool/verify_uuid_migration.sh
+
   flutter-tests:
     name: Flutter Frontend Tests
     runs-on: ubuntu-latest
