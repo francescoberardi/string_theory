@@ -617,6 +617,85 @@ void main() {
       );
 
       test(
+        '[P1] AC-7 should accept durations of 1 and 360 minutes and reject 0 and 361',
+        () async {
+          final racquet = await endpoints.bag.createRacquet(
+            user1Session,
+            racquetName: 'Duration Bounds Racquet',
+          );
+          final racquetId = racquet.id!;
+
+          for (final minutes in [1, 360]) {
+            final logged = await endpoints.session.logSession(
+              user1Session,
+              sessionLogFor(racquetId, durationMinutes: minutes),
+            );
+            expect(logged.durationMinutes, equals(minutes));
+          }
+          for (final minutes in [0, 361]) {
+            await expectLater(
+              endpoints.session.logSession(
+                user1Session,
+                sessionLogFor(racquetId, durationMinutes: minutes),
+              ),
+              throwsA(
+                isA<BagException>().having(
+                  (e) => e.statusCode,
+                  'statusCode',
+                  400,
+                ),
+              ),
+              reason: '$minutes minutes must be rejected',
+            );
+          }
+
+          final logs = await endpoints.session.getSessionLogs(
+            user1Session,
+            racquetId: racquetId,
+          );
+          expect(logs, hasLength(2));
+        },
+      );
+
+      test(
+        '[P1] AC-7 should accept a start time 4 minutes ahead and reject one 6 minutes ahead',
+        () async {
+          final racquet = await endpoints.bag.createRacquet(
+            user1Session,
+            racquetName: 'Start Time Bounds Racquet',
+          );
+          final racquetId = racquet.id!;
+          final now = DateTime.now().toUtc();
+
+          final accepted = await endpoints.session.logSession(
+            user1Session,
+            sessionLogFor(
+              racquetId,
+              startTime: now.add(const Duration(minutes: 4)),
+            ),
+          );
+          expect(accepted.id, isNotNull);
+
+          await expectLater(
+            endpoints.session.logSession(
+              user1Session,
+              sessionLogFor(
+                racquetId,
+                startTime: now.add(const Duration(minutes: 6)),
+              ),
+            ),
+            throwsA(
+              isA<BagException>().having(
+                (e) => e.statusCode,
+                'statusCode',
+                400,
+              ),
+            ),
+          );
+        },
+      );
+
+      test(
         '[P0] getSessionLogs should return sessions ordered newest first by startTime',
         () async {
           final racquet = await endpoints.bag.createRacquet(
@@ -786,7 +865,6 @@ void main() {
             await endpoints.bag.deleteRacquet(tenantA, racquetId: racquetId);
           }
         },
-        skip: tddRedPhaseReason,
       );
     },
     rollbackDatabase: RollbackDatabase.disabled,

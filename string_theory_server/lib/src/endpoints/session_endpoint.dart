@@ -10,6 +10,13 @@ class SessionEndpoint extends Endpoint {
   @override
   bool get requireLogin => true;
 
+  /// Longest session [logSession] accepts, in minutes.
+  static const maxDurationMinutes = 360;
+
+  /// How far past the server clock a session's start time may be, to allow
+  /// for clock skew between the device and the server.
+  static const maxStartTimeSkew = Duration(minutes: 5);
+
   /// Records a new playing session, updating the active stringbed court hours
   /// and health score idempotently.
   Future<SessionLog> logSession(Session session, SessionLog log) async {
@@ -18,6 +25,19 @@ class SessionEndpoint extends Endpoint {
     if (log.durationMinutes <= 0) {
       throw BagException(
         message: 'Duration must be greater than zero',
+        statusCode: 400,
+      );
+    }
+    if (log.durationMinutes > maxDurationMinutes) {
+      throw BagException(
+        message: 'Duration must be at most $maxDurationMinutes minutes',
+        statusCode: 400,
+      );
+    }
+    final latestStart = DateTime.now().toUtc().add(maxStartTimeSkew);
+    if (log.startTime.toUtc().isAfter(latestStart)) {
+      throw BagException(
+        message: 'Start time cannot be in the future',
         statusCode: 400,
       );
     }
