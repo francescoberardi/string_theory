@@ -107,7 +107,8 @@ bool isPermanentSessionRejection(Object error) {
 /// Local, persistent queue of [SessionLog]s logged while offline.
 ///
 /// Every queued session carries a unique `externalWorkoutId` so the server's
-/// `session_log_external_id_idx` makes re-sending it idempotent.
+/// per-tenant `session_log_user_external_id_idx` unique index on
+/// `(userId, externalWorkoutId)` makes re-sending it idempotent.
 class OfflineSessionQueue {
   final SessionQueueStorage storage;
   final DateTime Function() _now;
