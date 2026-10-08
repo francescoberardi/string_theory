@@ -25,11 +25,15 @@ class DailyDecayService {
   /// scores in a page are written in one batch update that touches only the
   /// `currentHealthScore` column.
   ///
+  /// [afterPageRead] is a test seam called with each page after it is read
+  /// and before its scores are written, to simulate concurrent updates.
+  ///
   /// Returns the number of [StringJob] records whose health scores were updated.
   static Future<int> performDecayCalculation(
     Session session, {
     DateTime? now,
     int batchSize = defaultBatchSize,
+    Future<void> Function(List<StringJob> page)? afterPageRead,
   }) async {
     if (batchSize < 1) {
       throw ArgumentError.value(batchSize, 'batchSize', 'must be positive');
@@ -53,6 +57,7 @@ class DailyDecayService {
 
       scannedCount += page.length;
       lastId = page.last.id;
+      await afterPageRead?.call(page);
       updatedCount += await _updatePage(session, page, effectiveNow);
 
       if (page.length < batchSize) break;

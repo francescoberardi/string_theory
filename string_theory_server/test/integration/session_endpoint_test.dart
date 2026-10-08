@@ -3,6 +3,7 @@ import 'package:serverpod_test/serverpod_test_public_exports.dart'
 import 'package:string_theory_server/src/generated/protocol.dart';
 import 'package:test/test.dart';
 
+import 'support/test_tenants.dart';
 import 'test_tools/serverpod_test_tools.dart';
 
 void main() {
@@ -766,6 +767,39 @@ void main() {
             );
           }
         },
+      );
+
+      test(
+        '[P1] AC-7 should reject a session longer than 360 minutes with 400',
+        () async {
+          final tenantA = sessionBuilder.copyWith(
+            authentication: TestTenants.auth(TestTenants.a),
+          );
+          final racquet = await endpoints.bag.createRacquet(
+            tenantA,
+            racquetName: 'Prince Phantom 100X',
+          );
+          final racquetId = racquet.id!;
+
+          try {
+            await expectLater(
+              endpoints.session.logSession(
+                tenantA,
+                sessionLogFor(racquetId, durationMinutes: 361),
+              ),
+              throwsA(
+                isA<BagException>().having(
+                  (e) => e.statusCode,
+                  'statusCode',
+                  400,
+                ),
+              ),
+            );
+          } finally {
+            await endpoints.bag.deleteRacquet(tenantA, racquetId: racquetId);
+          }
+        },
+        skip: tddRedPhaseReason,
       );
     },
     rollbackDatabase: RollbackDatabase.disabled,
