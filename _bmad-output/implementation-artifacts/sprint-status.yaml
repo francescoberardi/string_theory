@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-02-2026 17:45
-last_updated: 10-08-2026 15:00
+last_updated: 10-08-2026 17:42
 project: string_theory
 project_key: NOKEY
 tracking_system: file-system
@@ -77,10 +77,10 @@ development_status:
   5-4-patrol-headless-end-to-end-test-automation-in-ci: done
   epic-5-retrospective: done
 
-  epic-6: backlog
+  epic-6: in-progress
   6-1-state-management-resilience-mutation-refresh-decoupling-asyn: backlog
   6-2-health-ingestion-hardening-lifecycle-resumed-sync-workout-ar: backlog
-  6-3-native-uuid-tenant-migration-backend-concurrency-live-update: backlog
+  6-3-native-uuid-tenant-migration-backend-concurrency-live-update: review
   6-4-dedicated-sessions-history-screen-domain-model-extraction: backlog
   6-5-ci-environment-parity-deterministic-auth-testing: backlog
   epic-6-retrospective: optional

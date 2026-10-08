@@ -121,3 +121,13 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-2-retro-2-add-batch-pagination-dailydecayfuturecall.md`
   summary: Publish BagStreamMessage health updates to affected users when the daily decay run changes scores.
   evidence: Session logging pushes new health scores over the bag stream, but the cron writes silently, so connected clients show stale scores until they reload.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-3-native-uuid-tenant-migration-backend-concurrency-live-update.md`
+  summary: Decay advisory lock lives on an idle transaction for the whole run, so a production idle_in_transaction_session_timeout could kill it mid-run and let a second run start (unverified, would be medium).
+  evidence: performDecayCalculation holds pg_try_advisory_xact_lock on a transaction left idle while pages run on other connections; settle by checking the production Postgres idle_in_transaction_session_timeout or adding SET LOCAL idle_in_transaction_session_timeout = 0.
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-3-native-uuid-tenant-migration-backend-concurrency-live-update.md`
+  summary: The row-by-row fallback in DailyDecayService._updatePage (conditional updateWhere, written-only count and publish) has no test.
+  evidence: No test forces the batch unsafeQuery to fail; reverting the fallback to an unconditional updateRow would pass the suite. Needs a seam to make the batch write throw.
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-3-native-uuid-tenant-migration-backend-concurrency-live-update.md`
+  summary: Tenant userId columns on racquet, string_job, session_log and restring_event have no foreign key to serverpod_auth_core_user, so deleting an auth user leaves orphan rows.
+  evidence: The int userId had no FK before Story 6.3 either; the UUID retype makes an FK with ON DELETE CASCADE possible.
