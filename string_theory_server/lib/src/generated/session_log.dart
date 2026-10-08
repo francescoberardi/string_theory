@@ -29,7 +29,7 @@ abstract class SessionLog
 
   factory SessionLog({
     int? id,
-    required int userId,
+    required _is.UuidValue userId,
     required int racquetId,
     required DateTime startTime,
     required int durationMinutes,
@@ -43,7 +43,7 @@ abstract class SessionLog
   factory SessionLog.fromJson(Map<String, dynamic> jsonSerialization) {
     return SessionLog(
       id: jsonSerialization['id'] as int?,
-      userId: jsonSerialization['userId'] as int,
+      userId: _is.UuidValueJsonExtension.fromJson(jsonSerialization['userId']),
       racquetId: jsonSerialization['racquetId'] as int,
       startTime: _is.DateTimeJsonExtension.fromJson(
         jsonSerialization['startTime'],
@@ -66,7 +66,7 @@ abstract class SessionLog
   @override
   int? id;
 
-  int userId;
+  _is.UuidValue userId;
 
   int racquetId;
 
@@ -92,7 +92,7 @@ abstract class SessionLog
   @_is.useResult
   SessionLog copyWith({
     int? id,
-    int? userId,
+    _is.UuidValue? userId,
     int? racquetId,
     DateTime? startTime,
     int? durationMinutes,
@@ -107,7 +107,7 @@ abstract class SessionLog
     return {
       '__className__': 'SessionLog',
       if (id != null) 'id': id,
-      'userId': userId,
+      'userId': userId.toJson(),
       'racquetId': racquetId,
       'startTime': startTime.toJson(),
       'durationMinutes': durationMinutes,
@@ -124,7 +124,7 @@ abstract class SessionLog
     return {
       '__className__': 'SessionLog',
       if (id != null) 'id': id,
-      'userId': userId,
+      'userId': userId.toJson(),
       'racquetId': racquetId,
       'startTime': startTime.toJson(),
       'durationMinutes': durationMinutes,
@@ -169,7 +169,7 @@ class _Undefined {}
 class _SessionLogImpl extends SessionLog {
   _SessionLogImpl({
     int? id,
-    required int userId,
+    required _is.UuidValue userId,
     required int racquetId,
     required DateTime startTime,
     required int durationMinutes,
@@ -197,7 +197,7 @@ class _SessionLogImpl extends SessionLog {
   @override
   SessionLog copyWith({
     Object? id = _Undefined,
-    int? userId,
+    _is.UuidValue? userId,
     int? racquetId,
     DateTime? startTime,
     int? durationMinutes,
@@ -227,10 +227,11 @@ class _SessionLogImpl extends SessionLog {
 class SessionLogUpdateTable extends _is.UpdateTable<SessionLogTable> {
   SessionLogUpdateTable(super.table);
 
-  _is.ColumnValue<int, int> userId(int value) => _is.ColumnValue(
-    table.userId,
-    value,
-  );
+  _is.ColumnValue<_is.UuidValue, _is.UuidValue> userId(_is.UuidValue value) =>
+      _is.ColumnValue(
+        table.userId,
+        value,
+      );
 
   _is.ColumnValue<int, int> racquetId(int value) => _is.ColumnValue(
     table.racquetId,
@@ -280,7 +281,7 @@ class SessionLogUpdateTable extends _is.UpdateTable<SessionLogTable> {
 class SessionLogTable extends _is.Table<int?> {
   SessionLogTable({super.tableRelation}) : super(tableName: 'session_log') {
     updateTable = SessionLogUpdateTable(this);
-    userId = _is.ColumnInt(
+    userId = _is.ColumnUuid(
       'userId',
       this,
     );
@@ -321,7 +322,7 @@ class SessionLogTable extends _is.Table<int?> {
 
   late final SessionLogUpdateTable updateTable;
 
-  late final _is.ColumnInt userId;
+  late final _is.ColumnUuid userId;
 
   late final _is.ColumnInt racquetId;
 

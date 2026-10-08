@@ -29,7 +29,7 @@ void main() {
 
   final sampleRacquet = Racquet(
     id: 1,
-    userId: 1,
+    userId: Namespace.nil.uuidValue,
     name: 'Babolat Pure Aero 2023',
     brand: 'Babolat',
     model: 'Pure Aero',
@@ -161,7 +161,7 @@ void main() {
       () async {
         final secondRacquet = Racquet(
           id: 2,
-          userId: 1,
+          userId: Namespace.nil.uuidValue,
           name: 'Head Speed Pro',
           brand: 'Head',
           model: 'Speed Pro',
@@ -404,7 +404,7 @@ void main() {
       () async {
         final agedJob = StringJob(
           id: 1,
-          userId: 1,
+          userId: Namespace.nil.uuidValue,
           racquetId: 1,
           materialCategory: StringMaterialCategory.coPoly,
           stringingDate: DateTime.utc(2026, 9, 1),
@@ -485,7 +485,7 @@ void main() {
       () async {
         final agedJob = StringJob(
           id: 1,
-          userId: 1,
+          userId: Namespace.nil.uuidValue,
           racquetId: 1,
           materialCategory: StringMaterialCategory.coPoly,
           stringingDate: DateTime.utc(2026, 9, 1),
@@ -531,7 +531,7 @@ void main() {
 
     final strungJob = StringJob(
       id: 10,
-      userId: 1,
+      userId: Namespace.nil.uuidValue,
       racquetId: 1,
       materialCategory: StringMaterialCategory.coPoly,
       stringingDate: DateTime.utc(2026, 9, 20),
@@ -542,7 +542,7 @@ void main() {
     final racquetA = sampleRacquet.copyWith(activeStringJob: strungJob);
     final racquetB = Racquet(
       id: 2,
-      userId: 1,
+      userId: Namespace.nil.uuidValue,
       name: 'Head Speed Pro',
       isPrimary: false,
       createdAt: DateTime.utc(2026, 10, 1),
@@ -732,7 +732,7 @@ void main() {
       () async {
         final now = DateTime.utc(2026, 10, 4, 18, 0);
         final sessionLog = SessionLog(
-          userId: 1,
+          userId: Namespace.nil.uuidValue,
           racquetId: 1,
           startTime: now,
           durationMinutes: 90,
@@ -972,12 +972,12 @@ void main() {
     final stringingDate = DateTime.utc(2026, 10, 1);
     final strung = Racquet(
       id: 1,
-      userId: 1,
+      userId: Namespace.nil.uuidValue,
       name: 'Wilson Blade 98',
       isPrimary: true,
       activeStringJob: StringJob(
         id: 10,
-        userId: 1,
+        userId: Namespace.nil.uuidValue,
         racquetId: 1,
         materialCategory: StringMaterialCategory.coPoly,
         stringingDate: stringingDate,
@@ -991,7 +991,7 @@ void main() {
     );
     final unstrung = Racquet(
       id: 2,
-      userId: 1,
+      userId: Namespace.nil.uuidValue,
       name: 'Head Radical MP',
       isPrimary: false,
       createdAt: stringingDate,
@@ -1261,12 +1261,12 @@ void main() {
     );
     Racquet racquetWithJob({double hours = 5.0, int health = 76}) => Racquet(
       id: 1,
-      userId: 1,
+      userId: Namespace.nil.uuidValue,
       name: 'Wilson Blade 98',
       isPrimary: true,
       activeStringJob: StringJob(
         id: 10,
-        userId: 1,
+        userId: Namespace.nil.uuidValue,
         racquetId: 1,
         materialCategory: StringMaterialCategory.coPoly,
         brand: 'Luxilon',
@@ -1470,7 +1470,7 @@ void main() {
       () async {
         await queue.enqueue(
           SessionLog(
-            userId: 0,
+            userId: Namespace.nil.uuidValue,
             racquetId: 1,
             startTime: DateTime.utc(2026, 10, 4, 15, 0),
             durationMinutes: 60,
@@ -1479,7 +1479,7 @@ void main() {
         );
         await queue.enqueue(
           SessionLog(
-            userId: 0,
+            userId: Namespace.nil.uuidValue,
             racquetId: 1,
             startTime: DateTime.utc(2026, 10, 4, 17, 0),
             durationMinutes: 60,
@@ -1522,7 +1522,7 @@ void main() {
       () async {
         await queue.enqueue(
           SessionLog(
-            userId: 0,
+            userId: Namespace.nil.uuidValue,
             racquetId: 1,
             startTime: DateTime.utc(2026, 10, 4, 17, 0),
             durationMinutes: 60,
@@ -1675,7 +1675,7 @@ void main() {
       () async {
         await queue.enqueue(
           SessionLog(
-            userId: 0,
+            userId: Namespace.nil.uuidValue,
             racquetId: 1,
             startTime: DateTime.utc(2026, 10, 4, 17, 0),
             durationMinutes: 60,
@@ -1742,7 +1742,7 @@ void main() {
     }) {
       return StringJob(
         id: id,
-        userId: 1,
+        userId: Namespace.nil.uuidValue,
         racquetId: 1,
         materialCategory: category,
         brand: brand,
@@ -2119,7 +2119,7 @@ void main() {
         );
         await queue.enqueue(
           SessionLog(
-            userId: 0,
+            userId: Namespace.nil.uuidValue,
             racquetId: 1,
             startTime: DateTime.utc(2026, 10, 4, 18),
             durationMinutes: 90,

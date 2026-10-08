@@ -39,7 +39,7 @@ void main() {
   }) {
     return Racquet(
       id: id,
-      userId: 1,
+      userId: Namespace.nil.uuidValue,
       name: name,
       brand: 'Wilson',
       model: name,
@@ -47,7 +47,7 @@ void main() {
       activeStringJobId: activeStringJobId,
       activeStringJob: StringJob(
         id: activeStringJobId,
-        userId: 1,
+        userId: Namespace.nil.uuidValue,
         racquetId: id,
         materialCategory: materialCategory,
         brand: brand,
@@ -270,7 +270,7 @@ void main() {
       final events = [
         RestringEvent(
           id: 101,
-          userId: 1,
+          userId: Namespace.nil.uuidValue,
           racquetId: 1,
           stringJobId: 5,
           stringDescription: 'Luxilon ALU Power',
@@ -285,7 +285,7 @@ void main() {
         ),
         RestringEvent(
           id: 100,
-          userId: 1,
+          userId: Namespace.nil.uuidValue,
           racquetId: 1,
           stringJobId: 4,
           stringDescription: 'Babolat RPM Blast',
@@ -359,7 +359,7 @@ void main() {
         return Future.value([
           RestringEvent(
             id: 200,
-            userId: 1,
+            userId: Namespace.nil.uuidValue,
             racquetId: 3,
             stringJobId: 9,
             stringDescription: 'Solinco Hyper-G',
@@ -404,7 +404,7 @@ void main() {
         final events = [
           RestringEvent(
             id: 300,
-            userId: 1,
+            userId: Namespace.nil.uuidValue,
             racquetId: 4,
             stringJobId: 12,
             stringDescription: 'Vintage Gut Setup',
@@ -441,7 +441,7 @@ void main() {
         final racquet = createRacquet(id: 5);
         final multiYearEvent = RestringEvent(
           id: 400,
-          userId: 1,
+          userId: Namespace.nil.uuidValue,
           racquetId: 5,
           stringJobId: 20,
           stringDescription: 'Multi-Year String',

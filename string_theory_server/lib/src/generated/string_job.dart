@@ -38,7 +38,7 @@ abstract class StringJob
 
   factory StringJob({
     int? id,
-    required int userId,
+    required _is.UuidValue userId,
     required int racquetId,
     required _i5v32zda.StringMaterialCategory materialCategory,
     String? brand,
@@ -55,7 +55,7 @@ abstract class StringJob
   factory StringJob.fromJson(Map<String, dynamic> jsonSerialization) {
     return StringJob(
       id: jsonSerialization['id'] as int?,
-      userId: jsonSerialization['userId'] as int,
+      userId: _is.UuidValueJsonExtension.fromJson(jsonSerialization['userId']),
       racquetId: jsonSerialization['racquetId'] as int,
       materialCategory: _i5v32zda.StringMaterialCategory.fromJson(
         (jsonSerialization['materialCategory'] as String),
@@ -89,7 +89,7 @@ abstract class StringJob
   @override
   int? id;
 
-  int userId;
+  _is.UuidValue userId;
 
   int racquetId;
 
@@ -121,7 +121,7 @@ abstract class StringJob
   @_is.useResult
   StringJob copyWith({
     int? id,
-    int? userId,
+    _is.UuidValue? userId,
     int? racquetId,
     _i5v32zda.StringMaterialCategory? materialCategory,
     String? brand,
@@ -139,7 +139,7 @@ abstract class StringJob
     return {
       '__className__': 'StringJob',
       if (id != null) 'id': id,
-      'userId': userId,
+      'userId': userId.toJson(),
       'racquetId': racquetId,
       'materialCategory': materialCategory.toJson(),
       if (brand != null) 'brand': brand,
@@ -159,7 +159,7 @@ abstract class StringJob
     return {
       '__className__': 'StringJob',
       if (id != null) 'id': id,
-      'userId': userId,
+      'userId': userId.toJson(),
       'racquetId': racquetId,
       'materialCategory': materialCategory.toJson(),
       if (brand != null) 'brand': brand,
@@ -207,7 +207,7 @@ class _Undefined {}
 class _StringJobImpl extends StringJob {
   _StringJobImpl({
     int? id,
-    required int userId,
+    required _is.UuidValue userId,
     required int racquetId,
     required _i5v32zda.StringMaterialCategory materialCategory,
     String? brand,
@@ -241,7 +241,7 @@ class _StringJobImpl extends StringJob {
   @override
   StringJob copyWith({
     Object? id = _Undefined,
-    int? userId,
+    _is.UuidValue? userId,
     int? racquetId,
     _i5v32zda.StringMaterialCategory? materialCategory,
     Object? brand = _Undefined,
@@ -277,10 +277,11 @@ class _StringJobImpl extends StringJob {
 class StringJobUpdateTable extends _is.UpdateTable<StringJobTable> {
   StringJobUpdateTable(super.table);
 
-  _is.ColumnValue<int, int> userId(int value) => _is.ColumnValue(
-    table.userId,
-    value,
-  );
+  _is.ColumnValue<_is.UuidValue, _is.UuidValue> userId(_is.UuidValue value) =>
+      _is.ColumnValue(
+        table.userId,
+        value,
+      );
 
   _is.ColumnValue<int, int> racquetId(int value) => _is.ColumnValue(
     table.racquetId,
@@ -350,7 +351,7 @@ class StringJobUpdateTable extends _is.UpdateTable<StringJobTable> {
 class StringJobTable extends _is.Table<int?> {
   StringJobTable({super.tableRelation}) : super(tableName: 'string_job') {
     updateTable = StringJobUpdateTable(this);
-    userId = _is.ColumnInt(
+    userId = _is.ColumnUuid(
       'userId',
       this,
     );
@@ -409,7 +410,7 @@ class StringJobTable extends _is.Table<int?> {
 
   late final StringJobUpdateTable updateTable;
 
-  late final _is.ColumnInt userId;
+  late final _is.ColumnUuid userId;
 
   late final _is.ColumnInt racquetId;
 

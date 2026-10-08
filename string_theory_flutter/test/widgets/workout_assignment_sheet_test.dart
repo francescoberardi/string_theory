@@ -19,14 +19,14 @@ void main() {
 
   final primaryRacquet = Racquet(
     id: 1,
-    userId: 1,
+    userId: Namespace.nil.uuidValue,
     name: 'Wilson Blade 98',
     brand: 'Wilson',
     model: 'Blade 98',
     isPrimary: true,
     activeStringJob: StringJob(
       id: 101,
-      userId: 1,
+      userId: Namespace.nil.uuidValue,
       racquetId: 1,
       materialCategory: StringMaterialCategory.coPoly,
       brand: 'Luxilon',
@@ -45,14 +45,14 @@ void main() {
 
   final secondaryRacquet = Racquet(
     id: 2,
-    userId: 1,
+    userId: Namespace.nil.uuidValue,
     name: 'Babolat Pure Aero',
     brand: 'Babolat',
     model: 'Pure Aero',
     isPrimary: false,
     activeStringJob: StringJob(
       id: 102,
-      userId: 1,
+      userId: Namespace.nil.uuidValue,
       racquetId: 2,
       materialCategory: StringMaterialCategory.coPoly,
       brand: 'Babolat',
@@ -471,7 +471,7 @@ void main() {
       (tester) async {
         final unstrungRacquet = Racquet(
           id: 99,
-          userId: 1,
+          userId: Namespace.nil.uuidValue,
           name: 'Unstrung Frame',
           brand: 'Wilson',
           model: 'Pro Staff',
@@ -586,7 +586,7 @@ void main() {
 
     final unstrungOnly = Racquet(
       id: 99,
-      userId: 1,
+      userId: Namespace.nil.uuidValue,
       name: 'Unstrung Frame',
       brand: 'Wilson',
       model: 'Pro Staff',

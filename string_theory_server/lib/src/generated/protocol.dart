@@ -62,9 +62,9 @@ class Protocol extends _is.DatabaseSerializationManager {
         ),
         _isp.ColumnDefinition(
           name: 'userId',
-          columnType: _isp.ColumnType.bigint,
+          columnType: _isp.ColumnType.uuid,
           isNullable: false,
-          dartType: 'int',
+          dartType: 'UuidValue',
         ),
         _isp.ColumnDefinition(
           name: 'name',
@@ -156,9 +156,9 @@ class Protocol extends _is.DatabaseSerializationManager {
         ),
         _isp.ColumnDefinition(
           name: 'userId',
-          columnType: _isp.ColumnType.bigint,
+          columnType: _isp.ColumnType.uuid,
           isNullable: false,
-          dartType: 'int',
+          dartType: 'UuidValue',
         ),
         _isp.ColumnDefinition(
           name: 'racquetId',
@@ -295,9 +295,9 @@ class Protocol extends _is.DatabaseSerializationManager {
         ),
         _isp.ColumnDefinition(
           name: 'userId',
-          columnType: _isp.ColumnType.bigint,
+          columnType: _isp.ColumnType.uuid,
           isNullable: false,
-          dartType: 'int',
+          dartType: 'UuidValue',
         ),
         _isp.ColumnDefinition(
           name: 'racquetId',
@@ -389,9 +389,13 @@ class Protocol extends _is.DatabaseSerializationManager {
           isPrimary: false,
         ),
         _isp.IndexDefinition(
-          indexName: 'session_log_external_id_idx',
+          indexName: 'session_log_user_external_id_idx',
           tableSpace: null,
           elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'userId',
+            ),
             _isp.IndexElementDefinition(
               type: _isp.IndexElementDefinitionType.column,
               definition: 'externalWorkoutId',
@@ -419,9 +423,9 @@ class Protocol extends _is.DatabaseSerializationManager {
         ),
         _isp.ColumnDefinition(
           name: 'userId',
-          columnType: _isp.ColumnType.bigint,
+          columnType: _isp.ColumnType.uuid,
           isNullable: false,
-          dartType: 'int',
+          dartType: 'UuidValue',
         ),
         _isp.ColumnDefinition(
           name: 'racquetId',

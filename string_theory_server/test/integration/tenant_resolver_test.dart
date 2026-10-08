@@ -31,20 +31,18 @@ void main() {
     );
 
     test(
-      'should resolve the authenticated UUID identifier to its golden value',
+      'should throw a 401 BagException when the identifier is not a UUID',
       () {
-        const uuid = '550e8400-e29b-41d4-a716-446655440000';
         final session = sessionBuilder
-            .copyWith(
-              authentication:
-                  serverpod_test.AuthenticationOverride.authenticationInfo(
-                    uuid,
-                    {},
-                  ),
-            )
+            .copyWith(authentication: TestTenants.auth('101'))
             .build();
 
-        expect(resolveUserId(session), 5851104350888952746);
+        expect(
+          () => resolveUserId(session),
+          throwsA(
+            isA<BagException>().having((e) => e.statusCode, 'statusCode', 401),
+          ),
+        );
       },
     );
 
@@ -60,7 +58,6 @@ void main() {
           equals(session.authenticated!.authUserId),
         );
       },
-      skip: tddRedPhaseReason,
     );
   });
 }

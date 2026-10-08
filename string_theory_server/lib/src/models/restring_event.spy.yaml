@@ -1,7 +1,7 @@
 class: RestringEvent
 table: restring_event
 fields:
-  userId: int
+  userId: UuidValue
   racquetId: int, relation(parent=racquet, onDelete=Cascade)
   stringJobId: int, relation(parent=string_job, onDelete=Cascade)
   stringDescription: String

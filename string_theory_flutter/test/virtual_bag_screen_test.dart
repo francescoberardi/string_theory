@@ -23,14 +23,14 @@ void main() {
   final sampleRacquets = [
     Racquet(
       id: 1,
-      userId: 1,
+      userId: Namespace.nil.uuidValue,
       name: 'Wilson Blade 98',
       brand: 'Wilson',
       model: 'Blade 98',
       isPrimary: true,
       activeStringJob: StringJob(
         id: 1,
-        userId: 1,
+        userId: Namespace.nil.uuidValue,
         racquetId: 1,
         materialCategory: StringMaterialCategory.coPoly,
         brand: 'Luxilon',
@@ -48,14 +48,14 @@ void main() {
     ),
     Racquet(
       id: 2,
-      userId: 1,
+      userId: Namespace.nil.uuidValue,
       name: 'Babolat Pure Drive',
       brand: 'Babolat',
       model: 'Pure Drive',
       isPrimary: false,
       activeStringJob: StringJob(
         id: 2,
-        userId: 1,
+        userId: Namespace.nil.uuidValue,
         racquetId: 2,
         materialCategory: StringMaterialCategory.coPoly,
         brand: 'Babolat',
@@ -73,14 +73,14 @@ void main() {
     ),
     Racquet(
       id: 3,
-      userId: 1,
+      userId: Namespace.nil.uuidValue,
       name: 'Head Radical MP',
       brand: 'Head',
       model: 'Radical MP',
       isPrimary: false,
       activeStringJob: StringJob(
         id: 3,
-        userId: 1,
+        userId: Namespace.nil.uuidValue,
         racquetId: 3,
         materialCategory: StringMaterialCategory.multifilament,
         brand: 'Head',
@@ -397,7 +397,7 @@ void main() {
       (tester) async {
         final unstrungRacquet = Racquet(
           id: 99,
-          userId: 1,
+          userId: Namespace.nil.uuidValue,
           name: 'Pro Staff 97',
           brand: 'Wilson',
           model: 'Pro Staff',

@@ -33,7 +33,7 @@ abstract class Racquet
 
   factory Racquet({
     int? id,
-    required int userId,
+    required _isc.UuidValue userId,
     required String name,
     String? brand,
     String? model,
@@ -47,7 +47,7 @@ abstract class Racquet
   factory Racquet.fromJson(Map<String, dynamic> jsonSerialization) {
     return Racquet(
       id: jsonSerialization['id'] as int?,
-      userId: jsonSerialization['userId'] as int,
+      userId: _isc.UuidValueJsonExtension.fromJson(jsonSerialization['userId']),
       name: jsonSerialization['name'] as String,
       brand: jsonSerialization['brand'] as String?,
       model: jsonSerialization['model'] as String?,
@@ -74,7 +74,7 @@ abstract class Racquet
   /// the id will be null.
   int? id;
 
-  int userId;
+  _isc.UuidValue userId;
 
   String name;
 
@@ -97,7 +97,7 @@ abstract class Racquet
   @_isc.useResult
   Racquet copyWith({
     int? id,
-    int? userId,
+    _isc.UuidValue? userId,
     String? name,
     String? brand,
     String? model,
@@ -112,7 +112,7 @@ abstract class Racquet
     return {
       '__className__': 'Racquet',
       if (id != null) 'id': id,
-      'userId': userId,
+      'userId': userId.toJson(),
       'name': name,
       if (brand != null) 'brand': brand,
       if (model != null) 'model': model,
@@ -129,7 +129,7 @@ abstract class Racquet
     return {
       '__className__': 'Racquet',
       if (id != null) 'id': id,
-      'userId': userId,
+      'userId': userId.toJson(),
       'name': name,
       if (brand != null) 'brand': brand,
       if (model != null) 'model': model,
@@ -153,7 +153,7 @@ class _Undefined {}
 class _RacquetImpl extends Racquet {
   _RacquetImpl({
     int? id,
-    required int userId,
+    required _isc.UuidValue userId,
     required String name,
     String? brand,
     String? model,
@@ -181,7 +181,7 @@ class _RacquetImpl extends Racquet {
   @override
   Racquet copyWith({
     Object? id = _Undefined,
-    int? userId,
+    _isc.UuidValue? userId,
     String? name,
     Object? brand = _Undefined,
     Object? model = _Undefined,

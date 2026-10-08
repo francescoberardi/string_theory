@@ -41,7 +41,6 @@ void main() {
           }),
         );
       },
-      skip: tddRedPhaseReason,
     );
 
     test(
@@ -75,7 +74,74 @@ void main() {
           ),
         );
       },
-      skip: tddRedPhaseReason,
+    );
+
+    test(
+      '[P0] AC-1 should index userId on all four tenant tables',
+      () async {
+        final session = sessionBuilder.build();
+
+        final rows = await session.db.unsafeQuery(
+          "SELECT tablename FROM pg_indexes WHERE schemaname = 'public' "
+          "AND indexdef LIKE '%(\"userId\")' "
+          "AND tablename IN "
+          "('racquet', 'string_job', 'session_log', 'restring_event');",
+        );
+
+        expect(
+          rows.map((row) => row[0] as String).toSet(),
+          equals({'racquet', 'string_job', 'session_log', 'restring_event'}),
+        );
+      },
+    );
+
+    test(
+      '[P1] AC-2 should define a unique index on session_log (userId, externalWorkoutId)',
+      () async {
+        final session = sessionBuilder.build();
+
+        final rows = await session.db.unsafeQuery(
+          "SELECT indexdef FROM pg_indexes WHERE schemaname = 'public' "
+          "AND tablename = 'session_log' "
+          "AND indexname = 'session_log_user_external_id_idx';",
+        );
+
+        expect(rows, hasLength(1));
+        expect(
+          rows.single[0] as String,
+          allOf(
+            startsWith('CREATE UNIQUE INDEX'),
+            endsWith('("userId", "externalWorkoutId")'),
+          ),
+        );
+      },
+    );
+
+    test(
+      '[P1] AC-2 should return the original row and count hours once when a tenant replays a workout',
+      () async {
+        const workoutId = 'hk-replayed-workout-6-3';
+        final racquet = await endpoints.bag.createRacquet(
+          tenantA,
+          racquetName: 'Wilson Blade 98',
+        );
+        final first = await endpoints.session.logSession(
+          tenantA,
+          sessionLogFor(racquet.id!, externalWorkoutId: workoutId),
+        );
+
+        final replay = await endpoints.session.logSession(
+          tenantA,
+          sessionLogFor(racquet.id!, externalWorkoutId: workoutId),
+        );
+
+        expect(replay.id, equals(first.id));
+        final bag = await endpoints.bag.getVirtualBag(tenantA);
+        expect(
+          bag.single.activeStringJob!.totalCourtHours,
+          closeTo(1.5, 0.001),
+        );
+      },
     );
   });
 }

@@ -513,7 +513,7 @@ class BagEndpoint extends Endpoint {
 
   Future<void> _publishRestrung(
     Session session,
-    int userId,
+    UuidValue userId,
     int racquetId,
   ) async {
     try {

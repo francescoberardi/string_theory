@@ -33,7 +33,7 @@ abstract class RestringEvent
 
   factory RestringEvent({
     int? id,
-    required int userId,
+    required _is.UuidValue userId,
     required int racquetId,
     required int stringJobId,
     required String stringDescription,
@@ -50,7 +50,7 @@ abstract class RestringEvent
   factory RestringEvent.fromJson(Map<String, dynamic> jsonSerialization) {
     return RestringEvent(
       id: jsonSerialization['id'] as int?,
-      userId: jsonSerialization['userId'] as int,
+      userId: _is.UuidValueJsonExtension.fromJson(jsonSerialization['userId']),
       racquetId: jsonSerialization['racquetId'] as int,
       stringJobId: jsonSerialization['stringJobId'] as int,
       stringDescription: jsonSerialization['stringDescription'] as String,
@@ -81,7 +81,7 @@ abstract class RestringEvent
   @override
   int? id;
 
-  int userId;
+  _is.UuidValue userId;
 
   int racquetId;
 
@@ -113,7 +113,7 @@ abstract class RestringEvent
   @_is.useResult
   RestringEvent copyWith({
     int? id,
-    int? userId,
+    _is.UuidValue? userId,
     int? racquetId,
     int? stringJobId,
     String? stringDescription,
@@ -131,7 +131,7 @@ abstract class RestringEvent
     return {
       '__className__': 'RestringEvent',
       if (id != null) 'id': id,
-      'userId': userId,
+      'userId': userId.toJson(),
       'racquetId': racquetId,
       'stringJobId': stringJobId,
       'stringDescription': stringDescription,
@@ -151,7 +151,7 @@ abstract class RestringEvent
     return {
       '__className__': 'RestringEvent',
       if (id != null) 'id': id,
-      'userId': userId,
+      'userId': userId.toJson(),
       'racquetId': racquetId,
       'stringJobId': stringJobId,
       'stringDescription': stringDescription,
@@ -199,7 +199,7 @@ class _Undefined {}
 class _RestringEventImpl extends RestringEvent {
   _RestringEventImpl({
     int? id,
-    required int userId,
+    required _is.UuidValue userId,
     required int racquetId,
     required int stringJobId,
     required String stringDescription,
@@ -233,7 +233,7 @@ class _RestringEventImpl extends RestringEvent {
   @override
   RestringEvent copyWith({
     Object? id = _Undefined,
-    int? userId,
+    _is.UuidValue? userId,
     int? racquetId,
     int? stringJobId,
     String? stringDescription,
@@ -269,10 +269,11 @@ class _RestringEventImpl extends RestringEvent {
 class RestringEventUpdateTable extends _is.UpdateTable<RestringEventTable> {
   RestringEventUpdateTable(super.table);
 
-  _is.ColumnValue<int, int> userId(int value) => _is.ColumnValue(
-    table.userId,
-    value,
-  );
+  _is.ColumnValue<_is.UuidValue, _is.UuidValue> userId(_is.UuidValue value) =>
+      _is.ColumnValue(
+        table.userId,
+        value,
+      );
 
   _is.ColumnValue<int, int> racquetId(int value) => _is.ColumnValue(
     table.racquetId,
@@ -344,7 +345,7 @@ class RestringEventTable extends _is.Table<int?> {
   RestringEventTable({super.tableRelation})
     : super(tableName: 'restring_event') {
     updateTable = RestringEventUpdateTable(this);
-    userId = _is.ColumnInt(
+    userId = _is.ColumnUuid(
       'userId',
       this,
     );
@@ -398,7 +399,7 @@ class RestringEventTable extends _is.Table<int?> {
 
   late final RestringEventUpdateTable updateTable;
 
-  late final _is.ColumnInt userId;
+  late final _is.ColumnUuid userId;
 
   late final _is.ColumnInt racquetId;
 

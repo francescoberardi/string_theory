@@ -13,7 +13,7 @@ SessionLog _log({
   String source = 'manual',
 }) {
   return SessionLog(
-    userId: 0,
+    userId: Namespace.nil.uuidValue,
     racquetId: racquetId,
     startTime: DateTime.utc(2026, 10, 4, 17, 0),
     durationMinutes: durationMinutes,

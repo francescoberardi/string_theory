@@ -38,7 +38,7 @@ abstract class StringJob
 
   factory StringJob({
     int? id,
-    required int userId,
+    required _isc.UuidValue userId,
     required int racquetId,
     required _i5v32zda.StringMaterialCategory materialCategory,
     String? brand,
@@ -55,7 +55,7 @@ abstract class StringJob
   factory StringJob.fromJson(Map<String, dynamic> jsonSerialization) {
     return StringJob(
       id: jsonSerialization['id'] as int?,
-      userId: jsonSerialization['userId'] as int,
+      userId: _isc.UuidValueJsonExtension.fromJson(jsonSerialization['userId']),
       racquetId: jsonSerialization['racquetId'] as int,
       materialCategory: _i5v32zda.StringMaterialCategory.fromJson(
         (jsonSerialization['materialCategory'] as String),
@@ -87,7 +87,7 @@ abstract class StringJob
   /// the id will be null.
   int? id;
 
-  int userId;
+  _isc.UuidValue userId;
 
   int racquetId;
 
@@ -116,7 +116,7 @@ abstract class StringJob
   @_isc.useResult
   StringJob copyWith({
     int? id,
-    int? userId,
+    _isc.UuidValue? userId,
     int? racquetId,
     _i5v32zda.StringMaterialCategory? materialCategory,
     String? brand,
@@ -134,7 +134,7 @@ abstract class StringJob
     return {
       '__className__': 'StringJob',
       if (id != null) 'id': id,
-      'userId': userId,
+      'userId': userId.toJson(),
       'racquetId': racquetId,
       'materialCategory': materialCategory.toJson(),
       if (brand != null) 'brand': brand,
@@ -154,7 +154,7 @@ abstract class StringJob
     return {
       '__className__': 'StringJob',
       if (id != null) 'id': id,
-      'userId': userId,
+      'userId': userId.toJson(),
       'racquetId': racquetId,
       'materialCategory': materialCategory.toJson(),
       if (brand != null) 'brand': brand,
@@ -180,7 +180,7 @@ class _Undefined {}
 class _StringJobImpl extends StringJob {
   _StringJobImpl({
     int? id,
-    required int userId,
+    required _isc.UuidValue userId,
     required int racquetId,
     required _i5v32zda.StringMaterialCategory materialCategory,
     String? brand,
@@ -214,7 +214,7 @@ class _StringJobImpl extends StringJob {
   @override
   StringJob copyWith({
     Object? id = _Undefined,
-    int? userId,
+    _isc.UuidValue? userId,
     int? racquetId,
     _i5v32zda.StringMaterialCategory? materialCategory,
     Object? brand = _Undefined,

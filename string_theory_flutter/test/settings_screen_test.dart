@@ -399,7 +399,7 @@ void main() {
 
         final targetJob = StringJob(
           id: 1,
-          userId: 1,
+          userId: Namespace.nil.uuidValue,
           racquetId: 1,
           materialCategory: StringMaterialCategory.coPoly,
           stringingDate: DateTime.utc(2026, 9, 20),
@@ -408,7 +408,7 @@ void main() {
         );
         final targetRacquet = Racquet(
           id: 1,
-          userId: 1,
+          userId: Namespace.nil.uuidValue,
           name: 'Wilson Blade 98',
           isPrimary: true,
           activeStringJob: targetJob,
@@ -524,7 +524,7 @@ void main() {
 
         final targetJob = StringJob(
           id: 1,
-          userId: 1,
+          userId: Namespace.nil.uuidValue,
           racquetId: 1,
           materialCategory: StringMaterialCategory.coPoly,
           stringingDate: DateTime.utc(2026, 9, 20),
@@ -533,7 +533,7 @@ void main() {
         );
         final targetRacquet = Racquet(
           id: 1,
-          userId: 1,
+          userId: Namespace.nil.uuidValue,
           name: 'Wilson Blade 98',
           isPrimary: true,
           activeStringJob: targetJob,

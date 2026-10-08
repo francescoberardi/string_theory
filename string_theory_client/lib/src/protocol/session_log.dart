@@ -29,7 +29,7 @@ abstract class SessionLog
 
   factory SessionLog({
     int? id,
-    required int userId,
+    required _isc.UuidValue userId,
     required int racquetId,
     required DateTime startTime,
     required int durationMinutes,
@@ -43,7 +43,7 @@ abstract class SessionLog
   factory SessionLog.fromJson(Map<String, dynamic> jsonSerialization) {
     return SessionLog(
       id: jsonSerialization['id'] as int?,
-      userId: jsonSerialization['userId'] as int,
+      userId: _isc.UuidValueJsonExtension.fromJson(jsonSerialization['userId']),
       racquetId: jsonSerialization['racquetId'] as int,
       startTime: _isc.DateTimeJsonExtension.fromJson(
         jsonSerialization['startTime'],
@@ -64,7 +64,7 @@ abstract class SessionLog
   /// the id will be null.
   int? id;
 
-  int userId;
+  _isc.UuidValue userId;
 
   int racquetId;
 
@@ -87,7 +87,7 @@ abstract class SessionLog
   @_isc.useResult
   SessionLog copyWith({
     int? id,
-    int? userId,
+    _isc.UuidValue? userId,
     int? racquetId,
     DateTime? startTime,
     int? durationMinutes,
@@ -102,7 +102,7 @@ abstract class SessionLog
     return {
       '__className__': 'SessionLog',
       if (id != null) 'id': id,
-      'userId': userId,
+      'userId': userId.toJson(),
       'racquetId': racquetId,
       'startTime': startTime.toJson(),
       'durationMinutes': durationMinutes,
@@ -119,7 +119,7 @@ abstract class SessionLog
     return {
       '__className__': 'SessionLog',
       if (id != null) 'id': id,
-      'userId': userId,
+      'userId': userId.toJson(),
       'racquetId': racquetId,
       'startTime': startTime.toJson(),
       'durationMinutes': durationMinutes,
@@ -142,7 +142,7 @@ class _Undefined {}
 class _SessionLogImpl extends SessionLog {
   _SessionLogImpl({
     int? id,
-    required int userId,
+    required _isc.UuidValue userId,
     required int racquetId,
     required DateTime startTime,
     required int durationMinutes,
@@ -170,7 +170,7 @@ class _SessionLogImpl extends SessionLog {
   @override
   SessionLog copyWith({
     Object? id = _Undefined,
-    int? userId,
+    _isc.UuidValue? userId,
     int? racquetId,
     DateTime? startTime,
     int? durationMinutes,

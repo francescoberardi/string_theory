@@ -23,7 +23,7 @@ void main() {
   }) {
     return Racquet(
       id: id,
-      userId: 1,
+      userId: Namespace.nil.uuidValue,
       name: name,
       brand: 'Wilson',
       model: name,
@@ -31,7 +31,7 @@ void main() {
       activeStringJob: healthScore != null
           ? StringJob(
               id: id,
-              userId: 1,
+              userId: Namespace.nil.uuidValue,
               racquetId: id,
               materialCategory: StringMaterialCategory.coPoly,
               brand: 'Luxilon',

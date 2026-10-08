@@ -224,7 +224,7 @@ void main() {
       );
 
       test(
-        '[P1] should deliver nothing when logSession fails with 400, 404 or 409',
+        '[P1] should deliver nothing when logSession fails with 400 or 404',
         () async {
           final racquet = await endpoints.bag.createRacquet(
             user1Session,
@@ -233,14 +233,6 @@ void main() {
           final user2Racquet = await endpoints.bag.createRacquet(
             user2Session,
             racquetName: "User 2's Frame",
-          );
-          // Register a workout to user 2 so user 1 hits 409 on the same id.
-          await endpoints.session.logSession(
-            user2Session,
-            sessionLogFor(
-              user2Racquet.id!,
-              externalWorkoutId: 'hk-stream-foreign',
-            ),
           );
 
           final user1 = collect(endpoints.bag.bagUpdates(user1Session));
@@ -264,23 +256,49 @@ void main() {
               isA<BagException>().having((e) => e.statusCode, 'status', 404),
             ),
           );
-          await expectLater(
-            endpoints.session.logSession(
-              user1Session,
-              sessionLogFor(
-                racquet.id!,
-                externalWorkoutId: 'hk-stream-foreign',
-              ),
-            ),
-            throwsA(
-              isA<BagException>().having((e) => e.statusCode, 'status', 409),
-            ),
-          );
           await settle();
 
           expect(user1.messages, isEmpty);
 
           await user1.sub.cancel();
+        },
+      );
+
+      test(
+        '[P1] should notify only the logging tenant when two tenants log the same workout id',
+        () async {
+          final racquet = await endpoints.bag.createRacquet(
+            user1Session,
+            racquetName: 'Yonex VCORE 98',
+          );
+          final user2Racquet = await endpoints.bag.createRacquet(
+            user2Session,
+            racquetName: "User 2's Frame",
+          );
+          await endpoints.session.logSession(
+            user2Session,
+            sessionLogFor(
+              user2Racquet.id!,
+              externalWorkoutId: 'hk-stream-shared',
+            ),
+          );
+
+          final user1 = collect(endpoints.bag.bagUpdates(user1Session));
+          final user2 = collect(endpoints.bag.bagUpdates(user2Session));
+          await settle();
+
+          await endpoints.session.logSession(
+            user1Session,
+            sessionLogFor(racquet.id!, externalWorkoutId: 'hk-stream-shared'),
+          );
+          await settle();
+
+          expect(user1.messages, hasLength(1));
+          expect(user1.messages.single.racquetId, equals(racquet.id));
+          expect(user2.messages, isEmpty);
+
+          await user1.sub.cancel();
+          await user2.sub.cancel();
         },
       );
 

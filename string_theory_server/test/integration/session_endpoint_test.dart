@@ -21,7 +21,7 @@ void main() {
       );
 
       test(
-        '[P0] AC-1 should verify SessionLog model and session_log table exist with unique externalWorkoutId index',
+        '[P0] AC-1 should verify SessionLog model and session_log table exist with per-tenant unique externalWorkoutId index',
         () async {
           expect(SessionLog, isNotNull);
 
@@ -35,14 +35,14 @@ void main() {
             reason: 'Database table session_log must exist',
           );
 
-          // Verify unique index on externalWorkoutId
+          // Verify unique index on (userId, externalWorkoutId)
           final indexResult = await session.db.unsafeQuery(
-            "SELECT indexname FROM pg_indexes WHERE tablename = 'session_log' AND indexname = 'session_log_external_id_idx';",
+            "SELECT indexname FROM pg_indexes WHERE tablename = 'session_log' AND indexname = 'session_log_user_external_id_idx';",
           );
           expect(
             indexResult.length,
             equals(1),
-            reason: 'Unique index session_log_external_id_idx must exist',
+            reason: 'Unique index session_log_user_external_id_idx must exist',
           );
         },
       );
@@ -499,7 +499,7 @@ void main() {
       );
 
       test(
-        '[P1] should throw 409 when externalWorkoutId is already registered by another user',
+        '[P1] should log a workout for a second tenant without touching the first tenant row',
         () async {
           final rUser1 = await endpoints.bag.createRacquet(
             user1Session,
@@ -510,39 +510,35 @@ void main() {
             racquetName: "User 2's Racquet",
           );
 
-          // User 1 logs workout
-          await endpoints.session.logSession(
+          final user1Log = await endpoints.session.logSession(
             user1Session,
-            SessionLog(
-              userId: TestTenants.aUserId,
-              racquetId: rUser1.id!,
-              startTime: DateTime.now().toUtc(),
+            sessionLogFor(
+              rUser1.id!,
               durationMinutes: 60,
-              source: 'HealthKit',
+              externalWorkoutId: 'shared-device-workout-id',
+            ),
+          );
+          final user2Log = await endpoints.session.logSession(
+            user2Session,
+            sessionLogFor(
+              rUser2.id!,
+              durationMinutes: 60,
               externalWorkoutId: 'shared-device-workout-id',
             ),
           );
 
-          // User 2 tries to log same external workout ID
-          await expectLater(
-            endpoints.session.logSession(
-              user2Session,
-              SessionLog(
-                userId: TestTenants.bUserId,
-                racquetId: rUser2.id!,
-                startTime: DateTime.now().toUtc(),
-                durationMinutes: 60,
-                source: 'HealthKit',
-                externalWorkoutId: 'shared-device-workout-id',
-              ),
-            ),
-            throwsA(
-              isA<BagException>().having(
-                (e) => e.statusCode,
-                'statusCode',
-                equals(409),
-              ),
-            ),
+          expect(user2Log.id, isNot(equals(user1Log.id)));
+          expect(user2Log.userId, equals(TestTenants.bUserId));
+          expect(user2Log.racquetId, equals(rUser2.id));
+
+          final user1Logs = await endpoints.session.getSessionLogs(
+            user1Session,
+          );
+          expect(user1Logs.map((l) => l.id), equals([user1Log.id]));
+          final user2Bag = await endpoints.bag.getVirtualBag(user2Session);
+          expect(
+            user2Bag.single.activeStringJob!.totalCourtHours,
+            closeTo(1.0, 0.001),
           );
         },
       );

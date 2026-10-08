@@ -31,7 +31,7 @@ void main() {
 
   final sampleBlade = Racquet(
     id: 1,
-    userId: 1,
+    userId: Namespace.nil.uuidValue,
     name: 'Wilson Blade 98',
     brand: 'Wilson',
     model: 'Blade 98',
@@ -39,7 +39,7 @@ void main() {
     activeStringJobId: 101,
     activeStringJob: StringJob(
       id: 101,
-      userId: 1,
+      userId: Namespace.nil.uuidValue,
       racquetId: 1,
       materialCategory: StringMaterialCategory.coPoly,
       brand: 'Luxilon',
@@ -58,7 +58,7 @@ void main() {
 
   final samplePureAero = Racquet(
     id: 2,
-    userId: 1,
+    userId: Namespace.nil.uuidValue,
     name: 'Babolat Pure Aero',
     brand: 'Babolat',
     model: 'Pure Aero',
@@ -66,7 +66,7 @@ void main() {
     activeStringJobId: 102,
     activeStringJob: StringJob(
       id: 102,
-      userId: 1,
+      userId: Namespace.nil.uuidValue,
       racquetId: 2,
       materialCategory: StringMaterialCategory.coPoly,
       brand: 'Babolat',
@@ -85,7 +85,7 @@ void main() {
 
   final sampleRadical = Racquet(
     id: 3,
-    userId: 1,
+    userId: Namespace.nil.uuidValue,
     name: 'Head Radical MP',
     brand: 'Head',
     model: 'Radical MP',
@@ -93,7 +93,7 @@ void main() {
     activeStringJobId: 103,
     activeStringJob: StringJob(
       id: 103,
-      userId: 1,
+      userId: Namespace.nil.uuidValue,
       racquetId: 3,
       materialCategory: StringMaterialCategory.multifilament,
       brand: 'Head',
@@ -226,7 +226,7 @@ void main() {
           activeStringJobId: 104,
           activeStringJob: StringJob(
             id: 104,
-            userId: 1,
+            userId: Namespace.nil.uuidValue,
             racquetId: 3,
             materialCategory: StringMaterialCategory.coPoly,
             brand: 'Luxilon',
@@ -261,7 +261,7 @@ void main() {
           (_) async => [
             RestringEvent(
               id: 101,
-              userId: 1,
+              userId: Namespace.nil.uuidValue,
               racquetId: 3,
               stringJobId: 103,
               stringDescription: 'Head Velocity MLT',

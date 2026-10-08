@@ -34,7 +34,7 @@ abstract class Racquet
 
   factory Racquet({
     int? id,
-    required int userId,
+    required _is.UuidValue userId,
     required String name,
     String? brand,
     String? model,
@@ -48,7 +48,7 @@ abstract class Racquet
   factory Racquet.fromJson(Map<String, dynamic> jsonSerialization) {
     return Racquet(
       id: jsonSerialization['id'] as int?,
-      userId: jsonSerialization['userId'] as int,
+      userId: _is.UuidValueJsonExtension.fromJson(jsonSerialization['userId']),
       name: jsonSerialization['name'] as String,
       brand: jsonSerialization['brand'] as String?,
       model: jsonSerialization['model'] as String?,
@@ -77,7 +77,7 @@ abstract class Racquet
   @override
   int? id;
 
-  int userId;
+  _is.UuidValue userId;
 
   String name;
 
@@ -103,7 +103,7 @@ abstract class Racquet
   @_is.useResult
   Racquet copyWith({
     int? id,
-    int? userId,
+    _is.UuidValue? userId,
     String? name,
     String? brand,
     String? model,
@@ -118,7 +118,7 @@ abstract class Racquet
     return {
       '__className__': 'Racquet',
       if (id != null) 'id': id,
-      'userId': userId,
+      'userId': userId.toJson(),
       'name': name,
       if (brand != null) 'brand': brand,
       if (model != null) 'model': model,
@@ -135,7 +135,7 @@ abstract class Racquet
     return {
       '__className__': 'Racquet',
       if (id != null) 'id': id,
-      'userId': userId,
+      'userId': userId.toJson(),
       'name': name,
       if (brand != null) 'brand': brand,
       if (model != null) 'model': model,
@@ -181,7 +181,7 @@ class _Undefined {}
 class _RacquetImpl extends Racquet {
   _RacquetImpl({
     int? id,
-    required int userId,
+    required _is.UuidValue userId,
     required String name,
     String? brand,
     String? model,
@@ -209,7 +209,7 @@ class _RacquetImpl extends Racquet {
   @override
   Racquet copyWith({
     Object? id = _Undefined,
-    int? userId,
+    _is.UuidValue? userId,
     String? name,
     Object? brand = _Undefined,
     Object? model = _Undefined,
@@ -241,10 +241,11 @@ class _RacquetImpl extends Racquet {
 class RacquetUpdateTable extends _is.UpdateTable<RacquetTable> {
   RacquetUpdateTable(super.table);
 
-  _is.ColumnValue<int, int> userId(int value) => _is.ColumnValue(
-    table.userId,
-    value,
-  );
+  _is.ColumnValue<_is.UuidValue, _is.UuidValue> userId(_is.UuidValue value) =>
+      _is.ColumnValue(
+        table.userId,
+        value,
+      );
 
   _is.ColumnValue<String, String> name(String value) => _is.ColumnValue(
     table.name,
@@ -287,7 +288,7 @@ class RacquetUpdateTable extends _is.UpdateTable<RacquetTable> {
 class RacquetTable extends _is.Table<int?> {
   RacquetTable({super.tableRelation}) : super(tableName: 'racquet') {
     updateTable = RacquetUpdateTable(this);
-    userId = _is.ColumnInt(
+    userId = _is.ColumnUuid(
       'userId',
       this,
     );
@@ -326,7 +327,7 @@ class RacquetTable extends _is.Table<int?> {
 
   late final RacquetUpdateTable updateTable;
 
-  late final _is.ColumnInt userId;
+  late final _is.ColumnUuid userId;
 
   late final _is.ColumnString name;
 

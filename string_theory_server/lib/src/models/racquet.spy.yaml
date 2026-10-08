@@ -1,7 +1,7 @@
 class: Racquet
 table: racquet
 fields:
-  userId: int
+  userId: UuidValue
   name: String
   brand: String?
   model: String?

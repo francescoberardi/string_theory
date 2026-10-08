@@ -41,7 +41,7 @@ class SessionEndpoint extends Endpoint {
       // A concurrent sync of the same workout committed first. This
       // transaction rolled back, so no hours were counted: return the winner.
       if (trimmedExternalId == null ||
-          e.constraintName != 'session_log_external_id_idx') {
+          e.constraintName != 'session_log_user_external_id_idx') {
         rethrow;
       }
       final existing = await _findByExternalWorkoutId(
@@ -69,7 +69,7 @@ class SessionEndpoint extends Endpoint {
   /// A publish failure is logged and never fails the request.
   Future<void> _publishSessionLogged(
     Session session,
-    int userId,
+    UuidValue userId,
     int racquetId,
     StringJob updatedJob,
   ) async {
@@ -102,26 +102,21 @@ class SessionEndpoint extends Endpoint {
   }
 
   /// Returns the session already logged under [externalWorkoutId] for
-  /// [userId], or null if none exists. Throws a 409 [BagException] if the
-  /// workout is registered to another account.
+  /// [userId], or null if none exists. Workout IDs are unique per tenant, so
+  /// another account logging the same ID never matches.
   Future<SessionLog?> _findByExternalWorkoutId(
     Session session,
     String externalWorkoutId,
-    int userId, {
+    UuidValue userId, {
     Transaction? transaction,
-  }) async {
-    final existing = await SessionLog.db.findFirstRow(
+  }) {
+    return SessionLog.db.findFirstRow(
       session,
-      where: (t) => t.externalWorkoutId.equals(externalWorkoutId),
+      where: (t) =>
+          t.userId.equals(userId) &
+          t.externalWorkoutId.equals(externalWorkoutId),
       transaction: transaction,
     );
-    if (existing != null && existing.userId != userId) {
-      throw BagException(
-        message: 'Workout already registered to another account',
-        statusCode: 409,
-      );
-    }
-    return existing;
   }
 
   /// Inserts [log] and updates the active string job in one transaction.
@@ -131,7 +126,7 @@ class SessionEndpoint extends Endpoint {
   Future<(SessionLog log, StringJob? updatedJob)> _insertSession(
     Session session,
     SessionLog log,
-    int userId,
+    UuidValue userId,
     String? trimmedExternalId,
   ) async {
     return await session.db.transaction((tx) async {

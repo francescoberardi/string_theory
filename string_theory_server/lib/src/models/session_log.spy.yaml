@@ -1,7 +1,7 @@
 class: SessionLog
 table: session_log
 fields:
-  userId: int
+  userId: UuidValue
   racquetId: int, relation(parent=racquet, onDelete=Cascade)
   startTime: DateTime
   durationMinutes: int
@@ -15,6 +15,6 @@ indexes:
     fields: userId
   session_log_racquet_id_idx:
     fields: racquetId
-  session_log_external_id_idx:
-    fields: externalWorkoutId
+  session_log_user_external_id_idx:
+    fields: userId, externalWorkoutId
     unique: true

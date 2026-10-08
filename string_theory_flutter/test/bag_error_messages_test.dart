@@ -7,13 +7,13 @@ import 'package:string_theory_flutter/bloc/bag_error_messages.dart';
 void main() {
   final strung = Racquet(
     id: 1,
-    userId: 1,
+    userId: Namespace.nil.uuidValue,
     name: 'Wilson Blade 98',
     isPrimary: true,
     createdAt: DateTime.utc(2026, 10, 1),
     updatedAt: DateTime.utc(2026, 10, 1),
     activeStringJob: StringJob(
-      userId: 1,
+      userId: Namespace.nil.uuidValue,
       racquetId: 1,
       brand: 'Luxilon',
       model: 'ALU Power',
@@ -28,7 +28,7 @@ void main() {
   );
   final unstrung = Racquet(
     id: 2,
-    userId: 1,
+    userId: Namespace.nil.uuidValue,
     name: 'Head Radical MP',
     isPrimary: false,
     createdAt: DateTime.utc(2026, 10, 1),

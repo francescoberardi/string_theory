@@ -477,7 +477,7 @@ class BagBloc extends Bloc<BagEvent, BagState> {
         event.externalWorkoutId ??
         'client_offline_${DateTime.now().microsecondsSinceEpoch}_${event.racquetId}';
     final log = SessionLog(
-      userId: 0,
+      userId: Namespace.nil.uuidValue,
       racquetId: event.racquetId,
       startTime: event.startTime,
       durationMinutes: event.durationMinutes,

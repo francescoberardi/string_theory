@@ -33,7 +33,7 @@ abstract class RestringEvent
 
   factory RestringEvent({
     int? id,
-    required int userId,
+    required _isc.UuidValue userId,
     required int racquetId,
     required int stringJobId,
     required String stringDescription,
@@ -50,7 +50,7 @@ abstract class RestringEvent
   factory RestringEvent.fromJson(Map<String, dynamic> jsonSerialization) {
     return RestringEvent(
       id: jsonSerialization['id'] as int?,
-      userId: jsonSerialization['userId'] as int,
+      userId: _isc.UuidValueJsonExtension.fromJson(jsonSerialization['userId']),
       racquetId: jsonSerialization['racquetId'] as int,
       stringJobId: jsonSerialization['stringJobId'] as int,
       stringDescription: jsonSerialization['stringDescription'] as String,
@@ -79,7 +79,7 @@ abstract class RestringEvent
   /// the id will be null.
   int? id;
 
-  int userId;
+  _isc.UuidValue userId;
 
   int racquetId;
 
@@ -108,7 +108,7 @@ abstract class RestringEvent
   @_isc.useResult
   RestringEvent copyWith({
     int? id,
-    int? userId,
+    _isc.UuidValue? userId,
     int? racquetId,
     int? stringJobId,
     String? stringDescription,
@@ -126,7 +126,7 @@ abstract class RestringEvent
     return {
       '__className__': 'RestringEvent',
       if (id != null) 'id': id,
-      'userId': userId,
+      'userId': userId.toJson(),
       'racquetId': racquetId,
       'stringJobId': stringJobId,
       'stringDescription': stringDescription,
@@ -146,7 +146,7 @@ abstract class RestringEvent
     return {
       '__className__': 'RestringEvent',
       if (id != null) 'id': id,
-      'userId': userId,
+      'userId': userId.toJson(),
       'racquetId': racquetId,
       'stringJobId': stringJobId,
       'stringDescription': stringDescription,
@@ -172,7 +172,7 @@ class _Undefined {}
 class _RestringEventImpl extends RestringEvent {
   _RestringEventImpl({
     int? id,
-    required int userId,
+    required _isc.UuidValue userId,
     required int racquetId,
     required int stringJobId,
     required String stringDescription,
@@ -206,7 +206,7 @@ class _RestringEventImpl extends RestringEvent {
   @override
   RestringEvent copyWith({
     Object? id = _Undefined,
-    int? userId,
+    _isc.UuidValue? userId,
     int? racquetId,
     int? stringJobId,
     String? stringDescription,
