@@ -9,7 +9,12 @@ abstract class BagEvent extends Equatable {
 }
 
 class LoadBag extends BagEvent {
-  const LoadBag();
+  /// Called once the load settles, with [BagLoaded] or [BagError] emitted,
+  /// so a pull-to-refresh can hold its spinner until then. Not part of
+  /// [props].
+  final void Function()? onSettled;
+
+  const LoadBag({this.onSettled});
 }
 
 class AddRacquet extends BagEvent {

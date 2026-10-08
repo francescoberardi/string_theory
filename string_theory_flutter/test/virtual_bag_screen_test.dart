@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:string_theory_client/string_theory_client.dart';
 import 'package:string_theory_flutter/bloc/bag_bloc.dart';
+import 'package:string_theory_flutter/bloc/bag_error_messages.dart';
 import 'package:string_theory_flutter/screens/virtual_bag_screen.dart';
 import 'package:string_theory_flutter/services/health/health_sync_service.dart';
 import 'package:string_theory_flutter/theme/court_midnight_theme.dart';
@@ -1518,4 +1519,96 @@ void main() {
       );
     },
   );
+
+  group('Story 6.1: re-authentication prompt after a 401', () {
+    const expired = logSessionExpiredMessage;
+
+    Future<StreamController<BagState>> pumpWithReauth(
+      WidgetTester tester,
+      Future<bool> Function() onReauthenticate,
+    ) async {
+      tester.view.physicalSize = const Size(400, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      final controller = StreamController<BagState>.broadcast();
+      addTearDown(controller.close);
+      when(() => mockBagBloc.state).thenReturn(BagLoaded(sampleRacquets));
+      when(() => mockBagBloc.stream).thenAnswer((_) => controller.stream);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: CourtMidnightTheme.themeData,
+          home: VirtualBagScreen(
+            bagBloc: mockBagBloc,
+            healthSyncService: fakeHealth,
+            onReauthenticate: onReauthenticate,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      controller.add(
+        BagLoaded(sampleRacquets, errorMessage: expired, reauthRequired: true),
+      );
+      await tester.pumpAndSettle();
+      return controller;
+    }
+
+    testWidgets('tapping Sign in re-authenticates, then reloads the bag', (
+      tester,
+    ) async {
+      var signIns = 0;
+      await pumpWithReauth(tester, () async {
+        signIns++;
+        return true;
+      });
+
+      expect(find.text(expired), findsOneWidget);
+      await tester.tap(find.widgetWithText(SnackBarAction, 'Sign in'));
+      await tester.pumpAndSettle();
+
+      expect(signIns, 1);
+      verify(() => mockBagBloc.add(const LoadBag())).called(1);
+    });
+
+    testWidgets('a failed sign-in shows an error and does not reload', (
+      tester,
+    ) async {
+      await pumpWithReauth(tester, () async => throw Exception('offline'));
+
+      await tester.tap(find.widgetWithText(SnackBarAction, 'Sign in'));
+      await tester.pumpAndSettle();
+
+      expect(find.text(VirtualBagScreen.reauthFailedMessage), findsOneWidget);
+      verifyNever(() => mockBagBloc.add(any()));
+    });
+
+    testWidgets('a sign-in resolving to false shows an error, no reload', (
+      tester,
+    ) async {
+      await pumpWithReauth(tester, () async => false);
+
+      await tester.tap(find.widgetWithText(SnackBarAction, 'Sign in'));
+      await tester.pumpAndSettle();
+
+      expect(find.text(VirtualBagScreen.reauthFailedMessage), findsOneWidget);
+      verifyNever(() => mockBagBloc.add(any()));
+    });
+
+    testWidgets('an ordinary error SnackBar has no Sign in action', (
+      tester,
+    ) async {
+      final controller = await pumpWithReauth(tester, () async => true);
+      ScaffoldMessenger.of(
+        tester.element(find.byType(Scaffold).first),
+      ).hideCurrentSnackBar();
+      await tester.pumpAndSettle();
+
+      controller.add(
+        BagLoaded(sampleRacquets, errorMessage: "Couldn't log this session."),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text("Couldn't log this session."), findsOneWidget);
+      expect(find.widgetWithText(SnackBarAction, 'Sign in'), findsNothing);
+    });
+  });
 }

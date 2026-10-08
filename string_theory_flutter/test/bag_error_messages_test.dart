@@ -284,11 +284,23 @@ void main() {
                 racquet: strung,
                 racquetName: 'Yonex Ezone',
               ),
-              expiredMessage,
+              op == BagOperation.logSession
+                  ? logSessionExpiredMessage
+                  : expiredMessage,
             );
           });
         }
       }
+    });
+
+    test('401 on logSession invites a sign-in (Story 6.1)', () {
+      for (final error in [bag(401), ServerpodClientUnauthorized()]) {
+        expect(
+          bagErrorMessage(BagOperation.logSession, error, racquet: strung),
+          logSessionExpiredMessage,
+        );
+      }
+      expect(logSessionExpiredMessage, contains('Sign in'));
     });
   });
 }

@@ -33,12 +33,17 @@ class BagLoaded extends BagState {
   /// Sessions logged offline that are still waiting to reach the server.
   final int pendingSyncCount;
 
+  /// Whether [errorMessage] reports an expired session, so the error
+  /// SnackBar offers a sign-in action.
+  final bool reauthRequired;
+
   const BagLoaded(
     this.racquets, {
     this.errorMessage,
     this.infoMessage,
     this.successMessage,
     this.pendingSyncCount = 0,
+    this.reauthRequired = false,
   });
 
   @override
@@ -48,6 +53,7 @@ class BagLoaded extends BagState {
     infoMessage,
     successMessage,
     pendingSyncCount,
+    reauthRequired,
   ];
 }
 

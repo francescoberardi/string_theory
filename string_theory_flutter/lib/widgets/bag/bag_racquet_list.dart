@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:string_theory_client/string_theory_client.dart';
 
@@ -71,8 +73,19 @@ class BagRacquetList extends StatelessWidget {
     return resolveGridCardExtentForScaler(textScaler);
   }
 
+  /// Longest a pull-to-refresh spinner waits for the reload to settle.
+  static const refreshTimeout = Duration(seconds: 8);
+
+  /// Holds the spinner until the reload emits [BagLoaded] or [BagError], or
+  /// [refreshTimeout] passes.
   Future<void> _onRefresh() async {
-    bloc.add(const LoadBag());
+    final settled = Completer<void>();
+    bloc.add(LoadBag(onSettled: settled.complete));
+    try {
+      await settled.future.timeout(refreshTimeout);
+    } on TimeoutException {
+      // Release the spinner; the reload still lands when it settles.
+    }
   }
 
   int _resolveCrossAxisCount(BuildContext context) {

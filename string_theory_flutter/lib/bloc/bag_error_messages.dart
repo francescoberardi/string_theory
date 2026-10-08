@@ -20,6 +20,10 @@ enum BagOperation {
 const _connectionHint = ' Check your connection and try again.';
 const _sessionExpiredMessage =
     'Your session expired. Restart the app to sign in again.';
+
+/// Shown with a sign-in action when a session log hits an expired session.
+const logSessionExpiredMessage =
+    'Your session expired. Sign in to keep logging sessions.';
 const _racquetGoneMessage = 'That racquet is no longer in your bag.';
 const _duplicateWorkoutMessage =
     'This workout is already logged on another account.';
@@ -56,7 +60,11 @@ String bagErrorMessage(
   String? racquetName,
 }) {
   final statusCode = statusCodeOf(error);
-  if (statusCode == 401) return _sessionExpiredMessage;
+  if (statusCode == 401) {
+    return operation == BagOperation.logSession
+        ? logSessionExpiredMessage
+        : _sessionExpiredMessage;
+  }
 
   final name = racquetName ?? racquet?.name ?? 'this racquet';
   final targetsRacquet = switch (operation) {

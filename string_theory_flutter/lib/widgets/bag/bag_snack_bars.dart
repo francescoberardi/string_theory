@@ -93,11 +93,20 @@ SnackBar buildSuccessSnackBar(String message) {
   );
 }
 
-/// SnackBar relaying a bloc error message.
-SnackBar buildErrorSnackBar(String message) {
+/// SnackBar relaying a bloc error message; [onSignIn] adds a "Sign in"
+/// action for an expired session.
+SnackBar buildErrorSnackBar(String message, {VoidCallback? onSignIn}) {
   return SnackBar(
     backgroundColor: CourtMidnightTheme.healthCritical,
     behavior: SnackBarBehavior.floating,
+    persist: false,
+    action: onSignIn == null
+        ? null
+        : SnackBarAction(
+            label: 'Sign in',
+            textColor: Colors.white,
+            onPressed: onSignIn,
+          ),
     content: Text(
       message,
       style: GoogleFonts.inter(color: Colors.white),

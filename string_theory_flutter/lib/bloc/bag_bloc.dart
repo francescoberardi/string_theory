@@ -13,6 +13,12 @@ import 'bag_state.dart';
 export 'bag_event.dart';
 export 'bag_state.dart';
 
+/// Re-fetches the bag in the background after a mutation whose follow-up
+/// reload failed.
+class _ResyncBag extends BagEvent {
+  const _ResyncBag();
+}
+
 class BagBloc extends Bloc<BagEvent, BagState> {
   /// Shown when a session is queued locally instead of reaching the server.
   static const offlineSavedMessage =
@@ -22,7 +28,17 @@ class BagBloc extends Bloc<BagEvent, BagState> {
   static const restringSuccessMessage =
       'Fresh stringbed mounted! Restrung to 100% health.';
 
+  /// Background re-sync attempts after a failed post-mutation reload.
+  static const maxResyncAttempts = 3;
+
   final Client client;
+
+  /// Cap on the bag reload that follows a successful mutation; a slower
+  /// reload counts as failed.
+  final Duration reloadTimeout;
+
+  /// Wait before each background re-sync attempt.
+  final Duration resyncDelay;
 
   /// Sessions logged while the server is unreachable.
   final OfflineSessionQueue offlineQueue;
@@ -37,13 +53,23 @@ class BagBloc extends Bloc<BagEvent, BagState> {
   /// cannot retire two stringbeds.
   final _restringsInFlight = <int>{};
 
+  /// Pending background re-sync, if any.
+  Timer? _resyncTimer;
+
+  /// Re-sync attempts made in the current cycle.
+  int _resyncAttempts = 0;
+
   /// [offlineQueue] defaults to a volatile in-memory queue; the app passes one
   /// backed by `SharedPreferences`.
-  BagBloc({required this.client, OfflineSessionQueue? offlineQueue})
-    : offlineQueue =
-          offlineQueue ??
-          OfflineSessionQueue(storage: InMemorySessionQueueStorage()),
-      super(const BagInitial()) {
+  BagBloc({
+    required this.client,
+    OfflineSessionQueue? offlineQueue,
+    this.reloadTimeout = const Duration(seconds: 10),
+    this.resyncDelay = const Duration(seconds: 5),
+  }) : offlineQueue =
+           offlineQueue ??
+           OfflineSessionQueue(storage: InMemorySessionQueueStorage()),
+       super(const BagInitial()) {
     on<LoadBag>(_onLoadBag);
     on<AddRacquet>(_onAddRacquet);
     on<DeleteRacquet>(_onDeleteRacquet);
@@ -54,6 +80,7 @@ class BagBloc extends Bloc<BagEvent, BagState> {
     on<LogSession>(_onLogSession);
     on<SyncOfflineSessions>(_onSyncOfflineSessions);
     on<RestringRacquet>(_onRestringRacquet);
+    on<_ResyncBag>(_onResyncBag);
     _listenToConnectivity();
   }
 
@@ -125,6 +152,7 @@ class BagBloc extends Bloc<BagEvent, BagState> {
     String? errorMessage,
     String? infoMessage,
     String? successMessage,
+    bool reauthRequired = false,
   }) {
     return BagLoaded(
       racquets,
@@ -132,6 +160,7 @@ class BagBloc extends Bloc<BagEvent, BagState> {
       infoMessage: infoMessage,
       successMessage: successMessage,
       pendingSyncCount: offlineQueue.pendingCount,
+      reauthRequired: reauthRequired,
     );
   }
 
@@ -197,6 +226,7 @@ class BagBloc extends Bloc<BagEvent, BagState> {
 
   @override
   Future<void> close() async {
+    _cancelResync();
     _connectivityMonitor?.removeListener(_onConnectivityChanged);
     _connectivityMonitor = null;
     await _bagUpdatesSubscription?.cancel();
@@ -257,11 +287,77 @@ class BagBloc extends Bloc<BagEvent, BagState> {
     emit(_loaded(newRacquets));
   }
 
+  /// Fetches the bag within [reloadTimeout] after a successful mutation;
+  /// null when the reload fails or times out.
+  Future<List<Racquet>?> _tryReload(String after) async {
+    try {
+      return await client.bag.getVirtualBag().timeout(reloadTimeout);
+    } catch (e) {
+      debugPrint('BagBloc: bag reload after $after failed: $e');
+      return null;
+    }
+  }
+
+  /// Adopts a successful post-mutation reload, or schedules a background
+  /// re-sync when [racquets] is null (reload failed).
+  void _adoptReload(List<Racquet>? racquets, Emitter<BagState> emit) {
+    if (racquets == null) {
+      _scheduleResync();
+      return;
+    }
+    emit(_loaded(_withPending(racquets)));
+  }
+
+  /// Starts a fresh re-sync cycle of up to [maxResyncAttempts] attempts.
+  void _scheduleResync() {
+    _cancelResync();
+    _armResyncTimer();
+  }
+
+  void _armResyncTimer() {
+    _resyncTimer?.cancel();
+    if (isClosed) return;
+    _resyncTimer = Timer(resyncDelay, () {
+      _resyncTimer = null;
+      if (!isClosed) add(const _ResyncBag());
+    });
+  }
+
+  void _cancelResync() {
+    _resyncTimer?.cancel();
+    _resyncTimer = null;
+    _resyncAttempts = 0;
+  }
+
+  /// Silent background reconciliation: never emits [BagLoading] or an error.
+  Future<void> _onResyncBag(_ResyncBag event, Emitter<BagState> emit) async {
+    _resyncAttempts++;
+    final before = state;
+    final racquets = await _tryReload('re-sync');
+    // Newer state landed meanwhile (mutation, log, restring, load): this
+    // snapshot is stale, so drop it.
+    if (isClosed || !identical(state, before)) return;
+    if (racquets == null) {
+      if (_resyncAttempts < maxResyncAttempts) {
+        _armResyncTimer();
+      } else {
+        debugPrint('BagBloc: giving up background re-sync');
+        _resyncAttempts = 0;
+      }
+      return;
+    }
+    _resyncAttempts = 0;
+    emit(_loaded(_withPending(racquets)));
+    _subscribeToBagUpdates();
+  }
+
   Future<void> _onLoadBag(LoadBag event, Emitter<BagState> emit) async {
     emit(const BagLoading());
     try {
       final racquets = await client.bag.getVirtualBag();
       await _loadQueue();
+      // A full load supersedes any pending background re-sync.
+      _cancelResync();
       emit(_loaded(_withPending(racquets)));
       _subscribeToBagUpdates();
       // Drain sessions queued in a previous run (e.g. logged offline before
@@ -271,12 +367,26 @@ class BagBloc extends Bloc<BagEvent, BagState> {
       }
     } catch (e) {
       emit(BagError(_failure(BagOperation.loadBag, e)));
+    } finally {
+      event.onSettled?.call();
     }
   }
 
+  /// Returns [racquets] with [created] added (or replacing a racquet with the
+  /// same id); a primary [created] demotes every other racquet.
+  static List<Racquet> _withCreated(List<Racquet> racquets, Racquet created) {
+    final others = racquets.where((r) => r.id != created.id).map((r) {
+      return created.isPrimary && r.isPrimary
+          ? r.copyWith(isPrimary: false)
+          : r;
+    });
+    return [...others, created];
+  }
+
   Future<void> _onAddRacquet(AddRacquet event, Emitter<BagState> emit) async {
+    final Racquet created;
     try {
-      await client.bag.createRacquet(
+      created = await client.bag.createRacquet(
         racquetName: event.name,
         brand: event.brand,
         model: event.model,
@@ -288,15 +398,25 @@ class BagBloc extends Bloc<BagEvent, BagState> {
         maxRatedHours: event.maxRatedHours,
         stringingDate: event.stringingDate,
       );
-      final racquets = await client.bag.getVirtualBag();
-      emit(_loaded(_withPending(racquets)));
     } catch (e) {
       emit(
         BagError(
           _failure(BagOperation.addRacquet, e, racquetName: event.name),
         ),
       );
+      return;
     }
+
+    // The racquet is saved: a failed reload must not be reported as a failed
+    // add. Keep it in the bag and reconcile in the background.
+    final racquets = await _tryReload('addRacquet');
+    if (racquets == null) {
+      final latest = state;
+      if (latest is BagLoaded) {
+        emit(_loaded(_withCreated(latest.racquets, created)));
+      }
+    }
+    _adoptReload(racquets, emit);
   }
 
   Future<void> _onDeleteRacquet(
@@ -305,16 +425,6 @@ class BagBloc extends Bloc<BagEvent, BagState> {
   ) async {
     try {
       await client.bag.deleteRacquet(racquetId: event.racquetId);
-      if (state is BagLoaded) {
-        final currentRacquets = (state as BagLoaded).racquets;
-        final newRacquets = currentRacquets
-            .where((r) => r.id != event.racquetId)
-            .toList();
-        emit(_loaded(newRacquets));
-      } else {
-        final racquets = await client.bag.getVirtualBag();
-        emit(_loaded(_withPending(racquets)));
-      }
     } catch (e) {
       emit(
         BagError(
@@ -325,6 +435,17 @@ class BagBloc extends Bloc<BagEvent, BagState> {
           ),
         ),
       );
+      return;
+    }
+    final current = state;
+    if (current is BagLoaded) {
+      emit(
+        _loaded(
+          current.racquets.where((r) => r.id != event.racquetId).toList(),
+        ),
+      );
+    } else {
+      _adoptReload(await _tryReload('deleteRacquet'), emit);
     }
   }
 
@@ -332,23 +453,9 @@ class BagBloc extends Bloc<BagEvent, BagState> {
     SetPrimaryRacquet event,
     Emitter<BagState> emit,
   ) async {
+    final Racquet updated;
     try {
-      final updated = await client.bag.setPrimary(racquetId: event.racquetId);
-      if (state is BagLoaded) {
-        final currentRacquets = (state as BagLoaded).racquets;
-        final newRacquets = currentRacquets.map((r) {
-          if (r.id == event.racquetId) {
-            return updated;
-          } else if (r.isPrimary) {
-            return r.copyWith(isPrimary: false);
-          }
-          return r;
-        }).toList();
-        emit(_loaded(newRacquets));
-      } else {
-        final racquets = await client.bag.getVirtualBag();
-        emit(_loaded(_withPending(racquets)));
-      }
+      updated = await client.bag.setPrimary(racquetId: event.racquetId);
     } catch (e) {
       emit(
         BagError(
@@ -359,6 +466,21 @@ class BagBloc extends Bloc<BagEvent, BagState> {
           ),
         ),
       );
+      return;
+    }
+    final current = state;
+    if (current is BagLoaded) {
+      final newRacquets = current.racquets.map((r) {
+        if (r.id == event.racquetId) {
+          return updated;
+        } else if (r.isPrimary) {
+          return r.copyWith(isPrimary: false);
+        }
+        return r;
+      }).toList();
+      emit(_loaded(newRacquets));
+    } else {
+      _adoptReload(await _tryReload('setPrimaryRacquet'), emit);
     }
   }
 
@@ -441,21 +563,12 @@ class BagBloc extends Bloc<BagEvent, BagState> {
     FastForwardRacquetAge event,
     Emitter<BagState> emit,
   ) async {
+    final Racquet updated;
     try {
-      final updated = await client.bag.fastForwardRacquetAge(
+      updated = await client.bag.fastForwardRacquetAge(
         racquetId: event.racquetId,
         days: event.days,
       );
-      if (state is BagLoaded) {
-        final currentRacquets = (state as BagLoaded).racquets;
-        final newRacquets = currentRacquets.map((r) {
-          return r.id == event.racquetId ? updated : r;
-        }).toList();
-        emit(_loaded(newRacquets));
-      } else {
-        final racquets = await client.bag.getVirtualBag();
-        emit(_loaded(_withPending(racquets)));
-      }
     } catch (e) {
       emit(
         BagError(
@@ -466,6 +579,19 @@ class BagBloc extends Bloc<BagEvent, BagState> {
           ),
         ),
       );
+      return;
+    }
+    final current = state;
+    if (current is BagLoaded) {
+      emit(
+        _loaded(
+          current.racquets
+              .map((r) => r.id == event.racquetId ? updated : r)
+              .toList(),
+        ),
+      );
+    } else {
+      _adoptReload(await _tryReload('fastForwardRacquetAge'), emit);
     }
   }
 
@@ -504,6 +630,21 @@ class BagBloc extends Bloc<BagEvent, BagState> {
       try {
         await client.session.logSession(log);
       } catch (e) {
+        // An expired session can't be fixed by retrying later: prompt a
+        // sign-in instead of queueing behind a "saved offline" toast.
+        if (statusCodeOf(e) == 401) {
+          _emitLogFailure(
+            current,
+            _failure(
+              BagOperation.logSession,
+              e,
+              racquet: _racquetIn(current, event.racquetId),
+            ),
+            emit,
+            reauthRequired: true,
+          );
+          return;
+        }
         if (isPermanentSessionRejection(e)) {
           _emitLogFailure(
             current,
@@ -538,15 +679,23 @@ class BagBloc extends Bloc<BagEvent, BagState> {
   }
 
   /// Reverts the optimistic gauge and surfaces a failed log.
+  /// With [reauthRequired] the error offers a sign-in action.
   void _emitLogFailure(
     BagState previous,
     String message,
-    Emitter<BagState> emit,
-  ) {
+    Emitter<BagState> emit, {
+    bool reauthRequired = false,
+  }) {
     if (previous is BagLoaded) {
       // Clear first so a repeated identical error is still a new state.
       emit(_loaded(previous.racquets));
-      emit(_loaded(previous.racquets, errorMessage: message));
+      emit(
+        _loaded(
+          previous.racquets,
+          errorMessage: message,
+          reauthRequired: reauthRequired,
+        ),
+      );
     } else {
       emit(BagError(message));
     }

@@ -131,3 +131,6 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-3-native-uuid-tenant-migration-backend-concurrency-live-update.md`
   summary: Tenant userId columns on racquet, string_job, session_log and restring_event have no foreign key to serverpod_auth_core_user, so deleting an auth user leaves orphan rows.
   evidence: The int userId had no FK before Story 6.3 either; the UUID retype makes an FK with ON DELETE CASCADE possible.
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-1-state-management-resilience-mutation-refresh-decoupling-async-pull-to-refresh-auth-401-routing.md`
+  summary: After the 401 "Sign in" re-auth, BagBloc's bag-updates stream may stay bound to the expired identity, so live updates stop until restart (unverified, medium).
+  evidence: `_subscribeToBagUpdates` no-ops while `_bagUpdatesSubscription` is non-null. To settle it, confirm in the running app whether Serverpod errors or closes the streaming connection on 401 or on an auth key change.

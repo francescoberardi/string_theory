@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:string_theory_client/string_theory_client.dart';
 
 import '../bloc/bag_bloc.dart';
+import '../client.dart';
 import '../domain/workout_formatting.dart' as formatting;
 import '../services/health/health_sync_service.dart';
 import '../theme/court_midnight_theme.dart';
@@ -40,7 +41,21 @@ class VirtualBagScreen extends StatefulWidget {
   /// Overrides the [HealthSyncService] otherwise read from the context.
   final HealthSyncService? healthSyncService;
 
-  const VirtualBagScreen({super.key, this.bagBloc, this.healthSyncService});
+  /// Signs the user back in after an expired session; resolves to whether
+  /// it succeeded. Defaults to `authService.loginAsGuest`, resolved at tap
+  /// time.
+  final Future<bool> Function()? onReauthenticate;
+
+  const VirtualBagScreen({
+    super.key,
+    this.bagBloc,
+    this.healthSyncService,
+    this.onReauthenticate,
+  });
+
+  /// Shown when signing back in after an expired session fails.
+  static const reauthFailedMessage =
+      "Couldn't sign you in. Check your connection and try again.";
 
   static const double kMobileBreakpoint = 600.0;
   static const double kDesktopBreakpoint = 1024.0;
@@ -253,6 +268,28 @@ class _VirtualBagScreenState extends State<VirtualBagScreen> {
     Navigator.maybePop(context);
   }
 
+  /// Re-provisions a session after a 401, then reloads the bag.
+  Future<void> _reauthenticate() async {
+    final signIn = widget.onReauthenticate ?? authService.loginAsGuest;
+    bool signedIn;
+    try {
+      signedIn = await signIn();
+    } catch (e) {
+      debugPrint('VirtualBagScreen: re-authentication failed: $e');
+      signedIn = false;
+    }
+    if (!mounted) return;
+    if (signedIn) {
+      _resolveBloc(context).add(const LoadBag());
+    } else {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          buildErrorSnackBar(VirtualBagScreen.reauthFailedMessage),
+        );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final effectiveBloc = widget.bagBloc ?? context.read<BagBloc>();
@@ -263,6 +300,12 @@ class _VirtualBagScreenState extends State<VirtualBagScreen> {
 
     return BlocConsumer<BagBloc, BagState>(
       bloc: effectiveBloc,
+      // Keep the list (and its RefreshIndicator) mounted while a refresh
+      // reloads the bag.
+      buildWhen: (previous, current) =>
+          !(current is BagLoading &&
+              previous is BagLoaded &&
+              previous.racquets.isNotEmpty),
       listener: (context, state) {
         if (state is BagLoaded && state.infoMessage != null) {
           ScaffoldMessenger.of(context)
@@ -280,9 +323,12 @@ class _VirtualBagScreenState extends State<VirtualBagScreen> {
             ..showSnackBar(buildSuccessSnackBar(state.successMessage!));
         }
         if (state is BagLoaded && state.errorMessage != null) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(buildErrorSnackBar(state.errorMessage!));
+          ScaffoldMessenger.of(context).showSnackBar(
+            buildErrorSnackBar(
+              state.errorMessage!,
+              onSignIn: state.reauthRequired ? _reauthenticate : null,
+            ),
+          );
         }
       },
       builder: (context, state) {
