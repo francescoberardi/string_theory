@@ -1,2 +1,7 @@
 tags:
   integration: {}
+
+# Test files share one database. Decay runs scan every active string job and
+# take a global advisory lock, so files running in parallel would see each
+# other's committed rows and lock. Run the files one at a time.
+concurrency: 1

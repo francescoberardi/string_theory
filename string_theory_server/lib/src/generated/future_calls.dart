@@ -196,6 +196,8 @@ class _DailyDecayFutureCallDispatcher {
 }
 
 /// Entry point called by Serverpod's FutureCall scheduler.
+///
+/// Returns quietly when another decay run holds the lock.
 class DailyDecayExecuteFutureCall extends _is.FutureCall
     implements _is.InvokableFutureCall {
   @override

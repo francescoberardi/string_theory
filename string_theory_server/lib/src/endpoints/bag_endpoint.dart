@@ -213,10 +213,18 @@ class BagEndpoint extends Endpoint {
   /// immediately across active string jobs.
   ///
   /// Intended for on-demand developer/judge demonstration of background decay.
-  /// Returns the number of [StringJob] records updated.
+  /// Returns the number of [StringJob] records updated. Throws a 409
+  /// [BagException] if another decay run is in progress.
   Future<int> triggerDailyDecayNow(Session session) async {
     resolveUserId(session);
-    return await DailyDecayService.performDecayCalculation(session);
+    try {
+      return await DailyDecayService.performDecayCalculation(session);
+    } on DecayRunInProgressException {
+      throw BagException(
+        message: 'A decay run is already in progress',
+        statusCode: 409,
+      );
+    }
   }
 
   /// Shifts the active string job's stringingDate for the given racquet by [days]

@@ -7,15 +7,39 @@ import '../generated/protocol.dart';
 /// across all active [StringJob] records in the database.
 class DailyDecayFutureCall extends FutureCall {
   /// Entry point called by Serverpod's FutureCall scheduler.
+  ///
+  /// Returns quietly when another decay run holds the lock.
   Future<void> execute(Session session) async {
-    await DailyDecayService.performDecayCalculation(session);
+    try {
+      await DailyDecayService.performDecayCalculation(session);
+    } on DecayRunInProgressException {
+      session.log(
+        'DailyDecayFutureCall skipped: another decay run is in progress.',
+        level: LogLevel.info,
+      );
+    }
   }
+}
+
+/// Thrown by [DailyDecayService.performDecayCalculation] when another decay
+/// run holds the decay advisory lock.
+class DecayRunInProgressException implements Exception {
+  /// Creates the exception.
+  const DecayRunInProgressException();
+
+  @override
+  String toString() =>
+      'DecayRunInProgressException: a decay run is already '
+      'in progress';
 }
 
 /// Service performing daily stringbed tension relaxation and health decay calculations.
 class DailyDecayService {
   /// Default number of [StringJob] rows read and written per page.
   static const defaultBatchSize = 500;
+
+  /// PostgreSQL advisory lock key held for the duration of a decay run.
+  static const lockKey = 7421893;
 
   /// Scans all active string jobs and recalculates their health score
   /// based on static calendar shelf-life decay and recorded court hours.
@@ -27,6 +51,12 @@ class DailyDecayService {
   ///
   /// [afterPageRead] is a test seam called with each page after it is read
   /// and before its scores are written, to simulate concurrent updates.
+  ///
+  /// Only one run executes at a time: the run holds the transaction-level
+  /// advisory lock [lockKey] on one otherwise idle transaction, and throws a
+  /// [DecayRunInProgressException] if the lock is taken. The pages are read
+  /// and written outside that transaction, so no row stays locked for the
+  /// whole run, and the lock is released when the run ends, even if it throws.
   ///
   /// Returns the number of [StringJob] records whose health scores were updated.
   static Future<int> performDecayCalculation(
@@ -40,6 +70,30 @@ class DailyDecayService {
     }
     final effectiveNow = now ?? DateTime.now().toUtc();
 
+    return session.db.transaction((lockTransaction) async {
+      final result = await session.db.unsafeQuery(
+        'SELECT pg_try_advisory_xact_lock($lockKey);',
+        transaction: lockTransaction,
+      );
+      if (result.first.first != true) {
+        throw const DecayRunInProgressException();
+      }
+      return _decayAllPages(
+        session,
+        effectiveNow,
+        batchSize,
+        afterPageRead,
+      );
+    });
+  }
+
+  /// Reads active jobs page by page and writes their changed scores.
+  static Future<int> _decayAllPages(
+    Session session,
+    DateTime effectiveNow,
+    int batchSize,
+    Future<void> Function(List<StringJob> page)? afterPageRead,
+  ) async {
     var scannedCount = 0;
     var updatedCount = 0;
     int? lastId;

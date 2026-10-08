@@ -361,7 +361,8 @@ class EndpointBag extends _isc.EndpointRef {
   /// immediately across active string jobs.
   ///
   /// Intended for on-demand developer/judge demonstration of background decay.
-  /// Returns the number of [StringJob] records updated.
+  /// Returns the number of [StringJob] records updated. Throws a 409
+  /// [BagException] if another decay run is in progress.
   _ida.Future<int> triggerDailyDecayNow() => caller.callServerEndpoint<int>(
     'bag',
     'triggerDailyDecayNow',

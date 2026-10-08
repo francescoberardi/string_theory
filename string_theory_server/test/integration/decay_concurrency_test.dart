@@ -42,7 +42,81 @@ void main() {
             );
           });
         },
-        skip: tddRedPhaseReason,
+      );
+
+      test(
+        '[P0] AC-4 should let the cron run return quietly without updates while the decay lock is held',
+        () async {
+          final now = DateTime.now().toUtc();
+          final racquet = await endpoints.bag.createRacquet(
+            tenantA,
+            racquetName: 'Wilson Ultra 100',
+            materialCategory: StringMaterialCategory.coPoly,
+            maxRatedHours: 20.0,
+            stringingDate: now.subtract(const Duration(days: 30)),
+          );
+          final racquetId = racquet.id!;
+
+          try {
+            final session = sessionBuilder.build();
+            await session.db.transaction((tx) async {
+              await session.db.unsafeQuery(
+                'SELECT pg_advisory_xact_lock($_decayLockKey);',
+                transaction: tx,
+              );
+
+              await DailyDecayFutureCall().execute(sessionBuilder.build());
+            });
+
+            final bag = await endpoints.bag.getVirtualBag(tenantA);
+            final job = bag
+                .firstWhere((r) => r.id == racquetId)
+                .activeStringJob!;
+            expect(job.currentHealthScore, equals(100));
+          } finally {
+            await endpoints.bag.deleteRacquet(tenantA, racquetId: racquetId);
+          }
+        },
+      );
+
+      test(
+        '[P0] AC-4 should take the decay lock again after a successful run',
+        () async {
+          await endpoints.bag.triggerDailyDecayNow(tenantA);
+
+          await expectLater(
+            endpoints.bag.triggerDailyDecayNow(tenantA),
+            completion(isA<int>()),
+          );
+        },
+      );
+
+      test(
+        '[P0] AC-4 should take the decay lock again after a run that threw',
+        () async {
+          final racquet = await endpoints.bag.createRacquet(
+            tenantA,
+            racquetName: 'Tecnifibre TF40',
+          );
+          final racquetId = racquet.id!;
+
+          try {
+            await expectLater(
+              DailyDecayService.performDecayCalculation(
+                sessionBuilder.build(),
+                afterPageRead: (_) async => throw StateError('page failed'),
+              ),
+              throwsStateError,
+            );
+
+            await expectLater(
+              endpoints.bag.triggerDailyDecayNow(tenantA),
+              completion(isA<int>()),
+            );
+          } finally {
+            await endpoints.bag.deleteRacquet(tenantA, racquetId: racquetId);
+          }
+        },
       );
 
       test(
