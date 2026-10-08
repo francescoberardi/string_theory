@@ -216,7 +216,101 @@ void main() {
           expect(job.currentHealthScore, equals(scoreWrittenBySession));
           expect(job.totalCourtHours, closeTo(1.5, 0.001));
         },
-        skip: tddRedPhaseReason,
+      );
+
+      test(
+        '[P0] AC-5 should still update untouched jobs in the page and count only written jobs',
+        () async {
+          final now = DateTime.now().toUtc();
+          final stringingDate = now.subtract(const Duration(days: 30));
+          final decayNow = now.add(const Duration(days: 30));
+          final touched = await endpoints.bag.createRacquet(
+            tenantA,
+            racquetName: 'Yonex Ezone 98',
+            maxRatedHours: 20.0,
+            stringingDate: stringingDate,
+          );
+          final untouched = await endpoints.bag.createRacquet(
+            tenantA,
+            racquetName: 'Yonex Percept 97',
+            maxRatedHours: 20.0,
+            stringingDate: stringingDate,
+          );
+
+          final updatedCount = await DailyDecayService.performDecayCalculation(
+            sessionBuilder.build(),
+            now: decayNow,
+            afterPageRead: (_) => endpoints.session.logSession(
+              tenantA,
+              sessionLogFor(touched.id!, durationMinutes: 90),
+            ),
+          );
+
+          expect(updatedCount, equals(1));
+          final bag = await endpoints.bag.getVirtualBag(tenantA);
+          final untouchedJob = bag
+              .firstWhere((r) => r.id == untouched.id)
+              .activeStringJob!;
+          expect(
+            untouchedJob.currentHealthScore,
+            equals(
+              DecayEngine.calculateHealth(
+                hoursPlayed: 0.0,
+                maxRatedHours: 20.0,
+                stringingDate: stringingDate,
+                materialCategory: StringMaterialCategory.coPoly,
+                now: decayNow,
+              ),
+            ),
+          );
+        },
+      );
+
+      test(
+        '[P0] AC-5 should decay a skipped job on the next run',
+        () async {
+          final now = DateTime.now().toUtc();
+          final stringingDate = now.subtract(const Duration(days: 30));
+          final decayNow = now.add(const Duration(days: 30));
+          final racquet = await endpoints.bag.createRacquet(
+            tenantA,
+            racquetName: 'Head Gravity MP',
+            maxRatedHours: 20.0,
+            stringingDate: stringingDate,
+          );
+          final racquetId = racquet.id!;
+
+          final firstRun = await DailyDecayService.performDecayCalculation(
+            sessionBuilder.build(),
+            now: decayNow,
+            afterPageRead: (_) => endpoints.session.logSession(
+              tenantA,
+              sessionLogFor(racquetId, durationMinutes: 90),
+            ),
+          );
+          expect(firstRun, equals(0));
+
+          final secondRun = await DailyDecayService.performDecayCalculation(
+            sessionBuilder.build(),
+            now: decayNow,
+          );
+
+          expect(secondRun, equals(1));
+          final bag = await endpoints.bag.getVirtualBag(tenantA);
+          final job = bag.firstWhere((r) => r.id == racquetId).activeStringJob!;
+          expect(
+            job.currentHealthScore,
+            equals(
+              DecayEngine.calculateHealth(
+                hoursPlayed: 1.5,
+                maxRatedHours: 20.0,
+                stringingDate: stringingDate,
+                materialCategory: StringMaterialCategory.coPoly,
+                now: decayNow,
+              ),
+            ),
+          );
+        },
       );
     },
   );

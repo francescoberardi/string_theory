@@ -47,7 +47,10 @@ class DailyDecayService {
   /// Jobs are read in pages of [batchSize] rows using keyset pagination on
   /// `id`, so memory use stays bounded regardless of table size. Changed
   /// scores in a page are written in one batch update that touches only the
-  /// `currentHealthScore` column.
+  /// `currentHealthScore` column. Each write is conditional on the job's
+  /// `totalCourtHours` being unchanged since the page was read, so a score a
+  /// session wrote in the meantime is never overwritten; such a job is not
+  /// counted and decays on the next run.
   ///
   /// [afterPageRead] is a test seam called with each page after it is read
   /// and before its scores are written, to simulate concurrent updates.
@@ -112,7 +115,8 @@ class DailyDecayService {
       scannedCount += page.length;
       lastId = page.last.id;
       await afterPageRead?.call(page);
-      updatedCount += await _updatePage(session, page, effectiveNow);
+      final written = await _updatePage(session, page, effectiveNow);
+      updatedCount += written.length;
 
       if (page.length < batchSize) break;
     }
@@ -127,8 +131,13 @@ class DailyDecayService {
 
   /// Recalculates health for one page and persists the changed rows.
   ///
-  /// Returns the number of rows written.
-  static Future<int> _updatePage(
+  /// Each write is conditional on the job's `totalCourtHours` still matching
+  /// the value read with the page. A job whose hours a session changed in the
+  /// meantime keeps the score that session wrote and is decayed on the next
+  /// run.
+  ///
+  /// Returns the jobs written, with their new scores.
+  static Future<List<StringJob>> _updatePage(
     Session session,
     List<StringJob> page,
     DateTime now,
@@ -150,16 +159,26 @@ class DailyDecayService {
         _logJobError(session, job, e, stack);
       }
     }
-    if (changed.isEmpty) return 0;
+    if (changed.isEmpty) return const [];
 
     try {
-      await StringJob.db.update(
-        session,
-        changed,
-        columns: (t) => [t.currentHealthScore],
-        noReturn: true,
+      final result = await session.db.unsafeQuery(
+        'UPDATE string_job AS j SET "currentHealthScore" = v.score '
+        'FROM unnest(@ids::bigint[], @scores::bigint[], '
+        '@hours::double precision[]) AS v(id, score, hours) '
+        'WHERE j.id = v.id AND j."totalCourtHours" = v.hours '
+        'RETURNING j.id',
+        parameters: QueryParameters.named({
+          'ids': [for (final job in changed) job.id!],
+          'scores': [for (final job in changed) job.currentHealthScore],
+          'hours': [for (final job in changed) job.totalCourtHours],
+        }),
       );
-      return changed.length;
+      final writtenIds = {for (final row in result) row.first as int};
+      return [
+        for (final job in changed)
+          if (writtenIds.contains(job.id)) job,
+      ];
     } catch (e, stack) {
       session.log(
         'Batch decay update failed for ${changed.length} StringJobs, retrying row by row: $e',
@@ -170,20 +189,22 @@ class DailyDecayService {
 
     // The batch write is all-or-nothing, so fall back to single-row writes to
     // keep one bad row from dropping the rest of the page.
-    var writtenCount = 0;
+    final written = <StringJob>[];
     for (final job in changed) {
       try {
-        await StringJob.db.updateRow(
+        final updated = await StringJob.db.updateWhere(
           session,
-          job,
-          columns: (t) => [t.currentHealthScore],
+          columnValues: (t) => [t.currentHealthScore(job.currentHealthScore)],
+          where: (t) =>
+              t.id.equals(job.id!) &
+              t.totalCourtHours.equals(job.totalCourtHours),
         );
-        writtenCount++;
+        if (updated.isNotEmpty) written.add(job);
       } catch (e, stack) {
         _logJobError(session, job, e, stack);
       }
     }
-    return writtenCount;
+    return written;
   }
 
   static void _logJobError(
