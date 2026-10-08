@@ -41,22 +41,25 @@ inputDocuments:
 **Risk Summary:**
 
 - Total risks identified: 15
-- High-priority risks (≥6): 5 (one scored 9 → **BLOCK** until mitigated)
-- Critical categories: DATA (tenant re-keying), SEC (tenant isolation), OPS (advisory lock lifecycle)
+- High-priority risks (≥6): 5 (none at 9 after the 2026-10-08 data-discard decision)
+- Critical categories: SEC (tenant isolation), OPS (migration on populated DBs, advisory lock lifecycle)
 
 **Headline finding:** today's integer `userId` is a **lossy** projection of the auth UUID
-(`resolveUserIdFromIdentifier` reduces the 128-bit UUID modulo int64 max). The integer cannot be turned
-back into a UUID on its own. Existing rows can only be re-keyed by recomputing that same projection for
-every `serverpod_auth_core_user.id` in SQL and joining on it. A generated `int → uuid` migration will either
-fail or drop data, and `dart test` will never notice, because the test database is created from
+(`resolveUserIdFromIdentifier` reduces the 128-bit UUID modulo int64 max), so existing rows can't be
+re-keyed without an SQL port of that projection.
+
+**Decision (Francesco, 2026-10-08):** existing tenant data in `racquet`, `string_job`, `session_log` and
+`restring_event` **may be discarded**. Auth users are kept. The migration empties the four tables before
+the type change instead of backfilling. What remains is making sure that migration actually applies on a
+database that has rows. `dart test` can't check this, because the test database is created from
 `definition.sql` and never runs `migration.sql`.
 
 **Coverage Summary:**
 
-- P0 scenarios: 22 (~35–50 hours)
-- P1 scenarios: 31 (~25–35 hours)
+- P0 scenarios: 20 (~28–40 hours)
+- P1 scenarios: 32 (~26–36 hours)
 - P2/P3 scenarios: 13 (~6–10 hours)
-- **Total effort**: ~66–95 hours (~8–12 days)
+- **Total effort**: ~60–86 hours (~7–11 days)
 
 **Sequencing recommendation:** implement **6.3 first**. It changes the `userId` type in every generated
 client model, which breaks fixtures in 14 Flutter test files and every server integration suite. Story 6.1,
@@ -81,7 +84,7 @@ client model, which breaks fixtures in 14 Flutter test files and every server in
 
 | Risk ID | Category | Description | Probability | Impact | Score | Mitigation | Owner | Timeline |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| R-001 | DATA | TD-10 migrates `userId` int→`UuidValue` on 4 tables. The int is `UUID mod 0x7FFF…FFFF` (`tenant_resolver.dart`), so it can't be cast back. A generated type change needs `--force` and drops or fails on existing rows, so every guest loses their bag | 3 | 3 | **9** | Hand-edited `migration.sql`: add `userUuid uuid`, backfill by joining `serverpod_auth_core_user` on the SQL port of the projection, assert zero NULLs, drop old column, rename. Keep the end schema identical to `definition.sql`. **Or** record an explicit decision to discard guest data | Dev (6.3) | Before 6.3 merge |
+| R-001 | OPS | TD-10 migrates `userId` int→`UuidValue` on 4 tables; data may be discarded (decision 2026-10-08). A generated `--force` migration that adds a NOT NULL `uuid` column, or casts `bigint`→`uuid`, fails on any table with rows. `serverpod start` applies migrations at boot, so the server won't start on dev/prod databases | 2 | 3 | 6 | Hand-edit `migration.sql` to `TRUNCATE racquet, string_job, session_log, restring_event CASCADE` before the column changes. Keep the end schema identical to `definition.sql`. Migration test on a populated prior-schema DB | Dev (6.3) | Before 6.3 merge |
 | R-002 | SEC | Converting ~60 `userId` call sites (`bag_endpoint.dart`, `session_endpoint.dart`, `BagChannels.forUser(int)`) risks one missed filter or a channel-name mismatch, which leaks or misroutes another tenant's bag | 2 | 3 | 6 | Two-UUID-tenant isolation suite over every endpoint + stream, written red before the type change | Dev (6.3) | With 6.3 |
 | R-003 | TECH | `authUserId` is `UuidValue.withValidation(userIdentifier)`. Every server fixture uses numeric identifiers (`'101'`, `'1'`, `'3201'`), which will throw `FormatException` and surface as a 500 instead of a 401. Whole suites go red for the wrong reason | 3 | 2 | 6 | Shared test identity helper (fixed UUID constants per tenant); TenantResolver maps a missing/invalid identifier to `BagException(401)` | Dev (6.3) | First commit of 6.3 |
 | R-005 | DATA | TD-8 conditional write (`WHERE id=@jobId AND "totalCourtHours"=@read`) can't be expressed through the current batch `StringJob.db.update(columns: …)`. A naive rewrite either keeps overwriting (lost race) or skips every row | 2 | 3 | 6 | Deterministic race test with a seam between page read and write; assert skip count and preserved hours | Dev (6.3) | With 6.3 |
@@ -92,7 +95,7 @@ client model, which breaks fixtures in 14 Flutter test files and every server in
 | Risk ID | Category | Description | Probability | Impact | Score | Mitigation | Owner |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | R-004 | DATA | Composite unique `(userId, externalWorkoutId)` changes dedup semantics: the cross-tenant 409 at `session_endpoint.dart:118` disappears, and the same workout ID becomes valid for two tenants | 2 | 2 | 4 | Integration tests for same-tenant idempotency + cross-tenant independence; remove the dead 409 branch | Dev |
-| R-008 | BUS | New `logSession` bounds (`1..360` min, `startTime ≤ now+5m`). A replayed offline session rejected with 400 could loop forever in the offline queue | 2 | 2 | 4 | Boundary tests server-side; queue drops on a 4xx validation error | Dev |
+| R-008 | BUS | New `logSession` bounds (`1..360` min, `startTime ≤ now+5m`). A replayed offline session rejected with 400, or one queued against a racquet the migration deleted (404), could loop forever in the offline queue | 2 | 2 | 4 | Boundary tests server-side; queue drops entries on a non-401 4xx | Dev |
 | R-009 | BUS | TD-1/TD-2: keeping optimistic state after a failed reload can diverge from the server; pull-to-refresh that never resolves hangs the spinner | 2 | 2 | 4 | bloc_test per mutation + widget test with 8 s timeout via fake async | Dev |
 | R-010 | SEC | TD-3: `bag_bloc.dart:565` enqueues on any failure, so 401s are queued as "saved offline" forever | 2 | 2 | 4 | bloc_test: 401 → re-auth, not queued, no toast | Dev |
 | R-011 | DATA | TD-5/TD-6: FIFO buffer + persisted processed IDs. Marking an ID processed before assignment completes silently loses a match | 2 | 2 | 4 | Unit tests on mark-after-assign/dismiss; restart test | Dev |
@@ -109,7 +112,7 @@ client model, which breaks fixtures in 14 Flutter test files and every server in
 
 ### Residual Risk
 
-After mitigation: R-001 drops to 3 (P1×I3) with the harness green; R-002, R-005 and R-006 drop to 3 with their tests green; R-003 drops to 2. The remaining exposure is real-device health plugin behaviour (6.2), which is covered by a manual check only.
+After mitigation: R-001 drops to 3 (P1×I3) with the migration test green; R-002, R-005 and R-006 drop to 3 with their tests green; R-003 drops to 2. The remaining exposure is real-device health plugin behaviour (6.2), which is covered by a manual check only.
 
 ### Risk Category Legend
 
@@ -127,7 +130,7 @@ After mitigation: R-001 drops to 3 (P1×I3) with the harness green; R-002, R-005
 | NFR Category | Requirement / Threshold | Risk Link | Planned Validation | Evidence Needed |
 | --- | --- | --- | --- | --- |
 | Security | Zero cross-tenant reads/writes/stream messages (multi-tenant rule in AGENTS.md) | R-002, R-010 | Two-tenant integration suite, stream isolation | `dart test` report |
-| Data integrity | 100% of pre-migration rows keep their owner after migration; 0 NULL `userId` | R-001 | Migration harness on a seeded prior-schema DB | Harness log + row-count diff |
+| Reliability (migration) | Migration applies on a populated prior-schema DB; post-migration schema equals `definition.sql` | R-001 | Migration test script | Script log + schema diff |
 | Reliability | Exactly one concurrent decay run; dev trigger 409 when busy (TD-7); sync timeout 5 s, cooldown 60 s (TD-4); refresh timeout 8 s (TD-2) | R-006, R-012, R-009 | Integration + fake-clock unit tests | Test reports |
 | Maintainability | CI deterministic, no live-socket waits (TD-14); scoped drift check (TD-13) | R-013 | CI run on PR | GitHub Actions logs |
 
@@ -137,16 +140,16 @@ After mitigation: R-001 drops to 3 (P1×I3) with the harness green; R-002, R-005
 
 ## Entry Criteria
 
-- [ ] **Decision recorded for R-001:** backfill existing tenant rows, or wipe guest data (see Assumptions)
+- [x] **Decision recorded for R-001:** discard existing tenant rows (Francesco, 2026-10-08)
 - [ ] Shared UUID test-identity helper exists on server and Flutter sides (R-003, R-015)
-- [ ] Migration harness can boot the embedded PostgreSQL at migration `20261005101241116` and apply the new `migration.sql`
+- [ ] Migration test script can boot the embedded PostgreSQL at migration `20261005101241116` and apply the new `migration.sql`
 - [ ] Epic 5 suites green on `main`
 
 ## Exit Criteria
 
 - [ ] All P0 tests passing
 - [ ] All P1 tests passing (or failures triaged)
-- [ ] R-001 score reduced below 6 (harness green) or a signed waiver for data discard
+- [ ] R-001 score reduced below 6 (migration test green on a populated DB)
 - [ ] Post-migration schema diff vs `definition.sql` is empty
 - [ ] Epic 1.5 open retro items closed by 6.5
 
@@ -158,14 +161,14 @@ After mitigation: R-001 drops to 3 (P1×I3) with the harness green; R-002, R-005
 
 | Requirement | Test Level | Risk Link | Test Count | Owner | Notes |
 | --- | --- | --- | --- | --- | --- |
-| 6.3 Migration preserves ownership: seed rows under projected ints for 3 known auth UUIDs (+1 orphan int with no auth user) → apply `migration.sql` → each row's `userId` equals its UUID; counts unchanged; orphan handled per decision | Integration (DB script) | R-001 | 3 | Dev | **Not reachable from `dart test`** (test DB is built from `definition.sql`). Needs its own script/CI job |
+| 6.3 Migration on a populated DB: seed all 4 tables (incl. `racquet.activeStringJobId` FK) at migration `20261005101241116` → apply new `migration.sql` → succeeds and the 4 tables are empty; auth user rows untouched | Integration (DB script) | R-001 | 1 | Dev | **Not reachable from `dart test`** (test DB is built from `definition.sql`). Needs its own script/CI job |
 | 6.3 Post-migration schema equals `definition.sql` | Integration (DB script) | R-001 | 1 | Dev | `pg_dump --schema-only` diff |
 | 6.3 Tenant isolation, two UUID tenants: `getVirtualBag`, `addRacquet`, `setPrimaryRacquet`, `deleteRacquet`, `restringRacquet`, `logSession`, `getSessions`, `bagUpdates` | API (endpoint integration) | R-002 | 8 | Dev | Many exist with int fixtures; convert, don't duplicate |
 | 6.3 TenantResolver: valid identifier → `UuidValue`; unauthenticated → 401; non-UUID identifier → 401 (not 500) | Unit + API | R-002, R-003 | 3 | Dev | Replaces the 21 hash/modulus unit tests, which get deleted |
 | 6.3 Advisory lock: concurrent runs → one executes; dev trigger 409; cron returns quietly; lock re-acquirable after success and after a thrown error | API (integration) | R-006 | 4 | Dev | Concurrency via two sessions; error path via a bad row |
 | 6.3 Optimistic write: session logged between read and write → job skipped, hours preserved; untouched jobs still updated; skipped job decays next run | API (integration) | R-005 | 3 | Dev | Needs a test seam (callback after page read) |
 
-**Total P0**: 22 tests, ~35–50 hours
+**Total P0**: 20 tests, ~28–40 hours
 
 ### P1 (High)
 
@@ -173,7 +176,7 @@ After mitigation: R-001 drops to 3 (P1×I3) with the harness green; R-002, R-005
 | --- | --- | --- | --- | --- | --- |
 | 6.3 Composite unique index: same tenant duplicate → original row returned; same `externalWorkoutId` for two tenants → both succeed; index exists | API | R-004 | 3 | Dev | |
 | 6.3 `logSession` bounds: duration 0 / 1 / 360 / 361; startTime now+5m accepted, now+6m rejected | API | R-008 | 6 | Dev | Use injected clock; avoid wall-clock flake |
-| 6.1/6.3 Offline queue drops a session rejected with a 4xx validation error | Unit (Flutter) | R-008 | 1 | Dev | |
+| 6.1/6.3 Offline queue drops a session rejected with 400 (validation) or 404 (racquet deleted by migration) | Unit (Flutter) | R-008 | 2 | Dev | 401 stays with 6.1's re-auth path |
 | 6.3 Decay broadcast: score change publishes to owner's channel only; no change → no message | API (stream) | R-007, R-002 | 3 | Dev | Reuse `bag_stream_test.dart` patterns |
 | 6.1 Mutation OK + reload fails → no error, state kept, resync scheduled (add/delete/setPrimary/fastForward) | Unit (bloc_test) | R-009 | 4 | Dev | |
 | 6.1 Pull-to-refresh awaits `BagLoaded`/`BagError`; 8 s timeout releases spinner | Component (widget) | R-009 | 3 | Dev | `fakeAsync` |
@@ -182,7 +185,7 @@ After mitigation: R-001 drops to 3 (P1×I3) with the harness green; R-002, R-005
 | 6.2 FIFO: batch of 3 presented in order; arrival while sheet open buffered; dismiss advances | Unit (bloc) + Component | R-011 | 3 | Dev | |
 | 6.2 Processed IDs persisted only after assign/dismiss; cold start doesn't re-alert | Unit | R-011 | 2 | Dev | Fake key-value store |
 
-**Total P1**: 31 tests, ~25–35 hours
+**Total P1**: 32 tests, ~26–36 hours
 
 ### P2 (Medium)
 
@@ -209,8 +212,8 @@ After mitigation: R-001 drops to 3 (P1×I3) with the harness green; R-002, R-005
 
 ## Execution Strategy
 
-- **Order within a run:** analyze/format smoke → migration harness + server P0 → P1 → P2/P3 → Patrol.
-- **Pull request:** all server `dart test` suites (embedded PostgreSQL), all Flutter unit/widget/bloc tests, the Patrol app test, and the **migration harness** (R-001). It's one extra job of a few minutes and the only guard on `migration.sql`, so it should not be nightly.
+- **Order within a run:** analyze/format smoke → migration test + server P0 → P1 → P2/P3 → Patrol.
+- **Pull request:** all server `dart test` suites (embedded PostgreSQL), all Flutter unit/widget/bloc tests, the Patrol app test, and the **migration test** (R-001). It's one extra job of a few minutes and the only guard on `migration.sql`, so it should not be nightly.
 - **Nightly:** none needed. The concurrency tests are deterministic via seams and don't need repetition.
 - **Weekly:** manual device check of HealthKit / Health Connect lifecycle sync (6.2).
 
@@ -220,22 +223,21 @@ After mitigation: R-001 drops to 3 (P1×I3) with the harness green; R-002, R-005
 
 | Priority | Count | Hours/Test | Total Hours | Notes |
 | --- | --- | --- | --- | --- |
-| P0 | 22 | ~1.5–2.5 | ~35–50 | Migration harness is most of it |
-| P1 | 31 | ~0.8–1.1 | ~25–35 | |
+| P0 | 20 | ~1.4–2.0 | ~28–40 | Isolation suite + concurrency seams |
+| P1 | 32 | ~0.8–1.1 | ~26–36 | |
 | P2 | 11 | ~0.5–0.7 | ~5–8 | |
 | P3 | 2 | ~0.5–1 | ~1–2 | |
-| **Total** | **66** | **-** | **~66–95** | **~8–12 days** |
+| **Total** | **65** | **-** | **~60–86** | **~7–11 days** |
 
 ### Prerequisites
 
 **Test Data:**
 
 - `TestTenants` constants (server + Flutter): fixed UUIDs for tenants A/B and a matching `AuthenticationOverride` builder
-- Projection helper in SQL and Dart, used both by the migration and to seed the harness with "old" int keys
 
 **Tooling:**
 
-- Migration harness script: embedded PostgreSQL → apply migrations up to `20261005101241116` → seed → apply new migration → assert
+- Migration test script: embedded PostgreSQL → apply migrations up to `20261005101241116` → seed → apply new migration → assert success, empty tables, schema diff
 - Test seam on `DailyDecayService` (post-read callback) for the race test
 - `fakeAsync` / injectable clock for 6.1 and 6.2
 
@@ -264,7 +266,7 @@ After mitigation: R-001 drops to 3 (P1×I3) with the harness green; R-002, R-005
 ### Non-Negotiable Requirements
 
 - [ ] All P0 tests pass
-- [ ] R-001 harness green, or a written data-discard decision
+- [ ] R-001 migration test green
 - [ ] SEC isolation tests pass 100%
 - [ ] Planned NFR evidence exists or `nfr-assess` has documented CONCERNS/waivers
 
@@ -272,17 +274,18 @@ After mitigation: R-001 drops to 3 (P1×I3) with the harness green; R-002, R-005
 
 ## Mitigation Plans
 
-### R-001: Lossy int → UUID tenant re-keying (Score: 9)
+### R-001: int → UUID migration fails on populated databases (Score: 6)
 
-**Mitigation Strategy:** Edit the generated `migration.sql` (the AGENTS.md exception for data-preserving migrations):
-1. Add a nullable `uuid` column per table.
-2. Backfill: `UPDATE racquet r SET new_id = u.id FROM serverpod_auth_core_user u WHERE r."userId" = projection(u.id)`. `projection` is a temporary PL/pgSQL function that ports `resolveUserIdFromIdentifier`'s hex branch (strip `-`, parse hex as numeric, `mod 9223372036854775807`).
-3. Handle orphans (rows whose int matches no auth user, e.g. test data) per the recorded decision.
-4. Set the column NOT NULL, drop the old column, rename, recreate indexes. Drop the temp function.
-5. Check that the resulting schema is byte-identical to `definition.sql`.
+**Decision:** existing tenant data may be discarded (Francesco, 2026-10-08).
+
+**Mitigation Strategy:** Create the migration with `create_migration` (force), then edit only its `migration.sql`:
+1. `TRUNCATE "restring_event", "session_log", "string_job", "racquet" CASCADE;` as the first statement. It clears the `racquet.activeStringJobId` ↔ `string_job.racquetId` cycle in one step.
+2. Keep the generated column/index changes, including the composite `(userId, externalWorkoutId)` index on `session_log`.
+3. Leave `serverpod_auth_*` tables untouched so guests keep their identity and just see an empty bag.
+4. Check that the resulting schema equals `definition.sql`.
 
 **Owner:** Dev · **Timeline:** before the 6.3 merge · **Status:** Planned
-**Verification:** P0 migration harness (4 tests) + schema diff.
+**Verification:** P0 migration test (1) + schema diff (1).
 
 ### R-002: Tenant isolation regression (Score: 6)
 
@@ -310,20 +313,20 @@ After mitigation: R-001 drops to 3 (P1×I3) with the harness green; R-002, R-005
 
 ### Assumptions
 
-1. Every existing tenant int was produced from a real `serverpod_auth_core_user` UUID via the hex branch. Only test data used numeric identifiers (stated in the `tenant_resolver.dart` doc comment).
-2. Discarding guest data is acceptable **only if** explicitly decided. This plan does not assume it. **Open question for Francesco.**
+1. Discarding existing racquet/string/session/restring data is acceptable (decided by Francesco, 2026-10-08). Auth users are kept.
+2. Clients with stale cached bags or queued offline sessions recover through a normal reload; queued sessions for deleted racquets are dropped (R-008).
 3. Serverpod's `unsafeQuery`/`unsafeExecute` is acceptable for the advisory lock and the conditional write.
 
 ### Dependencies
 
 1. 6.3 lands before 6.1/6.2/6.4 test work (fixture churn).
-2. The migration harness job is added to `tests.yml` alongside 6.5's CI changes.
+2. The migration test job is added to `tests.yml` alongside 6.5's CI changes.
 
 ### Risks to Plan
 
-- **Risk**: the migration harness is harder than estimated (embedded PG lifecycle outside `serverpod_test`)
+- **Risk**: the migration test script is harder than estimated (embedded PG lifecycle outside `serverpod_test`)
   - **Impact**: P0 slips by 1–2 days
-  - **Contingency**: run the harness against the docker-compose Postgres locally and in CI
+  - **Contingency**: run the migration test against the docker-compose Postgres locally and in CI
 
 ---
 
