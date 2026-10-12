@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:health/health.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'health_sync_service.dart';
 
@@ -93,13 +94,23 @@ class NativeHealthSyncService implements HealthSyncService {
   /// Already seen workouts are skipped by id.
   static const syncOverlap = Duration(hours: 24);
 
+  /// Key under which handled and dismissed workout IDs are persisted.
+  static const _storageKey = 'handled_workout_ids_v1';
+
+  /// Maximum duration allowed for a sync query before timing out safely.
+  static const syncTimeout = Duration(seconds: 5);
+
   final DateTime Function() _now;
   HealthPluginGateway? _gateway;
+  final SharedPreferences? _prefs;
   final _controller = StreamController<DetectedWorkout>.broadcast();
   final _pending = <DetectedWorkout>[];
   final _seenIds = <String>{};
   DateTime? _lastSync;
   final Duration _initialLookback;
+  bool _isSyncing = false;
+  bool _hasPermission = true;
+  bool _storageLoaded = false;
 
   /// The plugin gateway is created lazily on the first sync, so constructing
   /// this service never touches the platform channel.
@@ -107,6 +118,7 @@ class NativeHealthSyncService implements HealthSyncService {
     this._gateway,
     DateTime Function()? now,
     this._initialLookback = defaultInitialLookback,
+    this._prefs,
   }) : _now = now ?? DateTime.now;
 
   HealthPluginGateway get _resolvedGateway =>
@@ -119,25 +131,76 @@ class NativeHealthSyncService implements HealthSyncService {
   bool get supportsSimulation => false;
 
   @override
+  bool get hasPermission => _hasPermission;
+
+  @override
   List<DetectedWorkout> get pendingWorkouts => List.unmodifiable(_pending);
+
+  Future<SharedPreferences?> _resolvePrefs() async {
+    if (_prefs != null) return _prefs;
+    try {
+      return await SharedPreferences.getInstance();
+    } catch (e) {
+      debugPrint('HealthSync: SharedPreferences unavailable: $e');
+      return null;
+    }
+  }
+
+  Future<void> _ensureStorageLoaded() async {
+    if (_storageLoaded) return;
+    try {
+      final prefs = await _resolvePrefs();
+      final stored = prefs?.getStringList(_storageKey);
+      if (stored != null) {
+        _seenIds.addAll(stored);
+      }
+    } catch (e) {
+      debugPrint('HealthSync: failed to load persisted workout IDs: $e');
+    }
+    _storageLoaded = true;
+  }
+
+  Future<void> _persistHandledId(String id) async {
+    try {
+      final prefs = await _resolvePrefs();
+      if (prefs == null) return;
+      final currentList = prefs.getStringList(_storageKey) ?? <String>[];
+      if (!currentList.contains(id)) {
+        currentList.add(id);
+        await prefs.setStringList(_storageKey, currentList);
+      }
+    } catch (e) {
+      debugPrint('HealthSync: failed to persist handled workout ID: $e');
+    }
+  }
 
   @override
   Future<List<DetectedWorkout>> syncWorkouts() async {
-    final end = _now().toUtc();
-    final lastSync = _lastSync;
-    final start = lastSync == null
-        ? end.subtract(_initialLookback)
-        : lastSync.subtract(syncOverlap);
+    if (_isSyncing) return const [];
+    _isSyncing = true;
 
     try {
+      await _ensureStorageLoaded();
+      final end = _now().toUtc();
+      final lastSync = _lastSync;
+      final start = lastSync == null
+          ? end.subtract(_initialLookback)
+          : lastSync.subtract(syncOverlap);
+
       final gateway = _resolvedGateway;
-      final authorized = await gateway.requestAuthorization();
+      final authorized = await gateway.requestAuthorization().timeout(
+        syncTimeout,
+      );
       if (!authorized) {
+        _hasPermission = false;
         debugPrint('HealthSync: workout read permission denied');
         return const [];
       }
+      _hasPermission = true;
 
-      final points = await gateway.fetchWorkouts(start: start, end: end);
+      final points = await gateway
+          .fetchWorkouts(start: start, end: end)
+          .timeout(syncTimeout);
       final detected = <DetectedWorkout>[];
       for (final point in points) {
         final workout = _mapTennisWorkout(point, end);
@@ -154,6 +217,8 @@ class NativeHealthSyncService implements HealthSyncService {
     } catch (error) {
       debugPrint('HealthSync: workout sync failed: $error');
       return const [];
+    } finally {
+      _isSyncing = false;
     }
   }
 
@@ -190,6 +255,8 @@ class NativeHealthSyncService implements HealthSyncService {
   @override
   void dismissPendingWorkout(String externalWorkoutId) {
     _pending.removeWhere((w) => w.externalWorkoutId == externalWorkoutId);
+    _seenIds.add(externalWorkoutId);
+    unawaited(_persistHandledId(externalWorkoutId));
   }
 
   @override

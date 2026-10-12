@@ -40,6 +40,9 @@ class SimulatedHealthSyncService implements HealthSyncService {
   bool get supportsSimulation => true;
 
   @override
+  bool get hasPermission => true;
+
+  @override
   List<DetectedWorkout> get pendingWorkouts => List.unmodifiable(_pending);
 
   @override

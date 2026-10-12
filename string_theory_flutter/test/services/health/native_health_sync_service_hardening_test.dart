@@ -62,6 +62,9 @@ void main() {
           syncResult = result;
         });
 
+        // Allow microtasks to execute so the first sync reaches the in-flight fetch.
+        await tester.pump();
+
         // Concurrently call syncWorkouts while first sync is in flight.
         // Concurrency guard should prevent duplicate gateway fetch.
         service.syncWorkouts();
@@ -90,6 +93,7 @@ void main() {
         gateway.fetchCompleter = null;
         gateway.pointsToReturn = [];
         service.syncWorkouts();
+        await tester.pump();
         expect(
           gateway.fetchCalls,
           equals(2),

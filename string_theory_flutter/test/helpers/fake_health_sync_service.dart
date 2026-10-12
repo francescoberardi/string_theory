@@ -7,6 +7,9 @@ class FakeHealthSyncService implements HealthSyncService {
   @override
   final bool supportsSimulation;
 
+  @override
+  bool hasPermission;
+
   final _controller = StreamController<DetectedWorkout>.broadcast();
   final _pending = <DetectedWorkout>[];
   int simulateCalls = 0;
@@ -15,7 +18,10 @@ class FakeHealthSyncService implements HealthSyncService {
   /// Workouts the next [syncWorkouts] call detects and emits as one batch.
   List<DetectedWorkout> nextSyncBatch = [];
 
-  FakeHealthSyncService({this.supportsSimulation = false});
+  FakeHealthSyncService({
+    this.supportsSimulation = false,
+    this.hasPermission = false,
+  });
 
   void emit(DetectedWorkout workout) {
     _pending.add(workout);

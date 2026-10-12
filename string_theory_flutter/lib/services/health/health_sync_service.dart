@@ -53,6 +53,11 @@ abstract class HealthSyncService {
   /// Whether [simulateWorkout] is available (web / desktop only).
   bool get supportsSimulation;
 
+  /// Whether health data read permission has been granted.
+  ///
+  /// Evaluates to `false` when the underlying platform authorization is missing or denied.
+  bool get hasPermission;
+
   /// Workouts detected so far that have not been assigned yet.
   List<DetectedWorkout> get pendingWorkouts;
 

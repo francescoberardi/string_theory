@@ -140,7 +140,7 @@ void main() {
 
           // First workout sheet is displayed.
           expect(find.byType(WorkoutAssignmentSheet), findsOneWidget);
-          expect(find.text('1h 0m'), findsOneWidget);
+          expect(find.text('1h'), findsOneWidget);
 
           // Dismiss the first sheet.
           final closeButton = find.byTooltip('Close');

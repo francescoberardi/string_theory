@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:collection';
 
+import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -25,6 +27,7 @@ import '../widgets/bag/log_session_fab.dart';
 import '../widgets/bag/pending_sync_banner.dart';
 import '../widgets/bag/sessions_placeholder.dart';
 import '../widgets/bag/simulate_workout_badge.dart';
+import '../widgets/health/health_permission_guidance.dart';
 import '../widgets/workout_assignment_sheet.dart';
 import 'settings_screen.dart';
 
@@ -82,15 +85,74 @@ class VirtualBagScreen extends StatefulWidget {
   State<VirtualBagScreen> createState() => _VirtualBagScreenState();
 }
 
-class _VirtualBagScreenState extends State<VirtualBagScreen> {
+class _VirtualBagScreenState extends State<VirtualBagScreen>
+    with WidgetsBindingObserver {
   int _navIndex = AppNavigationDestination.bag.index;
   HealthSyncService? _healthSyncService;
   StreamSubscription<DetectedWorkout>? _workoutSubscription;
 
   /// Detections received since the last frame, surfaced as one SnackBar.
   final _detectionBuffer = <DetectedWorkout>[];
+  final _pendingWorkoutsQueue = Queue<DetectedWorkout>();
   bool _detectionFlushScheduled = false;
   bool _isAssignmentSheetOpen = false;
+  DateTime? _lastSyncTime;
+  static const _syncCooldown = Duration(seconds: 60);
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _syncIfCooldownElapsed();
+    }
+  }
+
+  void _syncIfCooldownElapsed() {
+    final last = _lastSyncTime;
+    final now = clock.now();
+    if (last == null || now.difference(last) >= _syncCooldown) {
+      _triggerSync();
+    }
+  }
+
+  Future<void> _triggerSync() async {
+    _lastSyncTime = clock.now();
+    try {
+      await _healthSyncService?.syncWorkouts();
+    } finally {
+      if (mounted) {
+        setState(() {});
+      }
+    }
+  }
+
+  void _presentNextPendingWorkout() {
+    if (!mounted || _isAssignmentSheetOpen || _pendingWorkoutsQueue.isEmpty) {
+      return;
+    }
+    final bloc = _resolveBloc(context);
+    final currentState = bloc.state;
+    final racquets = (currentState is BagLoaded)
+        ? currentState.racquets
+        : <Racquet>[];
+
+    // Auto-open only over the bag tab itself; otherwise the Assign action
+    // below remains the way in.
+    final isBagVisible =
+        _navIndex == AppNavigationDestination.bag.index &&
+        (ModalRoute.of(context)?.isCurrent ?? true);
+    if (racquets.isEmpty || !isBagVisible) {
+      return;
+    }
+
+    final nextWorkout = _pendingWorkoutsQueue.removeFirst();
+    _openDetectedAssignmentSheet(nextWorkout, racquets, bloc);
+  }
 
   Future<void> _openDetectedAssignmentSheet(
     DetectedWorkout workout,
@@ -110,6 +172,7 @@ class _VirtualBagScreenState extends State<VirtualBagScreen> {
     } finally {
       if (mounted) {
         _isAssignmentSheetOpen = false;
+        _presentNextPendingWorkout();
       }
     }
   }
@@ -158,7 +221,7 @@ class _VirtualBagScreenState extends State<VirtualBagScreen> {
     _healthSyncService = service;
     _workoutSubscription = service.workouts.listen(_onWorkoutDetected);
     // Pull recently completed workouts (no-op when simulated).
-    unawaited(service.syncWorkouts());
+    _triggerSync();
   }
 
   /// Buffers detections arriving within the same frame (e.g. one sync that
@@ -179,6 +242,8 @@ class _VirtualBagScreenState extends State<VirtualBagScreen> {
     _detectionBuffer.clear();
     if (!mounted || batch.isEmpty) return;
 
+    _pendingWorkoutsQueue.addAll(batch);
+
     final message = switch (batch) {
       [final workout] =>
         '${formatting.formatWorkoutDuration(workout.durationMinutes)} '
@@ -186,19 +251,8 @@ class _VirtualBagScreenState extends State<VirtualBagScreen> {
       _ => '${batch.length} Tennis Matches Detected',
     };
 
-    final bloc = _resolveBloc(context);
-    final currentState = bloc.state;
-    final racquets = (currentState is BagLoaded)
-        ? currentState.racquets
-        : <Racquet>[];
-
-    // Auto-open only over the bag tab itself; otherwise the Assign action
-    // below remains the way in.
-    final isBagVisible =
-        _navIndex == AppNavigationDestination.bag.index &&
-        (ModalRoute.of(context)?.isCurrent ?? true);
-    if (racquets.isNotEmpty && isBagVisible) {
-      _openDetectedAssignmentSheet(batch.first, racquets, bloc);
+    if (!_isAssignmentSheetOpen) {
+      _presentNextPendingWorkout();
     }
 
     // Replace any detection still on screen instead of queueing behind it.
@@ -214,8 +268,11 @@ class _VirtualBagScreenState extends State<VirtualBagScreen> {
             if (_isAssignmentSheetOpen) return;
             final bloc = _resolveBloc(context);
             final activeState = bloc.state;
+            final targetWorkout = _pendingWorkoutsQueue.isNotEmpty
+                ? _pendingWorkoutsQueue.removeFirst()
+                : batch.first;
             _openDetectedAssignmentSheet(
-              batch.first,
+              targetWorkout,
               activeState is BagLoaded ? activeState.racquets : <Racquet>[],
               bloc,
             );
@@ -226,6 +283,7 @@ class _VirtualBagScreenState extends State<VirtualBagScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _workoutSubscription?.cancel();
     super.dispose();
   }
@@ -491,11 +549,24 @@ class _VirtualBagScreenState extends State<VirtualBagScreen> {
               isMobile: isMobile,
               crossAxisCount: crossAxisCount,
             );
-      if (state.pendingSyncCount <= 0) return body;
+      final hasPendingSync = state.pendingSyncCount > 0;
+      final showPermissionGuidance =
+          _healthSyncService != null && !_healthSyncService!.hasPermission;
+
+      if (!hasPendingSync && !showPermissionGuidance) return body;
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          PendingSyncBanner(count: state.pendingSyncCount, isMobile: isMobile),
+          if (showPermissionGuidance)
+            HealthPermissionGuidance(
+              isMobile: isMobile,
+              onRequestPermission: () => _triggerSync(),
+            ),
+          if (hasPendingSync)
+            PendingSyncBanner(
+              count: state.pendingSyncCount,
+              isMobile: isMobile,
+            ),
           Expanded(child: body),
         ],
       );

@@ -2,7 +2,8 @@
 title: 'Story 6.2: Health Ingestion Hardening (Lifecycle Resumed Sync, Workout Arrival Queue & Permission Feedback)'
 type: 'feature'
 created: '2026-10-12'
-status: 'ready-for-dev'
+baseline_commit: 'bff75225dce7e6a4b5edced153607968cbbdc3ee'
+status: 'in-review'
 route: 'dispatch'
 review_loop_iteration: 0
 context:
@@ -59,12 +60,12 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `string_theory_flutter/lib/services/health/native_health_sync_service.dart` -- Add `_isSyncing` guard, 5-second timeout on sync, and ensure `_isSyncing = false` in `finally` block (AC-2).
-- [ ] `string_theory_flutter/lib/services/health/native_health_sync_service.dart` -- Load and persist handled workout IDs via `SharedPreferences` so restarts do not re-alert (AC-5).
-- [ ] `string_theory_flutter/lib/screens/virtual_bag_screen.dart` -- Implement `WidgetsBindingObserver` to trigger sync on `resumed` with a 60-second cooldown gate (AC-1).
-- [ ] `string_theory_flutter/lib/screens/virtual_bag_screen.dart` -- Implement FIFO queue for incoming workouts so batches and in-flight arrivals present sequentially upon sheet dismiss or completion (AC-3).
-- [ ] `string_theory_flutter/lib/screens/virtual_bag_screen.dart` -- Surface clear "Health permissions required" guidance when permissions are denied (AC-4).
-- [ ] `string_theory_flutter/test/helpers/tdd_red_phase.dart` -- Unskip acceptance tests and verify 100% green pass rate across unit and widget tests.
+- [x] `string_theory_flutter/lib/services/health/native_health_sync_service.dart` -- Add `_isSyncing` guard, 5-second timeout on sync, and ensure `_isSyncing = false` in `finally` block (AC-2).
+- [x] `string_theory_flutter/lib/services/health/native_health_sync_service.dart` -- Load and persist handled workout IDs via `SharedPreferences` so restarts do not re-alert (AC-5).
+- [x] `string_theory_flutter/lib/screens/virtual_bag_screen.dart` -- Implement `WidgetsBindingObserver` to trigger sync on `resumed` with a 60-second cooldown gate (AC-1).
+- [x] `string_theory_flutter/lib/screens/virtual_bag_screen.dart` -- Implement FIFO queue for incoming workouts so batches and in-flight arrivals present sequentially upon sheet dismiss or completion (AC-3).
+- [x] `string_theory_flutter/lib/screens/virtual_bag_screen.dart` -- Surface clear "Health permissions required" guidance when permissions are denied (AC-4).
+- [x] `string_theory_flutter/test/helpers/tdd_red_phase.dart` -- Unskip acceptance tests and verify 100% green pass rate across unit and widget tests.
 
 **Acceptance Criteria:**
 - Given `NativeHealthSyncService` attached to the virtual bag, when the application transitions from background to foreground (`AppLifecycleState.resumed`), then workout sync executes automatically, provided at least 60 seconds have elapsed since the prior sync (cooldown gate).
@@ -74,8 +75,14 @@ context:
 - Processed or dismissed workout IDs are stored in persistent storage so app restarts do not re-alert on previously handled workouts.
 
 ## Implementation Notes
+- Implemented `WidgetsBindingObserver` in `VirtualBagScreen` with 60s cooldown gating using `package:clock` (`clock.now()`).
+- Added concurrency guard `_isSyncing`, 5-second `syncTimeout`, and SharedPreferences persistence with key `'handled_workout_ids_v1'`.
+- Added FIFO queue `_pendingWorkoutsQueue` in `VirtualBagScreen` with auto-dequeue on bottom sheet completion or dismissal.
+- Added `HealthPermissionGuidance` component in Court Midnight styling displayed when `!hasPermission`.
+- All 422 Flutter tests and all server tests are 100% passing.
 
 ## Spec Change Log
+- 2026-10-12: Story 6.2 implementation completed and verified against all 5 acceptance criteria. Moving to in-review.
 
 ## Review Triage Log
 

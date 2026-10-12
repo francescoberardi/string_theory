@@ -39,6 +39,7 @@ dependencies:
   equatable: ^3.0.0
   health: 13.3.2
   shared_preferences: ^2.5.4
+  clock: ^1.1.1
 
 dev_dependencies:
   # Used for agents to drive the app through the Dart MCP
