@@ -72,9 +72,10 @@ flowchart TD
 * **Rule:** A racquet frame is modeled as `Racquet`. Each stringing installation is modeled as `StringJob`. A `Racquet` references one active `StringJob` (`isActive = true`). When a racquet is restrung, the active `StringJob` is marked `isActive = false`, a `RestringEvent` is created, and a new `StringJob` is activated.
 
 ### AD-3: Direct Multi-Tenant Scoping (`userId` on All Tables) [ADOPTED]
-* **Binds:** `FR-1`, `FR-2`, `NFR-8`, `NFR-9`
+* **Binds:** `FR-1`, `FR-2`, `FR-20`, `NFR-8`, `NFR-9`
 * **Prevents:** Cross-tenant data leaks, SQL multi-table join latency, and background worker lookup overhead.
-* **Rule:** All database tables (`Racquet`, `StringJob`, `SessionLog`, `RestringEvent`) must include an indexed `userId: int` column. Serverpod endpoints must strictly filter by `session.authenticated.userId` on every operation without relying on indirect joins.
+* **Rule:** All database tables (`Racquet`, `StringJob`, `SessionLog`, `RestringEvent`) must include an indexed `userId: UuidValue` column (since Story 6.3). Serverpod endpoints must strictly filter by `session.authenticated.authUserId` on every operation without relying on indirect joins.
+* **Ownership transfer:** The only path that changes a row's `userId` is guest→email linking: `AccountEndpoint.claimGuestBag` verifies a hashed, single-use, 15-minute `GuestClaim` bound to an anonymous-only user, then calls Serverpod `AccountMerger.merge` inside one transaction; the app's `applicationMergeHandler` (registered via `AccountMergeConfig` in `initializeAuthServices`) reassigns the four tables, resolving `(userId, externalWorkoutId)` and primary-racquet conflicts in favour of the kept account.
 
 ### AD-4: BLoC State Management (`flutter_bloc`) [ADOPTED]
 * **Binds:** `FR-5`, `FR-12`, `FR-14`, `NFR-1`

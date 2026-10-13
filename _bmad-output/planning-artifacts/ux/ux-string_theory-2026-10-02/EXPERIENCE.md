@@ -30,6 +30,9 @@ flowchart LR
 
 ```text
 String Theory
+├── 🔑 Sign-In Screen (no stored session)
+│   ├── Email Sign-In / Sign-Up (verification code)
+│   └── [Continue as Guest]
 ├── 🎾 Virtual Bag (Root / Home Screen)
 │   ├── Floating Demo FAB: [🧪 Simulate Workout]
 │   ├── Quick Action FAB: [+ Log Session]
@@ -46,7 +49,8 @@ String Theory
 │   ├── Remaining Court Hours & Tension Decay Estimator
 │   └── Restringing Timeline History
 └── ⚙️ Settings & Account
-    ├── Anonymous Guest Account Banner -> [Link Google / Email]
+    ├── Guest: Account Banner -> [Continue with Email] (links & keeps bag) · Email user: account email
+    ├── [Sign Out] -> Sign-In Screen
     ├── Apple Health / Health Connect Sync Status
     └── App Version & Hackathon Attribution
 ```

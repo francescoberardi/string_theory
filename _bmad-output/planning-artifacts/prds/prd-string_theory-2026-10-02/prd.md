@@ -134,10 +134,13 @@ flowchart TD
   The system must generate an anonymous authenticated user session upon first launch via Serverpod's built-in auth mechanism without requiring email, password, or third-party OAuth.  
   *Consequences (testable):* Client receives a valid auth key; subsequent API calls authenticate successfully without login prompts.
 * **FR-2: Account Linking (Upgrade)**  
-  The user can at any time link an email/password or Google identity to their guest account from the Settings screen.  
-  *Consequences (testable):* Upon linking, existing Racquets and SessionLogs remain attached to the same `userId` in PostgreSQL.
+  The user can at any time link an email/password identity to their guest account from the Settings screen. (Google linking deferred to v1.1.)  
+  *Consequences (testable):* Upon linking, the guest's Racquets, StringJobs, SessionLogs and RestringEvents are reassigned to the email account's `userId` in a single transaction; the bag shows the same racquets and health scores.
 * **FR-3: Auth Persistence & Re-hydration**  
   The client must persist the authentication token securely on device storage (Keychain on iOS, Keystore on Android, shared_preferences on Web) and restore the active session on app relaunch.
+* **FR-20: Sign-In Screen & Sign-Out**  
+  Without a stored session, the app opens on a sign-in screen offering email/password sign-in or sign-up and `[Continue as Guest]`. Signing out from Settings returns to that screen.  
+  *Consequences (testable):* Two windows signed into the same email account share one bag and receive live updates; a second email account starts with an empty bag.
 
 ---
 
@@ -248,7 +251,7 @@ flowchart TD
 | Category | In-Scope (Hackathon MVP) | Out-of-Scope (Deferred to v1.1+) |
 |---|---|---|
 | **Equipment** | Tennis Racquets & StringBeds | Tennis Shoes, Ball Cans, Grips, Bags |
-| **Auth** | Serverpod Anonymous Guest + Email/Google linking | Apple Sign-In on Web, Enterprise SSO |
+| **Auth** | Serverpod Anonymous Guest + Email sign-in & guest→email linking | Google linking, Apple Sign-In on Web, Enterprise SSO |
 | **Logging** | Apple Health / Health Connect sync + 3-tap quick log + Demo Simulator | GPS court geolocation, SwingVision API sync |
 | **Decay Engine** | Composite formula (hours + calendar days) for 4 string types | Ambient temperature/humidity sensor adjustments |
 | **Lifecycle** | "Restrung Today" 1-tap reset + historical timeline | Local stringer directory & restring job bidding |

@@ -24,7 +24,7 @@ This document provides the complete epic and story breakdown for string_theory, 
 ### Functional Requirements
 
 - **FR-1**: The system must generate an anonymous authenticated user session upon first launch via Serverpod's built-in auth mechanism without requiring email, password, or third-party OAuth.
-- **FR-2**: The user can at any time link an email/password or Google identity to their guest account from the Settings screen without losing data.
+- **FR-2**: The user can at any time link an email/password identity to their guest account from the Settings screen without losing data: the guest's racquets, string jobs, sessions and restring history move to the email account. (Google linking deferred to post-hackathon.)
 - **FR-3**: The client must persist the authentication token securely on device storage (Keychain on iOS, Keystore on Android, secure web storage) and restore the active session on app relaunch.
 - **FR-4**: The user can add a racquet with frame model, string material category, string model, stringing date, installed tension, and manufacturer max hours with smart defaults.
 - **FR-5**: The Virtual Bag screen must display a scrollable list/grid of all registered racquets for the authenticated user, showing frame name, string model, stringing date, total hours logged, and an animated radial Health Score Gauge.
@@ -42,6 +42,7 @@ This document provides the complete epic and story breakdown for string_theory, 
 - **FR-17**: The Racquet Detail screen must provide a "History" tab showing a chronological timeline of past stringbeds with performance stats.
 - **FR-18**: The Flutter app must provide an accessible floating badge [🧪 Simulate Workout] on web/desktop environments that injects a simulated 90-minute tennis workout into the ingestion pipeline.
 - **FR-19**: The dev menu must include a [Fast-Forward 30 Days] button for any selected racquet, advancing its stringing date by 30 days to immediately demonstrate calendar decay transitions and warning alerts.
+- **FR-20**: On launch without a stored session, the app shows a sign-in screen offering email/password sign-in or sign-up and a "Continue as guest" action; a signed-in user can sign out from Settings and returns to the sign-in screen.
 
 ### NonFunctional Requirements
 
@@ -90,11 +91,13 @@ This document provides the complete epic and story breakdown for string_theory, 
 - **TD-12**: Relocate `RacquetPreset` and `StringCategoryDefaults` from UI widgets into pure domain models in the domain layer.
 - **TD-13**: Serverpod auth secrets and IDP password environment variables match consistently across CI test matrices, with directory-scoped `git diff --exit-code` checks.
 - **TD-14**: Fake `serverpod_auth_core` status caller in `auth_service_test.dart` to verify valid-session and guest fallback branches deterministically without real network timeouts.
+- **TD-15**: A fresh clone can create `string_theory_server/config/passwords.yaml` with one documented command that generates random development and test secrets and never overwrites an existing file.
+- **TD-16**: Multi-window session behavior on web is verified and documented: whether two tabs of one browser profile share an identity, and how a reviewer opens a second, independent account.
 
 ### FR Coverage Map
 
 - **FR-1**: Epic 1 — Anonymous Guest Session (instant auth without login wall)
-- **FR-2**: Epic 1 — Account Linking / Upgrade (link email or Google identity)
+- **FR-2**: Epic 1 (stub) & Epic 6 — Account Linking / Upgrade (link email identity, guest data merged)
 - **FR-3**: Epic 1 — Auth token persistence and secure re-hydration
 - **FR-4**: Epic 1 — Add racquet with string setup and category smart defaults
 - **FR-5**: Epic 1 — Multi-racquet responsive Virtual Bag display
@@ -112,7 +115,8 @@ This document provides the complete epic and story breakdown for string_theory, 
 - **FR-17**: Epic 4 — Restring history timeline view on racquet detail screen
 - **FR-18**: Epic 3 & Epic 5 — One-click tennis workout simulator for judges and web testers
 - **FR-19**: Epic 2 & Epic 5 — Fast-forward 30 days time-warp aging simulator
-- **TD-1 through TD-14**: Epic 6 — Technical Debt, Concurrency & Production Polish
+- **FR-20**: Epic 6 — Email sign-in screen, Continue as guest, real sign-out
+- **TD-1 through TD-16**: Epic 6 — Technical Debt, Concurrency & Production Polish
 
 ## Epic List
 
@@ -141,8 +145,8 @@ Hackathon judges and web testers can evaluate the complete system across mobile,
 **UX/NFRs covered:** UX-DR3, UX-DR6, NFR-1, NFR-2, NFR-3
 
 ### Epic 6: Technical Debt, Concurrency & Production Polish
-The system eliminates pre-release technical debt and concurrency vulnerabilities: aligns native UUID tenant identifiers across all Serverpod models and endpoints, secures daily decay background workers with PostgreSQL advisory locks and optimistic score writes, broadcasts live WebSocket health decay updates, decouples BLoC mutation errors from background reloads, hardens health workout queueing and lifecycle sync, delivers a dedicated Sessions history screen, and establishes CI parity and deterministic authentication tests.
-**Requirements covered:** TD-1, TD-2, TD-3, TD-4, TD-5, TD-6, TD-7, TD-8, TD-9, TD-10, TD-11, TD-12, TD-13, TD-14
+The system eliminates pre-release technical debt and concurrency vulnerabilities: aligns native UUID tenant identifiers across all Serverpod models and endpoints, secures daily decay background workers with PostgreSQL advisory locks and optimistic score writes, broadcasts live WebSocket health decay updates, decouples BLoC mutation errors from background reloads, hardens health workout queueing and lifecycle sync, delivers a dedicated Sessions history screen, adds real email sign-in with guest-account linking so the app can be tested across windows and accounts, and establishes CI parity and deterministic authentication tests.
+**Requirements covered:** FR-2, FR-20, TD-1, TD-2, TD-3, TD-4, TD-5, TD-6, TD-7, TD-8, TD-9, TD-10, TD-11, TD-12, TD-13, TD-14, TD-15, TD-16
 
 ---
 
@@ -547,7 +551,7 @@ So that end-to-end user flows, native dialogs, and simulated workouts are verifi
 
 ## Epic 6: Technical Debt, Concurrency & Production Polish
 
-The system eliminates pre-release technical debt and concurrency vulnerabilities: aligns native UUID tenant identifiers across all Serverpod models and endpoints, secures daily decay background workers with PostgreSQL advisory locks and optimistic score writes, broadcasts live WebSocket health decay updates, decouples BLoC mutation errors from background reloads, hardens health workout queueing and lifecycle sync, delivers a dedicated Sessions history screen, and establishes CI parity and deterministic authentication tests.
+The system eliminates pre-release technical debt and concurrency vulnerabilities: aligns native UUID tenant identifiers across all Serverpod models and endpoints, secures daily decay background workers with PostgreSQL advisory locks and optimistic score writes, broadcasts live WebSocket health decay updates, decouples BLoC mutation errors from background reloads, hardens health workout queueing and lifecycle sync, delivers a dedicated Sessions history screen, adds real email sign-in with guest-account linking so the app can be tested across windows and accounts, and establishes CI parity and deterministic authentication tests.
 
 ### Story 6.1: State Management Resilience (Mutation Refresh Decoupling, Async Pull-to-Refresh & Auth 401 Routing)
 
@@ -615,6 +619,54 @@ So that I can review all logged court hours and gear usage in one organized view
 - **And** it displays a chronological list of logged sessions with date, duration, racquet name, and court hours added,
 - **And** it provides a prominent `[+ Log Session]` action button,
 - **And** `RacquetPreset` and `StringCategoryDefaults` are relocated from UI widgets into pure domain models in the domain layer, with presentation files referencing the domain contracts.
+
+### Story 6.6: Real Email Sign-In for Multi-Window Testing
+
+As a hackathon judge and tennis player,
+I want to sign in with an email account (or continue as a guest), link my guest bag to an email later, and sign out for real,
+So that I can open the same account in two windows and watch health scores sync live, and confirm a second account gets its own empty bag.
+
+**Requirements Covered:** FR-2, FR-20, TD-15, TD-16
+
+**Acceptance Criteria:**
+
+*Sign-in screen & auth gate*
+- **AC-1** — **Given** no stored session, **When** the app launches, **Then** it shows a sign-in screen in the Court Midnight theme with email/password sign-in and sign-up (Serverpod `EmailIdp` flow, including the verification-code step) and a prominent `[Continue as guest]` action; the bag is not shown until the user is authenticated.
+- **AC-2** — **Given** a stored valid session, **When** the app launches, **Then** the sign-in screen is skipped and the Virtual Bag opens directly (NFR-3 unchanged).
+- **AC-3** — **Given** `[Continue as guest]`, **When** tapped, **Then** an anonymous session is created exactly once (existing in-flight dedupe kept) and the bag opens; offline failure shows a retry message on the sign-in screen instead of the old post-launch SnackBar.
+- **AC-4** — **Given** a fresh email sign-up, **When** the account is created, **Then** the user lands on an empty bag (no racquets from any other tenant).
+
+*Sign-out*
+- **AC-5** — **Given** any signed-in user (guest or email), **When** they confirm Sign Out in Settings, **Then** the device token is removed, the bag stream subscription is closed, the BagBloc state is cleared, and the app returns to the sign-in screen. The guest sign-out dialog warns that the guest bag becomes unreachable unless linked first. The "Re-authenticate Guest" action is removed.
+
+*Guest → email linking (FR-2)*
+- **AC-6** — **Given** a guest with a bag, **When** they tap `[Continue with Email]` in Settings and complete email sign-up or sign-in, **Then** the guest's `Racquet`, `StringJob`, `SessionLog` and `RestringEvent` rows are owned by the email account, and the bag shows the same racquets and health scores as before. Racquet IDs are unchanged, so queued offline sessions still apply.
+- **AC-7** — **Given** the server, **When** linking runs, **Then** it goes through `AccountEndpoint.createGuestClaim()` (while authenticated as the guest) and `AccountEndpoint.claimGuestBag(secret)` (as the email user). Serverpod's `AccountMerger.merge` runs inside one transaction with an `applicationMergeHandler` registered in `initializeAuthServices`. The claim secret is single-use, stored hashed, expires after 15 minutes, and is valid only if its user is still anonymous-only. Reused, expired, foreign or unauthenticated claims are rejected with no rows changed.
+- **AC-8** — **Given** the email account already has racquets, **When** a guest bag is merged in, **Then** guest racquets are appended, the email account's primary racquet is kept (guest `isPrimary` cleared), guest `SessionLog` rows conflicting on `(userId, externalWorkoutId)` are dropped, and a `BagStreamMessage` is published to the email user's channel so other open windows refresh.
+- **AC-9** — **Given** Settings, **When** rendered, **Then** the "Continue with Google" option is gone; for an email user, Settings shows the account email instead of the guest banner and link option.
+
+*Fresh-clone setup*
+- **AC-10** — **Given** a fresh clone, **When** the developer runs `string_theory_server/tool/init_passwords.sh`, **Then** `config/passwords.yaml` is created with random `development` and `test` values for every key `server.dart` and `config/test.yaml` need (`database`, `serviceSecret`, `emailSecretHashPepper`, `jwtHmacSha512PrivateKey`, `jwtRefreshTokenHashPepper`), it refuses to overwrite an existing file, and `serverpod start` then boots. CI env vars in `tests.yml` are unchanged.
+
+*Multi-window behavior*
+- **AC-11** — **Given** web, **When** the app is opened in two tabs of the same browser profile, **Then** the story records (by running it, not assuming it) whether the tabs share one identity. If they do, signing out in one tab sends the other to the sign-in screen on its next authenticated call (401 path from 6.1), never to the offline queue. The README states the result and tells reviewers to use a private window or second browser profile for the second account.
+- **AC-12** — **Given** one email account open in two windows, **When** a session is logged in window A, **Then** window B's gauge updates live without reload; **And** a second email account in a separate profile sees an empty bag and receives no updates from the first.
+
+*Cleanup*
+- **AC-13** — The unused template screens `sign_in_screen.dart` and `greetings_screen.dart` are replaced by the new sign-in screen or deleted. No dead auth UI remains.
+
+**Tests (TDD, red first):**
+- Server (`dart test`): `AccountEndpoint` tests for successful merge of all four tables, single use, expiry, foreign or non-anonymous claim rejection, unauthenticated rejection, unique-index conflict drop, primary-racquet conflict, `BagStreamMessage` published to the keeper's channel only, and rollback leaving rows untouched on failure.
+- Flutter unit/BLoC: `AuthService` (no automatic guest at `initialize`, `continueAsGuest`, `signOut` clears state, the linking sequence calls claim before and after the identity switch), and clearing BagBloc on sign-out.
+- Flutter widget: auth gate (no token → sign-in screen, token → bag), sign-in screen guest path and email path entry, Settings (no Google option, email button starts the linking flow, the email user sees their email).
+- Patrol E2E: update the existing suite to tap `[Continue as guest]`; add a guest → email linking happy path if the embedded server setup allows it, otherwise cover it with widget tests and note why.
+
+**Definition of Done:**
+- All ACs met, all tests green locally and in CI, `dart analyze` and `dart format` clean, migration created and applied through MCP.
+- **README "Test it (for reviewers)"** rewritten from what shipped (the "🚧 Coming in Story 6.6" note removed). It covers: (1) sign up with an email and get the verification code from the `serverpod start` output; (2) open the same account in a second window and watch a logged session update both; (3) sign in with a second email in a private window or second profile and confirm the bag is empty; (4) the AC-11 tab-sharing result.
+- **README "Start"** replaces the hand-written passwords note with `tool/init_passwords.sh`.
+- **DEMO_SCRIPT refresh:** Step 1 shows the sign-in screen and `[Continue as guest]`; a Sessions history beat is added (Story 6.4); a live two-window sync beat is added (Stories 3.2 and 6.3); timings still fit about 90 seconds or the header is honestly updated.
+- README and DEMO_SCRIPT checked and updated where affected, describing only behavior verified on `main`.
 
 ### Story 6.5: CI Environment Parity & Deterministic Auth Testing
 
