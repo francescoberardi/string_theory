@@ -20,6 +20,8 @@ abstract final class TestTenants {
   static const c = '6f1e2a7d-4c1d-4f7a-9c43-0b9a5e0e1a03';
   static const d = '6f1e2a7d-4c1d-4f7a-9c43-0b9a5e0e1a04';
   static const e = '6f1e2a7d-4c1d-4f7a-9c43-0b9a5e0e1a05';
+  static const f = '6f1e2a7d-4c1d-4f7a-9c43-0b9a5e0e1a06';
+  static const g = '6f1e2a7d-4c1d-4f7a-9c43-0b9a5e0e1a07';
 
   /// Tenant `userId` stored for [a].
   static UuidValue get aUserId => userIdOf(a);
@@ -35,6 +37,12 @@ abstract final class TestTenants {
 
   /// Tenant `userId` stored for [e].
   static UuidValue get eUserId => userIdOf(e);
+
+  /// Tenant `userId` stored for [f].
+  static UuidValue get fUserId => userIdOf(f);
+
+  /// Tenant `userId` stored for [g].
+  static UuidValue get gUserId => userIdOf(g);
 
   /// Tenant `userId` the server stores for [userIdentifier].
   static UuidValue userIdOf(String userIdentifier) =>
