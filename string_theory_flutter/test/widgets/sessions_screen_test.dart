@@ -272,7 +272,10 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(find.text('Failed to load sessions. Please try again.'), findsOneWidget);
+        expect(
+          find.text('Failed to load sessions. Please try again.'),
+          findsOneWidget,
+        );
         final retryButton = find.byKey(const Key('sessions_retry_button'));
         expect(retryButton, findsOneWidget);
 
@@ -315,8 +318,12 @@ void main() {
 
         expect(find.byKey(const Key('sessions_list_view')), findsOneWidget);
         // Find session cards by ValueKey
-        final card1Pos = tester.getTopLeft(find.byKey(const ValueKey('session_101')));
-        final card2Pos = tester.getTopLeft(find.byKey(const ValueKey('session_102')));
+        final card1Pos = tester.getTopLeft(
+          find.byKey(const ValueKey('session_101')),
+        );
+        final card2Pos = tester.getTopLeft(
+          find.byKey(const ValueKey('session_102')),
+        );
         // Newer session (session_101) must be rendered above older session (session_102)
         expect(card1Pos.dy, lessThan(card2Pos.dy));
       },

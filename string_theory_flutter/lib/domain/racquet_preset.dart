@@ -52,13 +52,13 @@ class RacquetPreset {
 
   @override
   int get hashCode => Object.hash(
-        name,
-        brand,
-        model,
-        materialCategory,
-        stringBrand,
-        stringModel,
-        tension,
-        maxRatedHours,
-      );
+    name,
+    brand,
+    model,
+    materialCategory,
+    stringBrand,
+    stringModel,
+    tension,
+    maxRatedHours,
+  );
 }

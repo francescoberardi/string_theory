@@ -325,8 +325,10 @@ class _SessionsScreenState extends State<SessionsScreen> {
             itemCount: _sessions!.length,
             itemBuilder: (context, index) {
               final session = _sessions![index];
-              final racquetName =
-                  _resolveRacquetName(session.racquetId, racquets);
+              final racquetName = _resolveRacquetName(
+                session.racquetId,
+                racquets,
+              );
               return SessionHistoryCard(
                 key: ValueKey('session_${session.id ?? index}'),
                 session: session,
