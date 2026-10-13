@@ -35,6 +35,12 @@ It combines a Flutter frontend (mobile, tablet, web) with a Serverpod 4.0.3 back
    - Write failing unit, BLoC, or endpoint tests FIRST. Commit or verify red state (`test(...)`), then write minimal implementation code to turn green (`feat(...)`), followed by refactoring (`refactor(...)`).
    - Use Patrol (`patrol`, `patrol_finders`) for integration/E2E testing.
 
+## Living Docs
+`README.md` (project overview, run & test locally) and `docs/DEMO_SCRIPT.md` (judge showcase flow) describe the app as it is on `main`. Keep them current:
+- Any change to user-visible behavior, UI labels, keyboard shortcuts, setup or run steps, authentication flow, or the demo flow MUST update the affected doc in the same story — in the same commit, or in a `docs(...)` commit right after it, before the story is marked done.
+- Document only what has shipped on `main`. Never describe planned or unverified behavior as working; a judge who hits one wrong step stops trusting the rest.
+- Every story spec's Definition of Done includes "README and DEMO_SCRIPT checked and updated if affected".
+
 ## Serverpod & MCP Instructions
 
 The user starts the server and Flutter app with `serverpod start`. There is no need to check if the server is running: make the changes and call the `serverpod` MCP tools as needed. If the server is not running, an informative error message will be received from the MCP server. Then STOP and ask the user to start it. NEVER start the server yourself. The Flutter app is started along with it, or can be launched from the MCP tool `spawn_flutter_app`.
@@ -73,6 +79,7 @@ Checklist after doing changes, in this order:
 4. Do `serverpod` MCP `hot_restart` if required (hot reload is done automatically). Will also hot restart Flutter app
 5. Run tests, if applicable (`dart test` in the server package)
 6. Check `serverpod` MCP `tail_server_logs` and `tail_flutter_logs` for any issues.
+7. Check `README.md` and `docs/DEMO_SCRIPT.md` still match the app; update them if the change affects what they describe (see Living Docs).
 
 If the user asks you to test the app:
 
