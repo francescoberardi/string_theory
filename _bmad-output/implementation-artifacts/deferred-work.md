@@ -134,3 +134,13 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-1-state-management-resilience-mutation-refresh-decoupling-async-pull-to-refresh-auth-401-routing.md`
   summary: After the 401 "Sign in" re-auth, BagBloc's bag-updates stream may stay bound to the expired identity, so live updates stop until restart (unverified, medium).
   evidence: `_subscribeToBagUpdates` no-ops while `_bagUpdatesSubscription` is non-null. To settle it, confirm in the running app whether Serverpod errors or closes the streaming connection on 401 or on an auth key change.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-fix-sample-bag-health-reset-on-first-session.md`
+  summary: Expose initialCourtHours in the Add Racquet form so already-played strings start with accurate health.
+  evidence: createRacquet now accepts initialCourtHours but AddRacquet/_onAddRacquet in bag_bloc.dart never sends it; the form only captures stringingDate.
+- source_spec: `_bmad-output/implementation-artifacts/spec-fix-sample-bag-health-reset-on-first-session.md`
+  summary: Reject future stringingDate values in createRacquet with a 400.
+  evidence: DecayEngine treats a future date as 0 days elapsed, so a job dated ahead shows 100% with no calendar decay; pre-existing, not introduced by this fix.
+- source_spec: `_bmad-output/implementation-artifacts/spec-fix-sample-bag-health-reset-on-first-session.md`
+  summary: Make sample bag seeding atomic (single server-side seed call or rollback) to avoid partial bags and duplicates on retry.
+  evidence: _onSeedSampleBag issues three independent createRacquet calls; a mid-sequence failure leaves a partial bag and a retry duplicates racquets. Pre-existing.

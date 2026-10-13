@@ -221,6 +221,68 @@ void main() {
       );
 
       test(
+        'should persist initialCourtHours and compute the initial health with DecayEngine',
+        () async {
+          final now = DateTime.now().toUtc();
+          final created = await endpoints.bag.createRacquet(
+            user1Session,
+            racquetName: 'Babolat Pure Drive',
+            materialCategory: StringMaterialCategory.coPoly,
+            maxRatedHours: 20.0,
+            stringingDate: now.subtract(const Duration(days: 24)),
+            initialCourtHours: 9.0,
+          );
+
+          // (9 / 20) * 70 = 31.5 and (24 / 75) * 30 = 9.6 => 58.9 => 59.
+          expect(created.activeStringJob!.totalCourtHours, equals(9.0));
+          expect(created.activeStringJob!.currentHealthScore, equals(59));
+
+          final bag = await endpoints.bag.getVirtualBag(user1Session);
+          final persisted = bag.singleWhere((r) => r.id == created.id);
+          expect(persisted.activeStringJob!.totalCourtHours, equals(9.0));
+          expect(persisted.activeStringJob!.currentHealthScore, equals(59));
+        },
+      );
+
+      test(
+        'should apply calendar decay at creation for a past stringingDate with no hours',
+        () async {
+          final created = await endpoints.bag.createRacquet(
+            user1Session,
+            racquetName: 'Yonex Ezone 98',
+            materialCategory: StringMaterialCategory.coPoly,
+            stringingDate: DateTime.now().toUtc().subtract(
+              const Duration(days: 30),
+            ),
+          );
+
+          // (30 / 75) * 30 = 12 => 88.
+          expect(created.activeStringJob!.totalCourtHours, equals(0.0));
+          expect(created.activeStringJob!.currentHealthScore, equals(88));
+        },
+      );
+
+      test(
+        'should reject a negative initialCourtHours with a 400 BagException',
+        () async {
+          await expectLater(
+            endpoints.bag.createRacquet(
+              user1Session,
+              racquetName: 'Invalid Hours',
+              initialCourtHours: -1.0,
+            ),
+            throwsA(
+              isA<BagException>().having(
+                (e) => e.statusCode,
+                'statusCode',
+                400,
+              ),
+            ),
+          );
+        },
+      );
+
+      test(
         'should reject unauthenticated call to getVirtualBag',
         () async {
           await expectLater(

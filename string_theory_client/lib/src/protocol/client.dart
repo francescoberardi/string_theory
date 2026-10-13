@@ -310,6 +310,10 @@ class EndpointBag extends _isc.EndpointRef {
 
   /// Atomically creates a new racquet frame and its initial mounted string job
   /// within a single database transaction.
+  ///
+  /// [initialCourtHours] (default 0) seeds hours already played on the string
+  /// job; its health is computed by `DecayEngine` from those hours and
+  /// [stringingDate].
   _ida.Future<_ib48ci23.Racquet> createRacquet({
     required String racquetName,
     String? brand,
@@ -321,6 +325,7 @@ class EndpointBag extends _isc.EndpointRef {
     double? tension,
     double? maxRatedHours,
     DateTime? stringingDate,
+    double? initialCourtHours,
   }) => caller.callServerEndpoint<_ib48ci23.Racquet>(
     'bag',
     'createRacquet',
@@ -335,6 +340,7 @@ class EndpointBag extends _isc.EndpointRef {
       'tension': tension,
       'maxRatedHours': maxRatedHours,
       'stringingDate': stringingDate,
+      'initialCourtHours': initialCourtHours,
     },
   );
 

@@ -35,6 +35,10 @@ class BagEndpoint extends Endpoint {
 
   /// Atomically creates a new racquet frame and its initial mounted string job
   /// within a single database transaction.
+  ///
+  /// [initialCourtHours] (default 0) seeds hours already played on the string
+  /// job; its health is computed by `DecayEngine` from those hours and
+  /// [stringingDate].
   Future<Racquet> createRacquet(
     Session session, {
     required String racquetName,
@@ -47,6 +51,7 @@ class BagEndpoint extends Endpoint {
     double? tension,
     double? maxRatedHours,
     DateTime? stringingDate,
+    double? initialCourtHours,
   }) async {
     final trimmedName = racquetName.trim();
     if (trimmedName.isEmpty) {
@@ -56,11 +61,27 @@ class BagEndpoint extends Endpoint {
       );
     }
 
+    final effectiveCourtHours = initialCourtHours ?? 0.0;
+    if (!effectiveCourtHours.isFinite || effectiveCourtHours < 0) {
+      throw BagException(
+        message: 'Initial court hours must be a non-negative number',
+        statusCode: 400,
+      );
+    }
+
     final userId = resolveUserId(session);
     final now = DateTime.now().toUtc();
     final effectiveIsPrimary = isPrimary ?? false;
     final effectiveCategory = materialCategory ?? StringMaterialCategory.coPoly;
     final effectiveMaxHours = maxRatedHours ?? 20.0;
+    final effectiveStringingDate = stringingDate ?? now;
+    final initialHealthScore = DecayEngine.calculateHealth(
+      hoursPlayed: effectiveCourtHours,
+      maxRatedHours: effectiveMaxHours,
+      stringingDate: effectiveStringingDate,
+      materialCategory: effectiveCategory,
+      now: now,
+    );
 
     return await session.db.transaction((tx) async {
       // If marked as primary, unset any existing primaries for this user
@@ -103,11 +124,11 @@ class BagEndpoint extends Endpoint {
           materialCategory: effectiveCategory,
           brand: stringBrand,
           model: stringModel,
-          stringingDate: stringingDate ?? now,
+          stringingDate: effectiveStringingDate,
           installedTension: tension,
           maxRatedHours: effectiveMaxHours,
-          totalCourtHours: 0.0,
-          currentHealthScore: 100,
+          totalCourtHours: effectiveCourtHours,
+          currentHealthScore: initialHealthScore,
           isActive: true,
           createdAt: now,
         ),

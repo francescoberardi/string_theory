@@ -184,6 +184,7 @@ void main() {
             tension: any(named: 'tension'),
             maxRatedHours: any(named: 'maxRatedHours'),
             stringingDate: any(named: 'stringingDate'),
+            initialCourtHours: any(named: 'initialCourtHours'),
           ),
         ).thenAnswer((_) async => secondRacquet);
 
@@ -239,6 +240,7 @@ void main() {
             tension: any(named: 'tension'),
             maxRatedHours: any(named: 'maxRatedHours'),
             stringingDate: any(named: 'stringingDate'),
+            initialCourtHours: any(named: 'initialCourtHours'),
           ),
         ).called(1);
 
@@ -312,6 +314,7 @@ void main() {
             tension: any(named: 'tension'),
             maxRatedHours: any(named: 'maxRatedHours'),
             stringingDate: any(named: 'stringingDate'),
+            initialCourtHours: any(named: 'initialCourtHours'),
           ),
         ).thenAnswer((_) async => sampleRacquet);
 
@@ -348,6 +351,7 @@ void main() {
             tension: any(named: 'tension'),
             maxRatedHours: any(named: 'maxRatedHours'),
             stringingDate: any(named: 'stringingDate'),
+            initialCourtHours: any(named: 'initialCourtHours'),
           ),
         ).called(3);
         verify(() => mockBagEndpoint.getVirtualBag()).called(1);
@@ -372,6 +376,7 @@ void main() {
             tension: any(named: 'tension'),
             maxRatedHours: any(named: 'maxRatedHours'),
             stringingDate: any(named: 'stringingDate'),
+            initialCourtHours: any(named: 'initialCourtHours'),
           ),
         ).thenThrow(Exception('Network timeout'));
 
@@ -393,6 +398,72 @@ void main() {
             ),
           ]),
         );
+
+        await subscription.cancel();
+        await bloc.close();
+      },
+    );
+
+    test(
+      'SeedSampleBag should persist demo court hours server-side and emit the reloaded bag unchanged',
+      () async {
+        final hoursByName = <String, double?>{};
+        when(
+          () => mockBagEndpoint.createRacquet(
+            racquetName: any(named: 'racquetName'),
+            brand: any(named: 'brand'),
+            model: any(named: 'model'),
+            isPrimary: any(named: 'isPrimary'),
+            materialCategory: any(named: 'materialCategory'),
+            stringBrand: any(named: 'stringBrand'),
+            stringModel: any(named: 'stringModel'),
+            tension: any(named: 'tension'),
+            maxRatedHours: any(named: 'maxRatedHours'),
+            stringingDate: any(named: 'stringingDate'),
+            initialCourtHours: any(named: 'initialCourtHours'),
+          ),
+        ).thenAnswer((invocation) async {
+          final name = invocation.namedArguments[#racquetName] as String;
+          hoursByName[name] =
+              invocation.namedArguments[#initialCourtHours] as double?;
+          return sampleRacquet;
+        });
+
+        // Server-authoritative job with zero hours: the seeder must not
+        // overlay client-only demo values on top of it.
+        final serverRacquet = sampleRacquet.copyWith(
+          name: 'Wilson Blade 98',
+          activeStringJob: StringJob(
+            id: 1,
+            userId: Namespace.nil.uuidValue,
+            racquetId: 1,
+            materialCategory: StringMaterialCategory.coPoly,
+            stringingDate: DateTime.utc(2026, 10, 1),
+            totalCourtHours: 0.0,
+            currentHealthScore: 100,
+            createdAt: DateTime.utc(2026, 10, 1),
+          ),
+        );
+        when(
+          () => mockBagEndpoint.getVirtualBag(),
+        ).thenAnswer((_) async => [serverRacquet]);
+
+        final bloc = BagBloc(client: mockClient);
+        final states = <BagState>[];
+        final subscription = bloc.stream.listen(states.add);
+
+        bloc.add(const SeedSampleBag());
+        await pumpEventQueue();
+
+        expect(
+          hoursByName,
+          equals({
+            'Wilson Blade 98': 5.0,
+            'Babolat Pure Drive': 9.0,
+            'Head Radical MP': 25.0,
+          }),
+        );
+        expect(states.last, equals(BagLoaded([serverRacquet])));
 
         await subscription.cancel();
         await bloc.close();
@@ -1159,6 +1230,7 @@ void main() {
           tension: any(named: 'tension'),
           maxRatedHours: any(named: 'maxRatedHours'),
           stringingDate: any(named: 'stringingDate'),
+          initialCourtHours: any(named: 'initialCourtHours'),
         ),
       ).thenThrow(rejection(400));
       final (bloc, states) = await loadedBloc();

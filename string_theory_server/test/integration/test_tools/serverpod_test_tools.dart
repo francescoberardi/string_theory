@@ -662,6 +662,7 @@ class _BagEndpoint {
     double? tension,
     double? maxRatedHours,
     DateTime? stringingDate,
+    double? initialCourtHours,
   }) async {
     return _ist.callAwaitableFunctionAndHandleExceptions(() async {
       var _localUniqueSession =
@@ -685,6 +686,7 @@ class _BagEndpoint {
             'tension': tension,
             'maxRatedHours': maxRatedHours,
             'stringingDate': stringingDate,
+            'initialCourtHours': initialCourtHours,
           }),
           serializationManager: _serializationManager,
         );

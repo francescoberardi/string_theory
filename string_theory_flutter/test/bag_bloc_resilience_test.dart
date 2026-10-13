@@ -102,6 +102,7 @@ void main() {
         tension: any(named: 'tension'),
         maxRatedHours: any(named: 'maxRatedHours'),
         stringingDate: any(named: 'stringingDate'),
+        initialCourtHours: any(named: 'initialCourtHours'),
       ),
     ).thenAnswer((_) async => created);
   }
@@ -153,6 +154,7 @@ void main() {
           tension: any(named: 'tension'),
           maxRatedHours: any(named: 'maxRatedHours'),
           stringingDate: any(named: 'stringingDate'),
+          initialCourtHours: any(named: 'initialCourtHours'),
         ),
       ).thenThrow(Exception('Connection refused'));
 
@@ -190,6 +192,7 @@ void main() {
             tension: any(named: 'tension'),
             maxRatedHours: any(named: 'maxRatedHours'),
             stringingDate: any(named: 'stringingDate'),
+            initialCourtHours: any(named: 'initialCourtHours'),
           ),
         ).thenAnswer((_) async => created);
 

@@ -57,12 +57,21 @@ void main() {
             racquetName: 'Wilson Ultra 100',
             materialCategory: StringMaterialCategory.coPoly,
             maxRatedHours: 20.0,
-            stringingDate: now.subtract(const Duration(days: 30)),
+            stringingDate: now,
           );
           final racquetId = racquet.id!;
 
           try {
             final session = sessionBuilder.build();
+            // Backdate the job without rescoring it, so a decay run that
+            // wrongly proceeds would lower the stored 100 to 88.
+            await StringJob.db.updateRow(
+              session,
+              racquet.activeStringJob!.copyWith(
+                stringingDate: now.subtract(const Duration(days: 30)),
+              ),
+            );
+
             await session.db.transaction((tx) async {
               await session.db.unsafeQuery(
                 'SELECT pg_advisory_xact_lock($_decayLockKey);',

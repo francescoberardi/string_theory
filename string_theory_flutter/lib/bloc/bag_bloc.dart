@@ -502,6 +502,7 @@ class BagBloc extends Bloc<BagEvent, BagState> {
         tension: 52.0,
         maxRatedHours: 20.0,
         stringingDate: now.subtract(const Duration(days: 12)),
+        initialCourtHours: 5.0,
       );
       await client.bag.createRacquet(
         racquetName: 'Babolat Pure Drive',
@@ -514,6 +515,7 @@ class BagBloc extends Bloc<BagEvent, BagState> {
         tension: 54.0,
         maxRatedHours: 20.0,
         stringingDate: now.subtract(const Duration(days: 24)),
+        initialCourtHours: 9.0,
       );
       await client.bag.createRacquet(
         racquetName: 'Head Radical MP',
@@ -526,34 +528,9 @@ class BagBloc extends Bloc<BagEvent, BagState> {
         tension: 55.0,
         maxRatedHours: 35.0,
         stringingDate: now.subtract(const Duration(days: 64)),
+        initialCourtHours: 25.0,
       );
-      final racquets = await client.bag.getVirtualBag();
-      final seededRacquets = racquets.map((r) {
-        if (r.name == 'Wilson Blade 98' &&
-            (r.activeStringJob?.totalCourtHours ?? 0.0) == 0.0) {
-          final job = r.activeStringJob?.copyWith(
-            totalCourtHours: 5.0,
-            currentHealthScore: 76,
-          );
-          return r.copyWith(activeStringJob: job);
-        } else if (r.name == 'Babolat Pure Drive' &&
-            (r.activeStringJob?.totalCourtHours ?? 0.0) == 0.0) {
-          final job = r.activeStringJob?.copyWith(
-            totalCourtHours: 9.0,
-            currentHealthScore: 58,
-          );
-          return r.copyWith(activeStringJob: job);
-        } else if (r.name == 'Head Radical MP' &&
-            (r.activeStringJob?.totalCourtHours ?? 0.0) == 0.0) {
-          final job = r.activeStringJob?.copyWith(
-            totalCourtHours: 25.0,
-            currentHealthScore: 34,
-          );
-          return r.copyWith(activeStringJob: job);
-        }
-        return r;
-      }).toList();
-      emit(_loaded(seededRacquets));
+      emit(_loaded(await client.bag.getVirtualBag()));
     } catch (e) {
       emit(BagError(_failure(BagOperation.seedSampleBag, e)));
     }

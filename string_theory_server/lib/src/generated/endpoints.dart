@@ -371,6 +371,11 @@ class Endpoints extends _is.EndpointDispatch {
               type: _is.getType<DateTime?>(),
               nullable: true,
             ),
+            'initialCourtHours': _is.ParameterDescription(
+              name: 'initialCourtHours',
+              type: _is.getType<double?>(),
+              nullable: true,
+            ),
           },
           call:
               (
@@ -389,6 +394,7 @@ class Endpoints extends _is.EndpointDispatch {
                     tension: params['tension'],
                     maxRatedHours: params['maxRatedHours'],
                     stringingDate: params['stringingDate'],
+                    initialCourtHours: params['initialCourtHours'],
                   ),
         ),
         'setPrimary': _is.MethodConnector(
