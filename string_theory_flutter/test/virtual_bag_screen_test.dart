@@ -1520,12 +1520,12 @@ void main() {
     },
   );
 
-  group('Story 6.1: re-authentication prompt after a 401', () {
+  group('Story 6.1/6.6: sign-in prompt after a 401', () {
     const expired = logSessionExpiredMessage;
 
     Future<StreamController<BagState>> pumpWithReauth(
       WidgetTester tester,
-      Future<bool> Function() onReauthenticate,
+      Future<void> Function() onSignInRequired,
     ) async {
       tester.view.physicalSize = const Size(400, 800);
       tester.view.devicePixelRatio = 1.0;
@@ -1540,7 +1540,7 @@ void main() {
           home: VirtualBagScreen(
             bagBloc: mockBagBloc,
             healthSyncService: fakeHealth,
-            onReauthenticate: onReauthenticate,
+            onSignInRequired: onSignInRequired,
           ),
         ),
       );
@@ -1552,51 +1552,35 @@ void main() {
       return controller;
     }
 
-    testWidgets('tapping Sign in re-authenticates, then reloads the bag', (
-      tester,
-    ) async {
-      var signIns = 0;
-      await pumpWithReauth(tester, () async {
-        signIns++;
-        return true;
-      });
+    testWidgets(
+      'tapping Sign in signs out locally, without reloading or queueing',
+      (tester) async {
+        var signOuts = 0;
+        await pumpWithReauth(tester, () async => signOuts++);
 
-      expect(find.text(expired), findsOneWidget);
-      await tester.tap(find.widgetWithText(SnackBarAction, 'Sign in'));
-      await tester.pumpAndSettle();
+        expect(find.text(expired), findsOneWidget);
+        await tester.tap(find.widgetWithText(SnackBarAction, 'Sign in'));
+        await tester.pumpAndSettle();
 
-      expect(signIns, 1);
-      verify(() => mockBagBloc.add(const LoadBag())).called(1);
-    });
+        expect(signOuts, 1);
+        verifyNever(() => mockBagBloc.add(any()));
+      },
+    );
 
-    testWidgets('a failed sign-in shows an error and does not reload', (
-      tester,
-    ) async {
-      await pumpWithReauth(tester, () async => throw Exception('offline'));
+    testWidgets('a failed sign-out shows an error', (tester) async {
+      await pumpWithReauth(tester, () async => throw Exception('storage'));
 
       await tester.tap(find.widgetWithText(SnackBarAction, 'Sign in'));
       await tester.pumpAndSettle();
 
-      expect(find.text(VirtualBagScreen.reauthFailedMessage), findsOneWidget);
-      verifyNever(() => mockBagBloc.add(any()));
-    });
-
-    testWidgets('a sign-in resolving to false shows an error, no reload', (
-      tester,
-    ) async {
-      await pumpWithReauth(tester, () async => false);
-
-      await tester.tap(find.widgetWithText(SnackBarAction, 'Sign in'));
-      await tester.pumpAndSettle();
-
-      expect(find.text(VirtualBagScreen.reauthFailedMessage), findsOneWidget);
+      expect(find.text(VirtualBagScreen.signOutFailedMessage), findsOneWidget);
       verifyNever(() => mockBagBloc.add(any()));
     });
 
     testWidgets('an ordinary error SnackBar has no Sign in action', (
       tester,
     ) async {
-      final controller = await pumpWithReauth(tester, () async => true);
+      final controller = await pumpWithReauth(tester, () async {});
       ScaffoldMessenger.of(
         tester.element(find.byType(Scaffold).first),
       ).hideCurrentSnackBar();

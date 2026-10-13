@@ -1,44 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:serverpod_auth_idp_flutter/serverpod_auth_idp_flutter.dart';
 import 'package:string_theory_client/string_theory_client.dart';
 import 'package:string_theory_flutter/bloc/bag_bloc.dart';
 import 'package:string_theory_flutter/screens/settings_screen.dart';
 import 'package:string_theory_flutter/services/auth_service.dart';
+
+import 'helpers/fake_auth.dart';
 
 class MockClient extends Mock implements Client {}
 
 class MockEndpointBag extends Mock implements EndpointBag {}
 
 class MockBagBloc extends Mock implements BagBloc {}
-
-class InMemoryAuthSuccessStorage implements ClientAuthSuccessStorage {
-  AuthSuccess? _stored;
-
-  InMemoryAuthSuccessStorage([this._stored]);
-
-  @override
-  Future<AuthSuccess?> get() async => _stored;
-
-  @override
-  Future<void> set(AuthSuccess? data) async => _stored = data;
-}
-
-class FakeEndpointAnonymousIdp implements EndpointAnonymousIdp {
-  @override
-  Future<AuthSuccess> login({String? token}) async {
-    return AuthSuccess(
-      authStrategy: 'session',
-      token: 'dummy-token',
-      authUserId: UuidValue.fromString('99999999-9999-9999-9999-999999999999'),
-      scopeNames: {},
-    );
-  }
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
 
 void main() {
   group('SettingsScreen', () {
@@ -52,196 +26,142 @@ void main() {
       scopeNames: {},
     );
 
-    testWidgets(
-      'given authenticated guest, when settings renders, then guest ID and link button are displayed',
-      (tester) async {
-        final storage = InMemoryAuthSuccessStorage(sampleAuthSuccess);
-        final client = Client('http://localhost:8080/')
-          ..authSessionManager = FlutterAuthSessionManager(storage: storage);
-        final fakeEndpoint = FakeEndpointAnonymousIdp();
-        final authService = AuthService(
-          client: client,
-          anonymousEndpoint: fakeEndpoint,
-        );
-        await authService.initialize();
+    /// A signed-in [AuthService]: an email user with [accountEmail], a guest
+    /// without one, or an unknown account when the lookup [fails].
+    Future<AuthService> signedIn({
+      String? accountEmail,
+      bool fails = false,
+    }) async {
+      final client = buildOfflineTestClient(
+        InMemoryAuthSuccessStorage(sampleAuthSuccess),
+      );
+      final auth = AuthService(
+        client: client,
+        fetchAccountEmail: () async {
+          if (fails) throw Exception('offline');
+          return accountEmail;
+        },
+      );
+      await auth.initialize();
+      return auth;
+    }
 
-        await tester.pumpWidget(
-          MaterialApp(
-            home: SettingsScreen(authService: authService),
-          ),
-        );
-        await tester.pumpAndSettle();
+    Future<void> pumpSettings(WidgetTester tester, AuthService auth) async {
+      await tester.pumpWidget(
+        MaterialApp(home: SettingsScreen(authService: auth)),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> openSignOutDialog(WidgetTester tester) async {
+      await tester.ensureVisible(find.byKey(SettingsScreen.keySignOutButton));
+      await tester.tap(find.byKey(SettingsScreen.keySignOutButton));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets(
+      'given a guest, shows the guest banner and no link or Google option',
+      (tester) async {
+        final auth = await signedIn();
+        await pumpSettings(tester, auth);
 
         expect(find.text('Settings'), findsOneWidget);
+        expect(find.byKey(SettingsScreen.keyGuestBanner), findsOneWidget);
+        expect(
+          find.textContaining('lives on this guest identity only'),
+          findsOneWidget,
+        );
         expect(
           find.textContaining('aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'),
           findsOneWidget,
         );
-        expect(find.text('Link Google / Email'), findsOneWidget);
+        expect(find.byKey(SettingsScreen.keyAccountEmail), findsNothing);
+        expect(find.textContaining('Link'), findsNothing);
+        expect(find.textContaining('Google'), findsNothing);
+        expect(find.textContaining('Re-authenticate'), findsNothing);
       },
     );
 
     testWidgets(
-      'given settings screen, when link button tapped, then account linking dialog appears',
+      'given an email user, shows the account email instead of the guest banner',
       (tester) async {
-        final storage = InMemoryAuthSuccessStorage(sampleAuthSuccess);
-        final client = Client('http://localhost:8080/')
-          ..authSessionManager = FlutterAuthSessionManager(storage: storage);
-        final fakeEndpoint = FakeEndpointAnonymousIdp();
-        final authService = AuthService(
-          client: client,
-          anonymousEndpoint: fakeEndpoint,
-        );
-        await authService.initialize();
+        final auth = await signedIn(accountEmail: 'judge@example.com');
+        await pumpSettings(tester, auth);
 
-        await tester.pumpWidget(
-          MaterialApp(
-            home: SettingsScreen(authService: authService),
-          ),
-        );
-        await tester.pumpAndSettle();
-
-        final linkButton = find.text('Link Google / Email');
-        await tester.tap(linkButton);
-        await tester.pumpAndSettle();
-
-        expect(find.text('Link Account'), findsOneWidget);
-        expect(
-          find.textContaining('preserve all your virtual gear bags'),
-          findsOneWidget,
-        );
+        expect(find.byKey(SettingsScreen.keyAccountEmail), findsOneWidget);
+        expect(find.text('judge@example.com'), findsOneWidget);
+        expect(find.byKey(SettingsScreen.keyGuestBanner), findsNothing);
+        expect(find.textContaining('Google'), findsNothing);
       },
     );
 
     testWidgets(
-      'given link account dialog, when Continue with Google is tapped, then shows google preview feedback',
+      'given the account lookup fails, shows generic account text and no guest banner',
       (tester) async {
-        final storage = InMemoryAuthSuccessStorage(sampleAuthSuccess);
-        final client = Client('http://localhost:8080/')
-          ..authSessionManager = FlutterAuthSessionManager(storage: storage);
-        final authService = AuthService(
-          client: client,
-          anonymousEndpoint: FakeEndpointAnonymousIdp(),
-        );
-        await authService.initialize();
+        final auth = await signedIn(fails: true);
+        await pumpSettings(tester, auth);
 
-        await tester.pumpWidget(
-          MaterialApp(home: SettingsScreen(authService: authService)),
-        );
-        await tester.pumpAndSettle();
-
-        await tester.tap(find.text('Link Google / Email'));
-        await tester.pumpAndSettle();
-
-        await tester.tap(find.text('Continue with Google'));
-        await tester.pumpAndSettle();
-
-        expect(find.text('Google linking preview enabled'), findsOneWidget);
+        expect(find.byKey(SettingsScreen.keyGuestBanner), findsNothing);
+        expect(find.byKey(SettingsScreen.keyAccountEmail), findsNothing);
+        expect(find.text('Signed in'), findsOneWidget);
       },
     );
 
     testWidgets(
-      'given link account dialog, when Continue with Email is tapped, then shows email preview feedback',
+      'given a guest, the sign-out dialog warns the bag becomes unreachable',
       (tester) async {
-        final storage = InMemoryAuthSuccessStorage(sampleAuthSuccess);
-        final client = Client('http://localhost:8080/')
-          ..authSessionManager = FlutterAuthSessionManager(storage: storage);
-        final authService = AuthService(
-          client: client,
-          anonymousEndpoint: FakeEndpointAnonymousIdp(),
-        );
-        await authService.initialize();
+        final auth = await signedIn();
+        await pumpSettings(tester, auth);
 
-        await tester.pumpWidget(
-          MaterialApp(home: SettingsScreen(authService: authService)),
-        );
-        await tester.pumpAndSettle();
+        await openSignOutDialog(tester);
 
-        await tester.tap(find.text('Link Google / Email'));
-        await tester.pumpAndSettle();
-
-        await tester.tap(find.text('Continue with Email'));
-        await tester.pumpAndSettle();
-
-        expect(find.text('Email linking preview enabled'), findsOneWidget);
+        expect(find.byType(AlertDialog), findsOneWidget);
+        expect(find.textContaining('unreachable'), findsOneWidget);
+        expect(find.textContaining("can't be recovered"), findsOneWidget);
       },
     );
 
     testWidgets(
-      'given settings screen, when Refresh is tapped and confirmed, then re-authenticates and shows feedback',
+      'given an email user, the sign-out dialog has no guest warning',
       (tester) async {
-        final storage = InMemoryAuthSuccessStorage(sampleAuthSuccess);
-        final client = Client('http://localhost:8080/')
-          ..authSessionManager = FlutterAuthSessionManager(storage: storage);
-        final fakeEndpoint = FakeEndpointAnonymousIdp();
-        final authService = AuthService(
-          client: client,
-          anonymousEndpoint: fakeEndpoint,
-        );
-        await authService.initialize();
+        final auth = await signedIn(accountEmail: 'judge@example.com');
+        await pumpSettings(tester, auth);
 
-        await tester.pumpWidget(
-          MaterialApp(home: SettingsScreen(authService: authService)),
-        );
-        await tester.pumpAndSettle();
+        await openSignOutDialog(tester);
 
-        await tester.ensureVisible(find.text('Refresh'));
-        await tester.tap(find.text('Refresh'));
-        await tester.pumpAndSettle();
-
-        expect(find.text('Re-authenticate Guest?'), findsOneWidget);
-        await tester.tap(find.text('Re-authenticate'));
-        await tester.pumpAndSettle();
-
-        expect(find.text('Guest session refreshed'), findsOneWidget);
+        expect(find.byType(AlertDialog), findsOneWidget);
+        expect(find.textContaining('unreachable'), findsNothing);
       },
     );
 
-    testWidgets(
-      'given settings screen, when Sign Out is tapped and confirmed, then signs out and shows feedback',
-      (tester) async {
-        final storage = InMemoryAuthSuccessStorage(sampleAuthSuccess);
-        final client = Client('http://localhost:8080/')
-          ..authSessionManager = FlutterAuthSessionManager(storage: storage);
-        final authService = AuthService(
-          client: client,
-          anonymousEndpoint: FakeEndpointAnonymousIdp(),
-        );
-        await authService.initialize();
+    testWidgets('cancelling the sign-out dialog keeps the user signed in', (
+      tester,
+    ) async {
+      final auth = await signedIn();
+      await pumpSettings(tester, auth);
 
-        await tester.pumpWidget(
-          MaterialApp(home: SettingsScreen(authService: authService)),
-        );
-        await tester.pumpAndSettle();
+      await openSignOutDialog(tester);
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
 
-        await tester.ensureVisible(find.text('Sign Out'));
-        await tester.tap(find.text('Sign Out'));
-        await tester.pumpAndSettle();
+      expect(auth.isAuthenticated, isTrue);
+    });
 
-        expect(find.text('Sign Out Device?'), findsOneWidget);
-        final dialogConfirmButton = find.descendant(
-          of: find.byType(AlertDialog),
-          matching: find.text('Sign Out'),
-        );
-        await tester.tap(dialogConfirmButton);
-        await tester.pumpAndSettle();
+    testWidgets('confirming sign-out signs the device out', (tester) async {
+      final auth = await signedIn(accountEmail: 'judge@example.com');
+      await pumpSettings(tester, auth);
 
-        expect(find.text('Device signed out'), findsOneWidget);
-        expect(authService.isAuthenticated, isFalse);
-      },
-    );
+      await openSignOutDialog(tester);
+      await tester.tap(find.byKey(SettingsScreen.keyConfirmSignOutButton));
+      await tester.pumpAndSettle();
+
+      expect(auth.isAuthenticated, isFalse);
+    });
 
     testWidgets(
       'Story 2.3: given settings screen, should render DEVELOPER & JUDGE CONTROLS and Trigger FutureCall Decay button',
       (tester) async {
-        final storage = InMemoryAuthSuccessStorage(sampleAuthSuccess);
-        final client = Client('http://localhost:8080/')
-          ..authSessionManager = FlutterAuthSessionManager(storage: storage);
-        final authService = AuthService(
-          client: client,
-          anonymousEndpoint: FakeEndpointAnonymousIdp(),
-        );
-        await authService.initialize();
+        final authService = await signedIn();
 
         await tester.pumpWidget(
           MaterialApp(home: SettingsScreen(authService: authService)),
@@ -263,14 +183,7 @@ void main() {
     testWidgets(
       'Story 2.3: given settings screen, when [⚡ Trigger FutureCall Decay] is tapped, executes worker via RPC and reloads bag',
       (tester) async {
-        final storage = InMemoryAuthSuccessStorage(sampleAuthSuccess);
-        final client = Client('http://localhost:8080/')
-          ..authSessionManager = FlutterAuthSessionManager(storage: storage);
-        final authService = AuthService(
-          client: client,
-          anonymousEndpoint: FakeEndpointAnonymousIdp(),
-        );
-        await authService.initialize();
+        final authService = await signedIn();
 
         final mockClient = MockClient();
         final mockEndpointBag = MockEndpointBag();
@@ -310,14 +223,7 @@ void main() {
     testWidgets(
       'Story 2.3: given settings screen, when [⚡ Trigger FutureCall Decay] fails via RPC, shows error feedback snackbar',
       (tester) async {
-        final storage = InMemoryAuthSuccessStorage(sampleAuthSuccess);
-        final client = Client('http://localhost:8080/')
-          ..authSessionManager = FlutterAuthSessionManager(storage: storage);
-        final authService = AuthService(
-          client: client,
-          anonymousEndpoint: FakeEndpointAnonymousIdp(),
-        );
-        await authService.initialize();
+        final authService = await signedIn();
 
         final mockClient = MockClient();
         final mockEndpointBag = MockEndpointBag();
@@ -353,14 +259,7 @@ void main() {
     testWidgets(
       'Story 2.4: given settings screen, renders [⏩ Fast-Forward 30 Days] button under DEVELOPER & JUDGE CONTROLS',
       (tester) async {
-        final storage = InMemoryAuthSuccessStorage(sampleAuthSuccess);
-        final client = Client('http://localhost:8080/')
-          ..authSessionManager = FlutterAuthSessionManager(storage: storage);
-        final authService = AuthService(
-          client: client,
-          anonymousEndpoint: FakeEndpointAnonymousIdp(),
-        );
-        await authService.initialize();
+        final authService = await signedIn();
 
         await tester.pumpWidget(
           MaterialApp(
@@ -384,14 +283,7 @@ void main() {
     testWidgets(
       'Story 2.4: given settings screen with primary racquet in bag, when [⏩ Fast-Forward 30 Days] tapped, calls fastForwardRacquetAge and reloads bag',
       (tester) async {
-        final storage = InMemoryAuthSuccessStorage(sampleAuthSuccess);
-        final client = Client('http://localhost:8080/')
-          ..authSessionManager = FlutterAuthSessionManager(storage: storage);
-        final authService = AuthService(
-          client: client,
-          anonymousEndpoint: FakeEndpointAnonymousIdp(),
-        );
-        await authService.initialize();
+        final authService = await signedIn();
 
         final mockClient = MockClient();
         final mockEndpointBag = MockEndpointBag();
@@ -464,14 +356,7 @@ void main() {
     testWidgets(
       'Story 2.4: given settings screen without racquets, when [Fast-Forward 30 Days] tapped, shows error feedback snackbar',
       (tester) async {
-        final storage = InMemoryAuthSuccessStorage(sampleAuthSuccess);
-        final client = Client('http://localhost:8080/')
-          ..authSessionManager = FlutterAuthSessionManager(storage: storage);
-        final authService = AuthService(
-          client: client,
-          anonymousEndpoint: FakeEndpointAnonymousIdp(),
-        );
-        await authService.initialize();
+        final authService = await signedIn();
 
         final mockClient = MockClient();
         final mockEndpointBag = MockEndpointBag();
@@ -509,14 +394,7 @@ void main() {
     testWidgets(
       'Story 2.4: given settings screen, when fastForwardRacquetAge fails via RPC, shows error snackbar',
       (tester) async {
-        final storage = InMemoryAuthSuccessStorage(sampleAuthSuccess);
-        final client = Client('http://localhost:8080/')
-          ..authSessionManager = FlutterAuthSessionManager(storage: storage);
-        final authService = AuthService(
-          client: client,
-          anonymousEndpoint: FakeEndpointAnonymousIdp(),
-        );
-        await authService.initialize();
+        final authService = await signedIn();
 
         final mockClient = MockClient();
         final mockEndpointBag = MockEndpointBag();
