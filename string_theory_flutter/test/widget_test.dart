@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:serverpod_auth_idp_flutter/serverpod_auth_idp_flutter.dart';
-import 'package:string_theory_client/string_theory_client.dart';
 import 'package:string_theory_flutter/bloc/bag_bloc.dart';
 import 'package:string_theory_flutter/client.dart' as app_client;
 import 'package:string_theory_flutter/main.dart';
@@ -33,6 +32,12 @@ void main() {
       offlineQueue: app_client.offlineSessionQueue,
     );
     await app_client.authService.initialize();
+  }
+
+  Future<void> tapContinueAsGuest(WidgetTester tester) async {
+    final button = find.byKey(SignInScreen.keyContinueAsGuestButton);
+    await tester.ensureVisible(button);
+    await tester.tap(button);
   }
 
   setUp(() {
@@ -96,7 +101,7 @@ void main() {
 
       await tester.pumpWidget(MyApp(healthSyncService: fakeHealth));
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(SignInScreen.keyContinueAsGuestButton));
+      await tapContinueAsGuest(tester);
       await tester.pumpAndSettle();
 
       expect(anonymousIdp.loginCalls, 1);
@@ -145,7 +150,7 @@ void main() {
         anonymousIdp.authSuccess = testAuthSuccess(
           UuidValue.fromString('12345678-1234-1234-1234-123456789012'),
         );
-        await tester.tap(find.byKey(SignInScreen.keyContinueAsGuestButton));
+        await tapContinueAsGuest(tester);
         await tester.pumpAndSettle();
 
         expect(find.byType(VirtualBagScreen), findsOneWidget);

@@ -7,8 +7,7 @@ import '../bloc/bag_bloc.dart';
 import '../client.dart' as app_client;
 import '../services/auth_service.dart';
 
-/// Settings screen displaying current authentication info, guest ID,
-/// and stubbed account upgrade options (FR-2).
+/// Settings: the signed-in account, sign-out and the developer controls.
 class SettingsScreen extends StatefulWidget {
   final AuthService? authService;
   final Client? client;
@@ -21,8 +20,19 @@ class SettingsScreen extends StatefulWidget {
     this.bagBloc,
   });
 
+  static const keyGuestBanner = Key('settings_guest_banner');
+  static const keyAccountEmail = Key('settings_account_email');
+  static const keySignOutButton = Key('settings_sign_out_button');
+  static const keyConfirmSignOutButton = Key(
+    'settings_confirm_sign_out_button',
+  );
   static const keyDevTriggerDecayButton = Key('dev_trigger_decay_button');
   static const keyDevFastForwardButton = Key('dev_fast_forward_30_days_button');
+
+  /// Sign-out warning for a guest, whose bag can't be reached again.
+  static const guestSignOutWarning =
+      'You are signed in as a guest. After signing out, this guest bag becomes '
+      "unreachable and can't be recovered.";
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -35,73 +45,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   AuthService get _authService => widget.authService ?? app_client.authService;
   Client get _client => widget.client ?? app_client.client;
 
-  void _showLinkAccountDialog(BuildContext context) {
-    showDialog<void>(
-      context: context,
-      builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF1A1E20),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: const BorderSide(color: Color(0xFF2A3034)),
-          ),
-          title: Text(
-            'Link Account',
-            style: GoogleFonts.barlowCondensed(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 24,
-            ),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Linking your account with Google or Email will preserve all your virtual gear bags, racquets, string logs, and health scores across devices and prevent data loss if you reinstall the app.',
-                style: GoogleFonts.inter(
-                  color: Colors.white70,
-                  fontSize: 14,
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(height: 20),
-              _UpgradeOptionTile(
-                icon: Icons.g_mobiledata,
-                title: 'Continue with Google',
-                subtitle: 'Sync gear across Android and iOS',
-                onTap: () {
-                  Navigator.of(dialogContext).pop();
-                  _showLinkFeedback(context, 'Google linking preview enabled');
-                },
-              ),
-              const SizedBox(height: 12),
-              _UpgradeOptionTile(
-                icon: Icons.email_outlined,
-                title: 'Continue with Email',
-                subtitle: 'Sign in with magic code or password',
-                onTap: () {
-                  Navigator.of(dialogContext).pop();
-                  _showLinkFeedback(context, 'Email linking preview enabled');
-                },
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: Text(
-                'Cancel',
-                style: GoogleFonts.inter(color: Colors.white60),
-              ),
-            ),
-          ],
-        );
-      },
-    );
+  @override
+  void initState() {
+    super.initState();
+    // Retry an account lookup that failed earlier (e.g. offline at launch).
+    _authService.refreshAccount();
   }
 
-  void _showLinkFeedback(BuildContext context, String message) {
+  void _showSuccessFeedback(BuildContext context, String message) {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -118,67 +69,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Future<void> _confirmReauthenticate(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1E20),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: Color(0xFF2A3034)),
-        ),
-        title: Text(
-          'Re-authenticate Guest?',
-          style: GoogleFonts.barlowCondensed(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-          ),
-        ),
-        content: Text(
-          'This will generate a new anonymous guest identity. Your current session will be replaced.',
-          style: GoogleFonts.inter(color: Colors.white70, fontSize: 14),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(
-              'Cancel',
-              style: GoogleFonts.inter(color: Colors.white60),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFC6F10E),
-              foregroundColor: Colors.black,
-            ),
-            child: Text(
-              'Re-authenticate',
-              style: GoogleFonts.inter(fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true && context.mounted) {
-      try {
-        await _authService.loginAsGuest();
-        if (context.mounted) {
-          _showLinkFeedback(context, 'Guest session refreshed');
-        }
-      } catch (e) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: $e')),
-          );
-        }
-      }
-    }
-  }
-
   Future<void> _confirmSignOut(BuildContext context) async {
+    final isGuest = _authService.account.value.isGuest;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -188,7 +80,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           side: const BorderSide(color: Color(0xFF2A3034)),
         ),
         title: Text(
-          'Sign Out Device?',
+          'Sign Out?',
           style: GoogleFonts.barlowCondensed(
             color: const Color(0xFFFF453A),
             fontWeight: FontWeight.bold,
@@ -196,7 +88,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ),
         content: Text(
-          'Signing out will remove your guest session token from secure storage. You will lose access to data associated with this guest identity.',
+          isGuest
+              ? SettingsScreen.guestSignOutWarning
+              : 'You will return to the sign-in screen. Sign in again with '
+                    'the same email to get your bag back.',
           style: GoogleFonts.inter(color: Colors.white70, fontSize: 14),
         ),
         actions: [
@@ -208,6 +103,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           ElevatedButton(
+            key: SettingsScreen.keyConfirmSignOutButton,
             onPressed: () => Navigator.of(dialogContext).pop(true),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFFF453A),
@@ -222,12 +118,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
 
-    if (confirmed == true && context.mounted) {
-      await _authService.signOut();
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Device signed out')),
-        );
+    // The auth gate replaces the whole signed-in app with the sign-in screen,
+    // so this screen goes away on its own.
+    if (confirmed == true) {
+      try {
+        await _authService.signOut();
+      } catch (e) {
+        debugPrint('SettingsScreen: sign-out failed: $e');
+        if (context.mounted) {
+          _showErrorFeedback(context, "Couldn't sign out: $e");
+        }
       }
     }
   }
@@ -258,7 +158,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         '[DevControl] DailyDecayFutureCall executed: $updatedCount active string jobs updated',
       );
       if (context.mounted) {
-        _showLinkFeedback(
+        _showSuccessFeedback(
           context,
           'Decay executed: $updatedCount string jobs updated',
         );
@@ -343,7 +243,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
 
       if (context.mounted) {
-        _showLinkFeedback(
+        _showSuccessFeedback(
           context,
           'Aged "$targetRacquetName" by 30 days (Health: $newHealth%)',
         );
@@ -384,11 +284,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ),
       ),
-      body: ValueListenableBuilder(
-        valueListenable: auth.authInfoListenable,
-        builder: (context, authInfo, _) {
-          final isAuthed = auth.isAuthenticated;
-          final userId = auth.currentUserId ?? 'Not authenticated';
+      body: ValueListenableBuilder<AccountInfo>(
+        valueListenable: auth.account,
+        builder: (context, account, _) {
+          final userId = auth.currentUserId ?? 'Not signed in';
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(20),
@@ -405,153 +304,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1A1E20),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFF2A3034)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                width: 40,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF2A3034),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: const Icon(
-                                  Icons.person_outline,
-                                  color: Color(0xFFC6F10E),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Guest Account',
-                                    style: GoogleFonts.inter(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                  Text(
-                                    isAuthed
-                                        ? 'Anonymous session active'
-                                        : 'Offline / Unauthenticated',
-                                    style: GoogleFonts.inter(
-                                      color: isAuthed
-                                          ? const Color(0xFFC6F10E)
-                                          : const Color(0xFFFF9F0A),
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isAuthed
-                                  ? const Color(
-                                      0xFFC6F10E,
-                                    ).withValues(alpha: 0.15)
-                                  : const Color(
-                                      0xFFFF453A,
-                                    ).withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: isAuthed
-                                    ? const Color(
-                                        0xFFC6F10E,
-                                      ).withValues(alpha: 0.4)
-                                    : const Color(
-                                        0xFFFF453A,
-                                      ).withValues(alpha: 0.4),
-                              ),
-                            ),
-                            child: Text(
-                              isAuthed ? 'ANONYMOUS' : 'DISCONNECTED',
-                              style: GoogleFonts.barlowCondensed(
-                                color: isAuthed
-                                    ? const Color(0xFFC6F10E)
-                                    : const Color(0xFFFF453A),
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                                letterSpacing: 1.0,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      const Divider(color: Color(0xFF2A3034), height: 1),
-                      const SizedBox(height: 16),
-                      Text(
-                        'User Identifier (AuthUserId):',
-                        style: GoogleFonts.inter(
-                          color: Colors.white54,
-                          fontSize: 12,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      SelectableText(
-                        userId,
-                        style: GoogleFonts.inter(
-                          color: Colors.white,
-                          fontSize: 13,
-                          fontFeatures: const [FontFeature.tabularFigures()],
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Your racquets, string jobs, and tension decay data are currently stored under this anonymous guest account on this device.',
-                        style: GoogleFonts.inter(
-                          color: Colors.white60,
-                          fontSize: 13,
-                          height: 1.4,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 46,
-                        child: ElevatedButton.icon(
-                          onPressed: () => _showLinkAccountDialog(context),
-                          icon: const Icon(Icons.link, color: Colors.black),
-                          label: Text(
-                            'Link Google / Email',
-                            style: GoogleFonts.inter(
-                              color: Colors.black,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFC6F10E),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                _AccountCard(account: account, userId: userId),
                 const SizedBox(height: 28),
                 Text(
                   'SESSION CONTROLS',
@@ -571,76 +324,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: const Color(0xFF2A3034)),
                   ),
-                  child: Column(
-                    children: [
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: const Icon(
-                          Icons.refresh,
-                          color: Colors.white70,
-                        ),
-                        title: Text(
-                          'Re-authenticate Guest',
-                          style: GoogleFonts.inter(
-                            color: Colors.white,
-                            fontSize: 14,
-                          ),
-                        ),
-                        subtitle: Text(
-                          'Recreates an anonymous guest identity',
-                          style: GoogleFonts.inter(
-                            color: Colors.white54,
-                            fontSize: 12,
-                          ),
-                        ),
-                        trailing: OutlinedButton(
-                          onPressed: () => _confirmReauthenticate(context),
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Color(0xFF2A3034)),
-                          ),
-                          child: Text(
-                            'Refresh',
-                            style: GoogleFonts.inter(
-                              color: const Color(0xFFC6F10E),
-                            ),
-                          ),
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(
+                      Icons.logout,
+                      color: Color(0xFFFF453A),
+                    ),
+                    title: Text(
+                      'Sign Out',
+                      style: GoogleFonts.inter(
+                        color: const Color(0xFFFF453A),
+                        fontSize: 14,
+                      ),
+                    ),
+                    subtitle: Text(
+                      'Returns to the sign-in screen',
+                      style: GoogleFonts.inter(
+                        color: Colors.white54,
+                        fontSize: 12,
+                      ),
+                    ),
+                    trailing: OutlinedButton(
+                      key: SettingsScreen.keySignOutButton,
+                      onPressed: () => _confirmSignOut(context),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFFFF453A)),
+                      ),
+                      child: Text(
+                        'Sign Out',
+                        style: GoogleFonts.inter(
+                          color: const Color(0xFFFF453A),
                         ),
                       ),
-                      const Divider(color: Color(0xFF2A3034)),
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: const Icon(
-                          Icons.logout,
-                          color: Color(0xFFFF453A),
-                        ),
-                        title: Text(
-                          'Sign Out Device',
-                          style: GoogleFonts.inter(
-                            color: const Color(0xFFFF453A),
-                            fontSize: 14,
-                          ),
-                        ),
-                        subtitle: Text(
-                          'Removes guest token from secure storage',
-                          style: GoogleFonts.inter(
-                            color: Colors.white54,
-                            fontSize: 12,
-                          ),
-                        ),
-                        trailing: OutlinedButton(
-                          onPressed: () => _confirmSignOut(context),
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Color(0xFFFF453A)),
-                          ),
-                          child: Text(
-                            'Sign Out',
-                            style: GoogleFonts.inter(
-                              color: const Color(0xFFFF453A),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
                 const SizedBox(height: 28),
@@ -797,60 +513,171 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 }
 
-class _UpgradeOptionTile extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
+/// The signed-in account: the email for an email user, the guest banner for
+/// a guest, or generic text while the account type is unknown.
+class _AccountCard extends StatelessWidget {
+  final AccountInfo account;
+  final String userId;
 
-  const _UpgradeOptionTile({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
+  const _AccountCard({required this.account, required this.userId});
+
+  static const _volt = Color(0xFFC6F10E);
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: const Color(0xFF121516),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0xFF2A3034)),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, color: const Color(0xFFC6F10E), size: 28),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
+    final email = account.email;
+    final (
+      String title,
+      String subtitle,
+      String badge,
+    ) = switch (account.kind) {
+      AccountKind.email => ('Email Account', 'Signed in with email', 'EMAIL'),
+      AccountKind.guest => ('Guest Account', 'Anonymous session', 'GUEST'),
+      AccountKind.signedOut => ('Signed Out', 'No active session', 'OFFLINE'),
+      AccountKind.unknown => ('Account', 'Signed in', 'ACTIVE'),
+    };
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A1E20),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF2A3034)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2A3034),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Icon(
+                  account.kind == AccountKind.email
+                      ? Icons.email_outlined
+                      : Icons.person_outline,
+                  color: _volt,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: GoogleFonts.inter(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      style: GoogleFonts.inter(color: _volt, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: _volt.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: _volt.withValues(alpha: 0.4)),
+                ),
+                child: Text(
+                  badge,
+                  style: GoogleFonts.barlowCondensed(
+                    color: _volt,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                    letterSpacing: 1.0,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Divider(color: Color(0xFF2A3034), height: 1),
+          const SizedBox(height: 16),
+          if (email != null) ...[
+            Text(
+              'Email:',
+              style: GoogleFonts.inter(color: Colors.white54, fontSize: 12),
+            ),
+            const SizedBox(height: 4),
+            SelectableText(
+              email,
+              key: SettingsScreen.keyAccountEmail,
+              style: GoogleFonts.inter(
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+          Text(
+            'User Identifier (AuthUserId):',
+            style: GoogleFonts.inter(color: Colors.white54, fontSize: 12),
+          ),
+          const SizedBox(height: 4),
+          SelectableText(
+            userId,
+            style: GoogleFonts.inter(
+              color: Colors.white,
+              fontSize: 13,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+          if (account.isGuest) ...[
+            const SizedBox(height: 16),
+            Container(
+              key: SettingsScreen.keyGuestBanner,
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFF9F0A).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: const Color(0xFFFF9F0A).withValues(alpha: 0.4),
+                ),
+              ),
+              child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: GoogleFonts.inter(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                    ),
+                  const Icon(
+                    Icons.info_outline,
+                    color: Color(0xFFFF9F0A),
+                    size: 18,
                   ),
-                  Text(
-                    subtitle,
-                    style: GoogleFonts.inter(
-                      color: Colors.white54,
-                      fontSize: 12,
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Your bag lives on this guest identity only. Signing out '
+                      'or clearing this browser or device leaves it '
+                      'unreachable.',
+                      style: GoogleFonts.inter(
+                        color: Colors.white70,
+                        fontSize: 13,
+                        height: 1.4,
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: Colors.white38, size: 20),
           ],
-        ),
+        ],
       ),
     );
   }

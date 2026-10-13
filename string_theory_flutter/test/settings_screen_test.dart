@@ -16,15 +16,8 @@ class MockBagBloc extends Mock implements BagBloc {}
 
 void main() {
   group('SettingsScreen', () {
-    final testUserId = UuidValue.fromString(
-      'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
-    );
-    final sampleAuthSuccess = AuthSuccess(
-      authStrategy: 'session',
-      token: 'jwt-token',
-      authUserId: testUserId,
-      scopeNames: {},
-    );
+    // emailUserId is aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee.
+    final sampleAuthSuccess = testAuthSuccess(emailUserId);
 
     /// A signed-in [AuthService]: an email user with [accountEmail], a guest
     /// without one, or an unknown account when the lookup [fails].
@@ -115,9 +108,20 @@ void main() {
 
         await openSignOutDialog(tester);
 
-        expect(find.byType(AlertDialog), findsOneWidget);
-        expect(find.textContaining('unreachable'), findsOneWidget);
-        expect(find.textContaining("can't be recovered"), findsOneWidget);
+        final dialog = find.byType(AlertDialog);
+        expect(dialog, findsOneWidget);
+        expect(
+          find.descendant(
+            of: dialog,
+            matching: find.text(SettingsScreen.guestSignOutWarning),
+          ),
+          findsOneWidget,
+        );
+        expect(SettingsScreen.guestSignOutWarning, contains('unreachable'));
+        expect(
+          SettingsScreen.guestSignOutWarning,
+          contains("can't be recovered"),
+        );
       },
     );
 
@@ -129,8 +133,12 @@ void main() {
 
         await openSignOutDialog(tester);
 
-        expect(find.byType(AlertDialog), findsOneWidget);
-        expect(find.textContaining('unreachable'), findsNothing);
+        final dialog = find.byType(AlertDialog);
+        expect(dialog, findsOneWidget);
+        expect(
+          find.descendant(of: dialog, matching: find.textContaining('guest')),
+          findsNothing,
+        );
       },
     );
 

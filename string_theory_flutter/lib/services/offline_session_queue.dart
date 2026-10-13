@@ -246,6 +246,16 @@ class OfflineSessionQueue {
     );
   }
 
+  /// Drops every queued session, in memory and in [storage].
+  ///
+  /// Used on sign-out: queued sessions are not keyed by user, so they must
+  /// not be sent later under another identity. A drain already in flight
+  /// persists the emptied queue.
+  Future<void> clear() async {
+    _items = <SessionLog>[];
+    await storage.write(const <String>[]);
+  }
+
   Future<void> _persist() {
     final entries = _items!.map((l) => jsonEncode(l.toJson())).toList();
     return storage.write(entries);

@@ -44,21 +44,20 @@ class VirtualBagScreen extends StatefulWidget {
   /// Overrides the [HealthSyncService] otherwise read from the context.
   final HealthSyncService? healthSyncService;
 
-  /// Signs the user back in after an expired session; resolves to whether
-  /// it succeeded. Defaults to `authService.loginAsGuest`, resolved at tap
-  /// time.
-  final Future<bool> Function()? onReauthenticate;
+  /// Handles the "Sign in" action after an expired session (401): signs out
+  /// locally, so the auth gate shows the sign-in screen. Defaults to
+  /// `authService.signOut`, resolved at tap time.
+  final Future<void> Function()? onSignInRequired;
 
   const VirtualBagScreen({
     super.key,
     this.bagBloc,
     this.healthSyncService,
-    this.onReauthenticate,
+    this.onSignInRequired,
   });
 
-  /// Shown when signing back in after an expired session fails.
-  static const reauthFailedMessage =
-      "Couldn't sign you in. Check your connection and try again.";
+  /// Shown when signing out after an expired session fails.
+  static const signOutFailedMessage = "Couldn't sign you out. Try again.";
 
   static const double kMobileBreakpoint = 600.0;
   static const double kDesktopBreakpoint = 1024.0;
@@ -326,24 +325,19 @@ class _VirtualBagScreenState extends State<VirtualBagScreen>
     Navigator.maybePop(context);
   }
 
-  /// Re-provisions a session after a 401, then reloads the bag.
-  Future<void> _reauthenticate() async {
-    final signIn = widget.onReauthenticate ?? authService.loginAsGuest;
-    bool signedIn;
+  /// After a 401, signs out locally so the sign-in screen shows. It never
+  /// creates a new guest and never queues anything offline.
+  Future<void> _signInAgain() async {
+    final signOut = widget.onSignInRequired ?? authService.signOut;
     try {
-      signedIn = await signIn();
+      await signOut();
     } catch (e) {
-      debugPrint('VirtualBagScreen: re-authentication failed: $e');
-      signedIn = false;
-    }
-    if (!mounted) return;
-    if (signedIn) {
-      _resolveBloc(context).add(const LoadBag());
-    } else {
+      debugPrint('VirtualBagScreen: sign-out after 401 failed: $e');
+      if (!mounted) return;
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(
-          buildErrorSnackBar(VirtualBagScreen.reauthFailedMessage),
+          buildErrorSnackBar(VirtualBagScreen.signOutFailedMessage),
         );
     }
   }
@@ -384,7 +378,7 @@ class _VirtualBagScreenState extends State<VirtualBagScreen>
           ScaffoldMessenger.of(context).showSnackBar(
             buildErrorSnackBar(
               state.errorMessage!,
-              onSignIn: state.reauthRequired ? _reauthenticate : null,
+              onSignIn: state.reauthRequired ? _signInAgain : null,
             ),
           );
         }
