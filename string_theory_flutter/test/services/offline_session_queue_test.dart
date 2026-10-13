@@ -310,6 +310,43 @@ void main() {
     });
   });
 
+  group('OfflineSessionQueue clear', () {
+    test('drops every queued session from memory and storage', () async {
+      final storage = InMemorySessionQueueStorage();
+      final queue = OfflineSessionQueue(storage: storage);
+      await queue.enqueue(_log(externalWorkoutId: 'hk-1'));
+      await queue.enqueue(_log(externalWorkoutId: 'hk-2'));
+
+      await queue.clear();
+
+      expect(queue.pendingCount, 0);
+      expect(await storage.read(), isEmpty);
+    });
+
+    test('clears stored sessions that were never loaded', () async {
+      final storage = InMemorySessionQueueStorage([
+        jsonEncode(_log(externalWorkoutId: 'hk-1').toJson()),
+      ]);
+      final queue = OfflineSessionQueue(storage: storage);
+
+      await queue.clear();
+      await queue.load();
+
+      expect(queue.pendingCount, 0);
+      expect(await storage.read(), isEmpty);
+    });
+
+    test('accepts new sessions after a clear', () async {
+      final queue = OfflineSessionQueue(storage: InMemorySessionQueueStorage());
+      await queue.enqueue(_log(externalWorkoutId: 'hk-1'));
+
+      await queue.clear();
+      await queue.enqueue(_log(externalWorkoutId: 'hk-2'));
+
+      expect(queue.pending.single.externalWorkoutId, 'hk-2');
+    });
+  });
+
   group('isPermanentSessionRejection', () {
     test('classifies server rejections and transient failures', () {
       expect(
