@@ -30,3 +30,5 @@ _bmad/**/temp/
 
 # Keep all BMAD artifacts and outputs
 !_bmad-output/
+# BMAD party-mode session memory
+_bmad-output/party-mode/
