@@ -278,6 +278,23 @@ class EndpointJwtRefresh extends _iacc.EndpointRefreshJwtTokens {
       );
 }
 
+/// Account details for the signed-in user.
+/// {@category Endpoint}
+class EndpointAccount extends _isc.EndpointRef {
+  EndpointAccount(_isc.EndpointCaller caller) : super(caller);
+
+  @override
+  String get name => 'account';
+
+  /// The email address of the signed-in user's email account, or null when
+  /// the user has none (an anonymous guest).
+  _ida.Future<String?> getAccountEmail() => caller.callServerEndpoint<String?>(
+    'account',
+    'getAccountEmail',
+    {},
+  );
+}
+
 /// Endpoint for managing virtual gear bags, racquets, and string setups.
 /// {@category Endpoint}
 class EndpointBag extends _isc.EndpointRef {
@@ -532,6 +549,7 @@ class Client extends _isc.ServerpodClientShared {
     anonymousIdp = EndpointAnonymousIdp(this);
     emailIdp = EndpointEmailIdp(this);
     jwtRefresh = EndpointJwtRefresh(this);
+    account = EndpointAccount(this);
     bag = EndpointBag(this);
     session = EndpointSession(this);
     greeting = EndpointGreeting(this);
@@ -543,6 +561,8 @@ class Client extends _isc.ServerpodClientShared {
   late final EndpointEmailIdp emailIdp;
 
   late final EndpointJwtRefresh jwtRefresh;
+
+  late final EndpointAccount account;
 
   late final EndpointBag bag;
 
@@ -557,6 +577,7 @@ class Client extends _isc.ServerpodClientShared {
     'anonymousIdp': anonymousIdp,
     'emailIdp': emailIdp,
     'jwtRefresh': jwtRefresh,
+    'account': account,
     'bag': bag,
     'session': session,
     'greeting': greeting,

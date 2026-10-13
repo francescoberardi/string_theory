@@ -26,6 +26,7 @@ import 'package:string_theory_server/src/generated/string_material_category.dart
 import '../auth/anonymous_idp_endpoint.dart' as _in0zita6;
 import '../auth/email_idp_endpoint.dart' as _iuc1hd5t;
 import '../auth/jwt_refresh_endpoint.dart' as _inwq3ztq;
+import '../endpoints/account_endpoint.dart' as _iaho7ul5;
 import '../endpoints/bag_endpoint.dart' as _i30u42n8;
 import '../endpoints/session_endpoint.dart' as _ih5ivktc;
 import '../greetings/greeting_endpoint.dart' as _il624ik7;
@@ -51,6 +52,12 @@ class Endpoints extends _is.EndpointDispatch {
         ..initialize(
           server,
           'jwtRefresh',
+          null,
+        ),
+      'account': _iaho7ul5.AccountEndpoint()
+        ..initialize(
+          server,
+          'account',
           null,
         ),
       'bag': _i30u42n8.BagEndpoint()
@@ -301,6 +308,22 @@ class Endpoints extends _is.EndpointDispatch {
                         session,
                         refreshToken: params['refreshToken'],
                       ),
+        ),
+      },
+    );
+    connectors['account'] = _is.EndpointConnector(
+      name: 'account',
+      endpoint: endpoints['account']!,
+      methodConnectors: {
+        'getAccountEmail': _is.MethodConnector(
+          name: 'getAccountEmail',
+          params: {},
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['account'] as _iaho7ul5.AccountEndpoint)
+                  .getAccountEmail(session),
         ),
       },
     );

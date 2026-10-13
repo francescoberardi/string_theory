@@ -11,6 +11,8 @@ emailIdp:
   - hasAccount:
 jwtRefresh:
   - refreshAccessToken:
+account:
+  - getAccountEmail:
 bag:
   - getVirtualBag:
   - bagUpdates:
