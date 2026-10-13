@@ -7,6 +7,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:string_theory_client/string_theory_client.dart';
 import 'package:string_theory_flutter/bloc/bag_bloc.dart';
 import 'package:string_theory_flutter/bloc/bag_error_messages.dart';
+import 'package:string_theory_flutter/screens/sessions_screen.dart';
 import 'package:string_theory_flutter/screens/virtual_bag_screen.dart';
 import 'package:string_theory_flutter/services/health/health_sync_service.dart';
 import 'package:string_theory_flutter/theme/court_midnight_theme.dart';
@@ -1063,7 +1064,7 @@ void main() {
     });
 
     testWidgets(
-      'navigation rail switches between Bag and the Sessions placeholder',
+      'navigation rail switches between Bag and Sessions screen',
       (tester) async {
         await pumpBag(
           tester,
@@ -1075,7 +1076,7 @@ void main() {
             tester.widget<NavigationRail>(find.byType(NavigationRail));
 
         expect(railWidget().selectedIndex, 0);
-        expect(find.text('COURT SESSIONS'), findsNothing);
+        expect(find.byType(SessionsScreen), findsNothing);
 
         await tester.tap(
           find.descendant(of: rail, matching: find.text('Sessions')),
@@ -1083,20 +1084,21 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(railWidget().selectedIndex, 1);
-        expect(find.text('COURT SESSIONS'), findsOneWidget);
+        expect(find.byType(SessionsScreen), findsOneWidget);
+        expect(find.byKey(SessionsScreen.keySessionsScreen), findsOneWidget);
         expect(find.byKey(VirtualBagScreen.keyRacquetGrid), findsNothing);
 
         await tester.tap(find.descendant(of: rail, matching: find.text('Bag')));
         await tester.pumpAndSettle();
 
         expect(railWidget().selectedIndex, 0);
-        expect(find.text('COURT SESSIONS'), findsNothing);
+        expect(find.byType(SessionsScreen), findsNothing);
         expect(find.byKey(VirtualBagScreen.keyRacquetGrid), findsOneWidget);
       },
     );
 
     testWidgets(
-      'bottom navigation switches between Bag and the Sessions placeholder',
+      'bottom navigation switches between Bag and Sessions screen',
       (tester) async {
         await pumpBag(tester, BagLoaded(sampleRacquets));
         final nav = find.byKey(VirtualBagScreen.keyBottomNav);
@@ -1106,11 +1108,8 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(find.text('COURT SESSIONS'), findsOneWidget);
-        expect(
-          find.textContaining('log a match with + Log Session'),
-          findsOneWidget,
-        );
+        expect(find.byType(SessionsScreen), findsOneWidget);
+        expect(find.byKey(SessionsScreen.keySessionsScreen), findsOneWidget);
         expect(find.textContaining('Epic'), findsNothing);
         expect(find.textContaining('coming soon'), findsNothing);
         expect(find.byKey(VirtualBagScreen.keyRacquetList), findsNothing);
@@ -1118,7 +1117,7 @@ void main() {
         await tester.tap(find.descendant(of: nav, matching: find.text('Bag')));
         await tester.pumpAndSettle();
 
-        expect(find.text('COURT SESSIONS'), findsNothing);
+        expect(find.byType(SessionsScreen), findsNothing);
         expect(find.byKey(VirtualBagScreen.keyRacquetList), findsOneWidget);
       },
     );
@@ -1232,7 +1231,7 @@ void main() {
           await tester.pumpAndSettle();
 
           final drawer = find.byKey(VirtualBagScreen.keyNavigationDrawer);
-          expect(find.text('COURT SESSIONS'), findsNothing);
+          expect(find.byType(SessionsScreen), findsNothing);
           expect(find.byKey(VirtualBagScreen.keyRacquetGrid), findsOneWidget);
 
           await tester.tap(
@@ -1240,7 +1239,8 @@ void main() {
           );
           await tester.pumpAndSettle();
 
-          expect(find.text('COURT SESSIONS'), findsOneWidget);
+          expect(find.byType(SessionsScreen), findsOneWidget);
+          expect(find.byKey(SessionsScreen.keySessionsScreen), findsOneWidget);
           expect(find.byKey(VirtualBagScreen.keyRacquetGrid), findsNothing);
 
           await tester.tap(
@@ -1248,7 +1248,7 @@ void main() {
           );
           await tester.pumpAndSettle();
 
-          expect(find.text('COURT SESSIONS'), findsNothing);
+          expect(find.byType(SessionsScreen), findsNothing);
           expect(find.byKey(VirtualBagScreen.keyRacquetGrid), findsOneWidget);
         },
       );
@@ -1286,7 +1286,7 @@ void main() {
             ),
           );
           await tester.pumpAndSettle();
-          expect(find.text('COURT SESSIONS'), findsOneWidget);
+          expect(find.byType(SessionsScreen), findsOneWidget);
 
           // Resize to tablet (800dp)
           tester.view.physicalSize = const Size(800, 1000);
@@ -1300,7 +1300,7 @@ void main() {
             find.byKey(VirtualBagScreen.keyNavigationDrawer),
             findsNothing,
           );
-          expect(find.text('COURT SESSIONS'), findsOneWidget);
+          expect(find.byType(SessionsScreen), findsOneWidget);
 
           // Resize to mobile (400dp)
           tester.view.physicalSize = const Size(400, 800);
@@ -1308,7 +1308,7 @@ void main() {
 
           expect(find.byKey(VirtualBagScreen.keyBottomNav), findsOneWidget);
           expect(find.byKey(VirtualBagScreen.keyNavigationRail), findsNothing);
-          expect(find.text('COURT SESSIONS'), findsOneWidget);
+          expect(find.byType(SessionsScreen), findsOneWidget);
         },
       );
 

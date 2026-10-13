@@ -81,7 +81,7 @@ development_status:
   6-1-state-management-resilience-mutation-refresh-decoupling-asyn: done
   6-2-health-ingestion-hardening-lifecycle-resumed-sync-workout-ar: done
   6-3-native-uuid-tenant-migration-backend-concurrency-live-update: done
-  6-4-dedicated-sessions-history-screen-domain-model-extraction: backlog
+  6-4-dedicated-sessions-history-screen-domain-model-extraction: done
   6-5-ci-environment-parity-deterministic-auth-testing: backlog
   epic-6-retrospective: optional
 action_items:

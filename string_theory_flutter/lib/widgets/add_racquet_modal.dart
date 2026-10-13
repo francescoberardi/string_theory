@@ -5,42 +5,10 @@ import 'package:string_theory_client/string_theory_client.dart';
 
 import '../bloc/bag_bloc.dart';
 import '../domain/decay_engine.dart';
+import '../domain/racquet_preset.dart';
 import '../theme/court_midnight_theme.dart';
 
-/// Preset racquet and string bed configuration for 1-tap setup.
-class RacquetPreset {
-  final String name;
-  final String? brand;
-  final String? model;
-  final StringMaterialCategory materialCategory;
-  final String stringBrand;
-  final String stringModel;
-  final double tension;
-  final double maxRatedHours;
-
-  const RacquetPreset({
-    required this.name,
-    this.brand,
-    this.model,
-    required this.materialCategory,
-    required this.stringBrand,
-    required this.stringModel,
-    required this.tension,
-    required this.maxRatedHours,
-  });
-
-  /// Popular Poly preset: Babolat RPM Blast @ 52 lbs on Babolat Pure Aero
-  static const popularPoly = RacquetPreset(
-    name: 'Babolat Pure Aero',
-    brand: 'Babolat',
-    model: 'Pure Aero',
-    materialCategory: StringMaterialCategory.coPoly,
-    stringBrand: 'Babolat',
-    stringModel: 'RPM Blast',
-    tension: 52.0,
-    maxRatedHours: 20.0,
-  );
-}
+export '../domain/racquet_preset.dart';
 
 /// Modal bottom sheet / dialog form for adding a new racquet to the virtual bag (Story 1.4).
 class AddRacquetModal extends StatefulWidget {

@@ -25,8 +25,8 @@ import '../widgets/bag/bag_racquet_list.dart';
 import '../widgets/bag/bag_snack_bars.dart';
 import '../widgets/bag/log_session_fab.dart';
 import '../widgets/bag/pending_sync_banner.dart';
-import '../widgets/bag/sessions_placeholder.dart';
 import '../widgets/bag/simulate_workout_badge.dart';
+import 'sessions_screen.dart';
 import '../widgets/health/health_permission_guidance.dart';
 import '../widgets/workout_assignment_sheet.dart';
 import 'settings_screen.dart';
@@ -391,7 +391,11 @@ class _VirtualBagScreenState extends State<VirtualBagScreen>
       },
       builder: (context, state) {
         final content = switch (AppNavigationDestination.fromIndex(_navIndex)) {
-          AppNavigationDestination.sessions => const SessionsPlaceholder(),
+          AppNavigationDestination.sessions => SessionsScreen(
+            bagBloc: _resolveBloc(context),
+            racquets: state is BagLoaded ? state.racquets : null,
+            healthSyncService: _healthSyncService,
+          ),
           _ => _buildBodyForState(context, state, isMobile, crossAxisCount),
         };
 

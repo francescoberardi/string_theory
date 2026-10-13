@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:string_theory_client/string_theory_client.dart';
 import 'package:string_theory_flutter/domain/decay_engine.dart';
-import 'package:string_theory_flutter/widgets/add_racquet_modal.dart';
+import 'package:string_theory_flutter/domain/racquet_preset.dart';
 
 import '../helpers/tdd_red_phase.dart';
 
@@ -57,5 +57,32 @@ void main() {
         );
       },
     );
+
+    test('RacquetPreset supports value equality and hashCode', () {
+      const presetA = RacquetPreset(
+        name: 'Wilson Blade 98',
+        brand: 'Wilson',
+        model: 'Blade 98',
+        materialCategory: StringMaterialCategory.coPoly,
+        stringBrand: 'Luxilon',
+        stringModel: 'ALU Power',
+        tension: 52.0,
+        maxRatedHours: 20.0,
+      );
+
+      const presetB = RacquetPreset(
+        name: 'Wilson Blade 98',
+        brand: 'Wilson',
+        model: 'Blade 98',
+        materialCategory: StringMaterialCategory.coPoly,
+        stringBrand: 'Luxilon',
+        stringModel: 'ALU Power',
+        tension: 52.0,
+        maxRatedHours: 20.0,
+      );
+
+      expect(presetA, equals(presetB));
+      expect(presetA.hashCode, equals(presetB.hashCode));
+    });
   });
 }

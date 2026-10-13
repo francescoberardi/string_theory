@@ -219,5 +219,107 @@ void main() {
         );
       },
     );
+
+    testWidgets(
+      '[Edge] displays empty state guidance and log session button when no sessions are logged',
+      skip: tddRedPhase64,
+      (tester) async {
+        when(
+          () => mockSessionEndpoint.getSessionLogs(
+            racquetId: any(named: 'racquetId'),
+            limit: any(named: 'limit'),
+            offset: any(named: 'offset'),
+          ),
+        ).thenAnswer((_) async => []);
+
+        await pumpBag(tester, size: const Size(390, 844));
+        final nav = find.byKey(VirtualBagScreen.keyBottomNav);
+        await tester.tap(
+          find.descendant(of: nav, matching: find.text('Sessions')),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const Key('sessions_empty_state')), findsOneWidget);
+        expect(find.text('NO SESSIONS LOGGED'), findsOneWidget);
+        expect(
+          find.byKey(const Key('sessions_log_session_button')),
+          findsOneWidget,
+        );
+
+        // Tapping log button in empty state opens WorkoutAssignmentSheet
+        await tester.tap(find.byKey(const Key('sessions_log_session_button')));
+        await tester.pumpAndSettle();
+        expect(find.byType(WorkoutAssignmentSheet), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      '[Edge] displays error state with retry button on network failure',
+      skip: tddRedPhase64,
+      (tester) async {
+        when(
+          () => mockSessionEndpoint.getSessionLogs(
+            racquetId: any(named: 'racquetId'),
+            limit: any(named: 'limit'),
+            offset: any(named: 'offset'),
+          ),
+        ).thenThrow(Exception('Network error'));
+
+        await pumpBag(tester, size: const Size(390, 844));
+        final nav = find.byKey(VirtualBagScreen.keyBottomNav);
+        await tester.tap(
+          find.descendant(of: nav, matching: find.text('Sessions')),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Failed to load sessions. Please try again.'), findsOneWidget);
+        final retryButton = find.byKey(const Key('sessions_retry_button'));
+        expect(retryButton, findsOneWidget);
+
+        // Now configure success and tap retry
+        when(
+          () => mockSessionEndpoint.getSessionLogs(
+            racquetId: any(named: 'racquetId'),
+            limit: any(named: 'limit'),
+            offset: any(named: 'offset'),
+          ),
+        ).thenAnswer((_) async => [session1]);
+
+        await tester.tap(retryButton);
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const Key('sessions_list_view')), findsOneWidget);
+        expect(find.text('Wilson Blade 98'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      '[Edge] sorts sessions in reverse-chronological order even if API returns ascending order',
+      skip: tddRedPhase64,
+      (tester) async {
+        // Return older session2 (Oct 10) before newer session1 (Oct 12)
+        when(
+          () => mockSessionEndpoint.getSessionLogs(
+            racquetId: any(named: 'racquetId'),
+            limit: any(named: 'limit'),
+            offset: any(named: 'offset'),
+          ),
+        ).thenAnswer((_) async => [session2, session1]);
+
+        await pumpBag(tester, size: const Size(390, 844));
+        final nav = find.byKey(VirtualBagScreen.keyBottomNav);
+        await tester.tap(
+          find.descendant(of: nav, matching: find.text('Sessions')),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const Key('sessions_list_view')), findsOneWidget);
+        // Find session cards by ValueKey
+        final card1Pos = tester.getTopLeft(find.byKey(const ValueKey('session_101')));
+        final card2Pos = tester.getTopLeft(find.byKey(const ValueKey('session_102')));
+        // Newer session (session_101) must be rendered above older session (session_102)
+        expect(card1Pos.dy, lessThan(card2Pos.dy));
+      },
+    );
   });
 }
