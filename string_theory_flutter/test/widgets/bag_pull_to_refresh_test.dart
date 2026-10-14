@@ -23,7 +23,7 @@ void main() {
   final racquet = Racquet(
     id: 1,
     userId: Namespace.nil.uuidValue,
-    name: 'Wilson Blade 98',
+    name: 'Tour 98',
     isPrimary: true,
     createdAt: DateTime.utc(2026, 10, 1),
     updatedAt: DateTime.utc(2026, 10, 1),
@@ -203,10 +203,10 @@ void main() {
       expect(find.byKey(VirtualBagScreen.keyLoadingIndicator), findsNothing);
       expect(spinnerCount(), 1);
 
-      reload.complete([racquet.copyWith(name: 'Wilson Blade 98 v9')]);
+      reload.complete([racquet.copyWith(name: 'Tour 98 v9')]);
       await tester.pumpAndSettle();
 
-      expect(find.text('Wilson Blade 98 v9'), findsOneWidget);
+      expect(find.text('Tour 98 v9'), findsOneWidget);
       expect(find.byType(RefreshProgressIndicator), findsNothing);
     },
   );

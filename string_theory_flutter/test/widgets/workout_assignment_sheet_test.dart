@@ -20,17 +20,17 @@ void main() {
   final primaryRacquet = Racquet(
     id: 1,
     userId: Namespace.nil.uuidValue,
-    name: 'Wilson Blade 98',
-    brand: 'Wilson',
-    model: 'Blade 98',
+    name: 'Tour 98',
+    brand: 'Baseline',
+    model: 'Tour 98',
     isPrimary: true,
     activeStringJob: StringJob(
       id: 101,
       userId: Namespace.nil.uuidValue,
       racquetId: 1,
       materialCategory: StringMaterialCategory.coPoly,
-      brand: 'Luxilon',
-      model: 'ALU Power',
+      brand: 'Baseline',
+      model: 'Poly Tour',
       stringingDate: DateTime.utc(2026, 9, 20),
       installedTension: 52.0,
       maxRatedHours: 20.0,
@@ -46,17 +46,17 @@ void main() {
   final secondaryRacquet = Racquet(
     id: 2,
     userId: Namespace.nil.uuidValue,
-    name: 'Babolat Pure Aero',
-    brand: 'Babolat',
-    model: 'Pure Aero',
+    name: 'Spin 100',
+    brand: 'Baseline',
+    model: 'Spin 100',
     isPrimary: false,
     activeStringJob: StringJob(
       id: 102,
       userId: Namespace.nil.uuidValue,
       racquetId: 2,
       materialCategory: StringMaterialCategory.coPoly,
-      brand: 'Babolat',
-      model: 'RPM Blast',
+      brand: 'Baseline',
+      model: 'Spin Poly',
       stringingDate: DateTime.utc(2026, 9, 10),
       installedTension: 54.0,
       maxRatedHours: 20.0,
@@ -149,8 +149,8 @@ void main() {
 
         // Sheet is displayed with workout duration and racquet list
         expect(find.text('1h 30m'), findsOneWidget);
-        expect(find.text('Wilson Blade 98'), findsOneWidget);
-        expect(find.text('Babolat Pure Aero'), findsOneWidget);
+        expect(find.text('Tour 98'), findsOneWidget);
+        expect(find.text('Spin 100'), findsOneWidget);
 
         // 1 tap on Confirm dispatches LogSession for primary racquet
         final confirmButton = find.byKey(
@@ -473,7 +473,7 @@ void main() {
           id: 99,
           userId: Namespace.nil.uuidValue,
           name: 'Unstrung Frame',
-          brand: 'Wilson',
+          brand: 'Baseline',
           model: 'Pro Staff',
           isPrimary: true,
           activeStringJob: null,
@@ -588,7 +588,7 @@ void main() {
       id: 99,
       userId: Namespace.nil.uuidValue,
       name: 'Unstrung Frame',
-      brand: 'Wilson',
+      brand: 'Baseline',
       model: 'Pro Staff',
       isPrimary: true,
       activeStringJob: null,

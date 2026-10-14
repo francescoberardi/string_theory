@@ -44,8 +44,8 @@ void main() {
     registerFallbackValue(
       AddRacquet(
         name: 'Fallback Racquet',
-        stringBrand: 'Babolat',
-        stringModel: 'RPM Blast',
+        stringBrand: 'Baseline',
+        stringModel: 'Spin Poly',
         tension: 52.0,
         maxRatedHours: 20.0,
         stringingDate: DateTime.utc(2026, 10, 1),
@@ -182,17 +182,17 @@ void main() {
         await tester.tap(find.byKey(AddRacquetModal.keyPresetRpmBlast));
         await tester.pumpAndSettle();
 
-        // Criterion-defining primary assertion: frame / name populated with Babolat Pure Aero
+        // Criterion-defining primary assertion: frame / name populated with Spin 100
         expect(
-          find.text('Babolat Pure Aero'),
+          find.text('Spin 100'),
           findsOneWidget,
           reason:
-              'Popular Poly preset must fill racquet frame name with Babolat Pure Aero',
+              'Popular Poly preset must fill racquet frame name with Spin 100',
         );
 
         // Secondary assertions: string specs and tension
-        expect(find.text('Babolat'), findsWidgets);
-        expect(find.text('RPM Blast'), findsOneWidget);
+        expect(find.text('Baseline'), findsWidgets);
+        expect(find.text('Spin Poly'), findsOneWidget);
         expect(find.text('52.0'), findsOneWidget);
         expect(find.text('20.0'), findsOneWidget);
       },
@@ -224,14 +224,14 @@ void main() {
           () => mockBagBloc.add(
             any(
               that: isA<AddRacquet>()
-                  .having((e) => e.name, 'name', 'Babolat Pure Aero')
+                  .having((e) => e.name, 'name', 'Spin 100')
                   .having(
                     (e) => e.materialCategory,
                     'category',
                     StringMaterialCategory.coPoly,
                   )
-                  .having((e) => e.stringBrand, 'stringBrand', 'Babolat')
-                  .having((e) => e.stringModel, 'stringModel', 'RPM Blast')
+                  .having((e) => e.stringBrand, 'stringBrand', 'Baseline')
+                  .having((e) => e.stringModel, 'stringModel', 'Spin Poly')
                   .having((e) => e.tension, 'tension', 52.0)
                   .having((e) => e.maxRatedHours, 'maxRatedHours', 20.0),
             ),
@@ -290,7 +290,7 @@ void main() {
         );
         await tester.enterText(
           find.byKey(AddRacquetModal.keyBrandField),
-          'Wilson',
+          'Baseline',
         );
         await tester.enterText(
           find.byKey(AddRacquetModal.keyModelField),
@@ -306,11 +306,11 @@ void main() {
         // Enter string details
         await tester.enterText(
           find.byKey(AddRacquetModal.keyStringBrandField),
-          'Luxilon',
+          'Baseline',
         );
         await tester.enterText(
           find.byKey(AddRacquetModal.keyStringModelField),
-          'ALU Power',
+          'Poly Tour',
         );
         await tester.enterText(
           find.byKey(AddRacquetModal.keyTensionField),
@@ -331,7 +331,7 @@ void main() {
             any(
               that: isA<AddRacquet>()
                   .having((e) => e.name, 'name', 'Wilson Pro Staff 97')
-                  .having((e) => e.brand, 'brand', 'Wilson')
+                  .having((e) => e.brand, 'brand', 'Baseline')
                   .having((e) => e.model, 'model', 'Pro Staff 97')
                   .having((e) => e.isPrimary, 'isPrimary', true)
                   .having(
@@ -339,8 +339,8 @@ void main() {
                     'category',
                     StringMaterialCategory.naturalGut,
                   )
-                  .having((e) => e.stringBrand, 'stringBrand', 'Luxilon')
-                  .having((e) => e.stringModel, 'stringModel', 'ALU Power')
+                  .having((e) => e.stringBrand, 'stringBrand', 'Baseline')
+                  .having((e) => e.stringModel, 'stringModel', 'Poly Tour')
                   .having((e) => e.tension, 'tension', 54.5)
                   .having((e) => e.maxRatedHours, 'maxRatedHours', 50.0),
             ),

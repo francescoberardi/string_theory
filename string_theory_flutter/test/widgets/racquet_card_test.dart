@@ -36,7 +36,7 @@ void main() {
       id: id,
       userId: Namespace.nil.uuidValue,
       name: name,
-      brand: 'Wilson',
+      brand: 'Baseline',
       model: name,
       isPrimary: isPrimary,
       activeStringJob: healthScore != null
@@ -45,8 +45,8 @@ void main() {
               userId: Namespace.nil.uuidValue,
               racquetId: id,
               materialCategory: StringMaterialCategory.coPoly,
-              brand: 'Luxilon',
-              model: 'ALU Power',
+              brand: 'Baseline',
+              model: 'Poly Tour',
               stringingDate: DateTime.utc(2026, 9, 20),
               installedTension: 52.0,
               maxRatedHours: 20.0,
@@ -67,7 +67,7 @@ void main() {
       (tester) async {
         final racquet = createRacquet(
           id: 1,
-          name: 'Wilson Blade 98',
+          name: 'Tour 98',
           healthScore: 76,
         );
 
@@ -84,7 +84,7 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.byType(RadialHealthGauge), findsOneWidget);
-        expect(find.text('Wilson Blade 98'), findsOneWidget);
+        expect(find.text('Tour 98'), findsOneWidget);
       },
     );
 
@@ -93,7 +93,7 @@ void main() {
       (tester) async {
         final criticalRacquet = createRacquet(
           id: 2,
-          name: 'Head Radical MP',
+          name: 'Control MP',
           healthScore: 34,
         );
 
@@ -119,7 +119,7 @@ void main() {
       (tester) async {
         final healthyRacquet = createRacquet(
           id: 3,
-          name: 'Babolat Pure Aero',
+          name: 'Spin 100',
           healthScore: 72,
         );
 

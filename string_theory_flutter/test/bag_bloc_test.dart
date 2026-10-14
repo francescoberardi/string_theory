@@ -30,9 +30,9 @@ void main() {
   final sampleRacquet = Racquet(
     id: 1,
     userId: Namespace.nil.uuidValue,
-    name: 'Babolat Pure Aero 2023',
-    brand: 'Babolat',
-    model: 'Pure Aero',
+    name: 'Spin 100 2023',
+    brand: 'Baseline',
+    model: 'Spin 100',
     isPrimary: true,
     createdAt: DateTime.utc(2026, 10, 1),
     updatedAt: DateTime.utc(2026, 10, 1),
@@ -73,7 +73,7 @@ void main() {
         expect(
           AddRacquet(
             name: 'Head Speed Pro',
-            stringBrand: 'Head',
+            stringBrand: 'Baseline',
             stringModel: 'Hawk Touch',
             tension: 50.0,
             maxRatedHours: 20.0,
@@ -163,7 +163,7 @@ void main() {
           id: 2,
           userId: Namespace.nil.uuidValue,
           name: 'Head Speed Pro',
-          brand: 'Head',
+          brand: 'Baseline',
           model: 'Speed Pro',
           isPrimary: false,
           createdAt: DateTime.utc(2026, 10, 1),
@@ -209,7 +209,7 @@ void main() {
         bloc.add(
           AddRacquet(
             name: 'Head Speed Pro',
-            stringBrand: 'Head',
+            stringBrand: 'Baseline',
             stringModel: 'Hawk Touch',
             tension: 50.0,
             maxRatedHours: 20.0,
@@ -432,7 +432,7 @@ void main() {
         // Server-authoritative job with zero hours: the seeder must not
         // overlay client-only demo values on top of it.
         final serverRacquet = sampleRacquet.copyWith(
-          name: 'Wilson Blade 98',
+          name: 'Tour 98',
           activeStringJob: StringJob(
             id: 1,
             userId: Namespace.nil.uuidValue,
@@ -458,9 +458,9 @@ void main() {
         expect(
           hoursByName,
           equals({
-            'Wilson Blade 98': 5.0,
-            'Babolat Pure Drive': 9.0,
-            'Head Radical MP': 25.0,
+            'Tour 98': 5.0,
+            'Power 100': 9.0,
+            'Control MP': 25.0,
           }),
         );
         expect(states.last, equals(BagLoaded([serverRacquet])));
@@ -1044,7 +1044,7 @@ void main() {
     final strung = Racquet(
       id: 1,
       userId: Namespace.nil.uuidValue,
-      name: 'Wilson Blade 98',
+      name: 'Tour 98',
       isPrimary: true,
       activeStringJob: StringJob(
         id: 10,
@@ -1063,7 +1063,7 @@ void main() {
     final unstrung = Racquet(
       id: 2,
       userId: Namespace.nil.uuidValue,
-      name: 'Head Radical MP',
+      name: 'Control MP',
       isPrimary: false,
       createdAt: stringingDate,
       updatedAt: stringingDate,
@@ -1129,7 +1129,7 @@ void main() {
         expect(last.racquets, [strung, unstrung]);
         expect(
           last.errorMessage,
-          '"Head Radical MP" has no strings mounted. '
+          '"Control MP" has no strings mounted. '
           'Restring it before logging a session.',
         );
         expectClean(last.errorMessage);
@@ -1334,15 +1334,15 @@ void main() {
     Racquet racquetWithJob({double hours = 5.0, int health = 76}) => Racquet(
       id: 1,
       userId: Namespace.nil.uuidValue,
-      name: 'Wilson Blade 98',
+      name: 'Tour 98',
       isPrimary: true,
       activeStringJob: StringJob(
         id: 10,
         userId: Namespace.nil.uuidValue,
         racquetId: 1,
         materialCategory: StringMaterialCategory.coPoly,
-        brand: 'Luxilon',
-        model: 'ALU Power',
+        brand: 'Baseline',
+        model: 'Poly Tour',
         stringingDate: stringingDate,
         installedTension: 52.0,
         maxRatedHours: 20.0,
@@ -1805,8 +1805,8 @@ void main() {
       required int id,
       int health = 30,
       double hours = 18.0,
-      String brand = 'Luxilon',
-      String model = 'ALU Power',
+      String brand = 'Baseline',
+      String model = 'Poly Tour',
       StringMaterialCategory category = StringMaterialCategory.coPoly,
       double tension = 52.0,
       double maxHours = 20.0,
@@ -1873,8 +1873,8 @@ void main() {
     test('RestringRacquet defaults to keepSame and has value equality', () {
       expect(const RestringRacquet(1).keepSame, isTrue);
       expect(
-        const RestringRacquet(1, stringBrand: 'Head'),
-        const RestringRacquet(1, stringBrand: 'Head'),
+        const RestringRacquet(1, stringBrand: 'Baseline'),
+        const RestringRacquet(1, stringBrand: 'Baseline'),
       );
       expect(
         const RestringRacquet(1),
@@ -1902,7 +1902,7 @@ void main() {
         final optimistic = (states.single as BagLoaded).racquets.single;
         expect(optimistic.activeStringJob!.currentHealthScore, 100);
         expect(optimistic.activeStringJob!.totalCourtHours, 0.0);
-        expect(optimistic.activeStringJob!.brand, 'Luxilon');
+        expect(optimistic.activeStringJob!.brand, 'Baseline');
         expect((states.single as BagLoaded).successMessage, isNull);
 
         completer.complete(freshRacquet);
@@ -1951,8 +1951,8 @@ void main() {
             1,
             keepSame: false,
             materialCategory: StringMaterialCategory.multifilament,
-            stringBrand: 'Head',
-            stringModel: 'Velocity MLT',
+            stringBrand: 'Baseline',
+            stringModel: 'Soft Multi',
             tension: 55.5,
             maxRatedHours: 35.0,
           ),
@@ -1961,8 +1961,8 @@ void main() {
 
         final job =
             (states.single as BagLoaded).racquets.single.activeStringJob!;
-        expect(job.brand, 'Head');
-        expect(job.model, 'Velocity MLT');
+        expect(job.brand, 'Baseline');
+        expect(job.model, 'Soft Multi');
         expect(job.installedTension, 55.5);
         expect(job.materialCategory, StringMaterialCategory.multifilament);
         expect(job.maxRatedHours, 35.0);
@@ -1973,8 +1973,8 @@ void main() {
             keepSame: false,
             newSpecs: null,
             materialCategory: StringMaterialCategory.multifilament,
-            stringBrand: 'Head',
-            stringModel: 'Velocity MLT',
+            stringBrand: 'Baseline',
+            stringModel: 'Soft Multi',
             tension: 55.5,
             maxRatedHours: 35.0,
             restringDate: null,
@@ -2063,13 +2063,13 @@ void main() {
       () {
         final result = BagBloc.applyOptimisticRestring(
           [deadRacquet],
-          const RestringRacquet(1, keepSame: false, stringBrand: 'Head'),
+          const RestringRacquet(1, keepSame: false, stringBrand: 'Baseline'),
           now: DateTime.utc(2026, 10, 5),
         );
 
         final job = result.single.activeStringJob!;
-        expect(job.brand, 'Head');
-        expect(job.model, 'ALU Power');
+        expect(job.brand, 'Baseline');
+        expect(job.model, 'Poly Tour');
         expect(job.installedTension, 52.0);
         expect(job.materialCategory, StringMaterialCategory.coPoly);
         expect(job.maxRatedHours, 20.0);
@@ -2118,7 +2118,7 @@ void main() {
     group('with another racquet updated mid-flight', () {
       final otherRacquet = deadRacquet.copyWith(
         id: 2,
-        name: 'Head Radical MP',
+        name: 'Control MP',
         activeStringJob: jobFor(id: 20, health: 60, hours: 8.0).copyWith(
           racquetId: 2,
         ),

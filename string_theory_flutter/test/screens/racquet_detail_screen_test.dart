@@ -26,14 +26,14 @@ void main() {
 
   Racquet createRacquet({
     int id = 1,
-    String name = 'Wilson Blade 98',
+    String name = 'Tour 98',
     bool isPrimary = true,
     int healthScore = 76,
     double totalCourtHours = 8.0,
     double maxRatedHours = 20.0,
     double? installedTension = 52.0,
-    String brand = 'Luxilon',
-    String model = 'ALU Power',
+    String brand = 'Baseline',
+    String model = 'Poly Tour',
     StringMaterialCategory materialCategory = StringMaterialCategory.coPoly,
     int activeStringJobId = 10,
   }) {
@@ -41,7 +41,7 @@ void main() {
       id: id,
       userId: Namespace.nil.uuidValue,
       name: name,
-      brand: 'Wilson',
+      brand: 'Baseline',
       model: name,
       isPrimary: isPrimary,
       activeStringJobId: activeStringJobId,
@@ -107,7 +107,7 @@ void main() {
       tester,
     ) async {
       final racquet = createRacquet(
-        name: 'Wilson Blade 98',
+        name: 'Tour 98',
         isPrimary: true,
         healthScore: 76,
         totalCourtHours: 8.0,
@@ -123,11 +123,11 @@ void main() {
       await tester.pumpAndSettle();
 
       // Racquet name & Primary badge
-      expect(find.text('Wilson Blade 98'), findsWidgets);
+      expect(find.text('Tour 98'), findsWidgets);
       expect(find.text('PRIMARY'), findsOneWidget);
 
       // String specs & Material
-      expect(find.textContaining('Luxilon ALU Power'), findsOneWidget);
+      expect(find.textContaining('Baseline Poly Tour'), findsOneWidget);
       expect(find.textContaining('Co-Polyester'), findsWidgets);
       expect(find.textContaining('52'), findsWidgets);
 
@@ -244,8 +244,8 @@ void main() {
             id: 11,
             currentHealthScore: 100,
             totalCourtHours: 0.0,
-            brand: 'Babolat',
-            model: 'RPM Blast',
+            brand: 'Baseline',
+            model: 'Spin Poly',
           ),
         );
 
@@ -254,7 +254,7 @@ void main() {
 
         // Overview updated with fresh specs
         expect(find.textContaining('100%'), findsWidgets);
-        expect(find.textContaining('Babolat RPM Blast'), findsOneWidget);
+        expect(find.textContaining('Baseline Spin Poly'), findsOneWidget);
 
         // History re-fetch was triggered
         expect(historyCallCount, equals(2));
@@ -273,7 +273,7 @@ void main() {
           userId: Namespace.nil.uuidValue,
           racquetId: 1,
           stringJobId: 5,
-          stringDescription: 'Luxilon ALU Power',
+          stringDescription: 'Baseline Poly Tour',
           materialCategory: StringMaterialCategory.coPoly,
           installedTension: 52.0,
           stringingDate: DateTime.utc(2026, 8, 10),
@@ -288,7 +288,7 @@ void main() {
           userId: Namespace.nil.uuidValue,
           racquetId: 1,
           stringJobId: 4,
-          stringDescription: 'Babolat RPM Blast',
+          stringDescription: 'Baseline Spin Poly',
           materialCategory: StringMaterialCategory.coPoly,
           installedTension: 54.0,
           stringingDate: DateTime.utc(2026, 6, 1),
@@ -312,8 +312,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(RestringTimelineTile), findsNWidgets(2));
-      expect(find.text('Luxilon ALU Power'), findsOneWidget);
-      expect(find.text('Babolat RPM Blast'), findsOneWidget);
+      expect(find.text('Baseline Poly Tour'), findsOneWidget);
+      expect(find.text('Baseline Spin Poly'), findsOneWidget);
       expect(find.textContaining('18.5 court hours'), findsOneWidget);
       expect(find.textContaining('53 days active'), findsOneWidget);
       expect(find.textContaining('72%'), findsOneWidget);

@@ -8,15 +8,15 @@ void main() {
   final strung = Racquet(
     id: 1,
     userId: Namespace.nil.uuidValue,
-    name: 'Wilson Blade 98',
+    name: 'Tour 98',
     isPrimary: true,
     createdAt: DateTime.utc(2026, 10, 1),
     updatedAt: DateTime.utc(2026, 10, 1),
     activeStringJob: StringJob(
       userId: Namespace.nil.uuidValue,
       racquetId: 1,
-      brand: 'Luxilon',
-      model: 'ALU Power',
+      brand: 'Baseline',
+      model: 'Poly Tour',
       materialCategory: StringMaterialCategory.coPoly,
       installedTension: 52.0,
       maxRatedHours: 20.0,
@@ -29,7 +29,7 @@ void main() {
   final unstrung = Racquet(
     id: 2,
     userId: Namespace.nil.uuidValue,
-    name: 'Head Radical MP',
+    name: 'Control MP',
     isPrimary: false,
     createdAt: DateTime.utc(2026, 10, 1),
     updatedAt: DateTime.utc(2026, 10, 1),
@@ -107,7 +107,7 @@ void main() {
         BagOperation.restringRacquet: (
           strung,
           null,
-          restringFailureMessage('Wilson Blade 98'),
+          restringFailureMessage('Tour 98'),
         ),
       };
 
@@ -131,8 +131,8 @@ void main() {
 
     test('restring fallback keeps the existing copy', () {
       expect(
-        restringFailureMessage('Wilson Blade 98'),
-        'Could not restring "Wilson Blade 98". '
+        restringFailureMessage('Tour 98'),
+        'Could not restring "Tour 98". '
         'Check your connection and try again.',
       );
     });
@@ -202,7 +202,7 @@ void main() {
           );
           expect(
             message,
-            '"Head Radical MP" has no strings mounted. '
+            '"Control MP" has no strings mounted. '
             'Restring it before logging a session.',
           );
           expectClean(message);

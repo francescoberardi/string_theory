@@ -347,7 +347,7 @@ void main() {
         final targetRacquet = Racquet(
           id: 1,
           userId: Namespace.nil.uuidValue,
-          name: 'Wilson Blade 98',
+          name: 'Tour 98',
           isPrimary: true,
           activeStringJob: targetJob,
           createdAt: DateTime.utc(2026, 9, 20),
@@ -393,7 +393,7 @@ void main() {
           () => mockBagBloc.add(const FastForwardRacquetAge(1, days: 30)),
         ).called(1);
         expect(
-          find.text('Aged "Wilson Blade 98" by 30 days (Health: 64%)'),
+          find.text('Aged "Tour 98" by 30 days (Health: 64%)'),
           findsOneWidget,
         );
       },
@@ -458,7 +458,7 @@ void main() {
         final targetRacquet = Racquet(
           id: 1,
           userId: Namespace.nil.uuidValue,
-          name: 'Wilson Blade 98',
+          name: 'Tour 98',
           isPrimary: true,
           activeStringJob: targetJob,
           createdAt: DateTime.utc(2026, 9, 20),

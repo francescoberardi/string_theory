@@ -36,8 +36,8 @@ void main() {
       userId: Namespace.nil.uuidValue,
       racquetId: id,
       materialCategory: StringMaterialCategory.coPoly,
-      brand: 'Luxilon',
-      model: 'ALU Power',
+      brand: 'Baseline',
+      model: 'Poly Tour',
       stringingDate: stringingDate,
       installedTension: 52.0,
       maxRatedHours: 20.0,
@@ -138,7 +138,7 @@ void main() {
   group('Story 6.1 mutation refresh decoupling', () {
     test('[P1] AC-1 a failed createRacquet still reports a failed add, '
         'with no reload or re-sync', () async {
-      final existing = racquet(id: 1, name: 'Wilson Blade 98');
+      final existing = racquet(id: 1, name: 'Tour 98');
       final (bloc, states) = await loadedBlocWithFailingReload([
         existing,
       ], resyncDelay: const Duration(milliseconds: 10));
@@ -177,7 +177,7 @@ void main() {
     test(
       '[P1] AC-1 AddRacquet succeeds but the bag reload fails: no error, the new racquet is kept',
       () async {
-        final existing = racquet(id: 1, name: 'Wilson Blade 98');
+        final existing = racquet(id: 1, name: 'Tour 98');
         final created = racquet(id: 2, name: 'Yonex Ezone 98');
         final (bloc, states) = await loadedBlocWithFailingReload([existing]);
         when(
@@ -230,7 +230,7 @@ void main() {
     test(
       '[P1] AC-1 a primary racquet kept after a failed reload demotes the others',
       () async {
-        final existing = racquet(id: 1, name: 'Wilson Blade 98');
+        final existing = racquet(id: 1, name: 'Tour 98');
         final created = racquet(
           id: 2,
           name: 'Yonex Ezone 98',
@@ -254,7 +254,7 @@ void main() {
     test(
       '[P1] AC-1 a reload that exceeds the timeout is treated as failed',
       () async {
-        final existing = racquet(id: 1, name: 'Wilson Blade 98');
+        final existing = racquet(id: 1, name: 'Tour 98');
         final created = racquet(id: 2, name: 'Yonex Ezone 98');
         var loads = 0;
         when(() => mockBagEndpoint.getVirtualBag()).thenAnswer((_) {
@@ -298,7 +298,7 @@ void main() {
       test(
         '[P1] AC-1 $name from $stateLabel: RPC ok, reload fails, no failure copy, re-sync recovers',
         () async {
-          final target = racquet(id: 1, name: 'Wilson Blade 98');
+          final target = racquet(id: 1, name: 'Tour 98');
           final server = name == 'DeleteRacquet' ? <Racquet>[] : [target];
           final hold = Completer<List<Racquet>>();
           addTearDown(() {
@@ -345,7 +345,7 @@ void main() {
       test(
         '[P1] AC-1 $name from an unloaded state adopts a successful reload',
         () async {
-          final target = racquet(id: 1, name: 'Wilson Blade 98');
+          final target = racquet(id: 1, name: 'Tour 98');
           final server = name == 'DeleteRacquet' ? <Racquet>[] : [target];
           var loads = 0;
           when(() => mockBagEndpoint.getVirtualBag()).thenAnswer((_) {
@@ -373,7 +373,7 @@ void main() {
 
   group('Story 6.1 background re-sync', () {
     test('[P1] AC-1 re-sync reconciles the bag with the server', () async {
-      final existing = racquet(id: 1, name: 'Wilson Blade 98');
+      final existing = racquet(id: 1, name: 'Tour 98');
       final created = racquet(id: 2, name: 'Yonex Ezone 98');
       final server = [existing, created.copyWith(name: 'Yonex Ezone 98 (7th)')];
       var loads = 0;
@@ -407,7 +407,7 @@ void main() {
     });
 
     test('[P1] AC-1 re-sync gives up after 3 attempts, silently', () async {
-      final existing = racquet(id: 1, name: 'Wilson Blade 98');
+      final existing = racquet(id: 1, name: 'Tour 98');
       final (bloc, states) = await loadedBlocWithFailingReload(
         [existing],
         resyncDelay: const Duration(milliseconds: 5),
@@ -431,8 +431,8 @@ void main() {
     test(
       '[P1] AC-1 a stale re-sync snapshot never overwrites newer state',
       () async {
-        final first = racquet(id: 1, name: 'Wilson Blade 98');
-        final second = racquet(id: 2, name: 'Babolat Pure Drive');
+        final first = racquet(id: 1, name: 'Tour 98');
+        final second = racquet(id: 2, name: 'Power 100');
         final created = racquet(id: 3, name: 'Yonex Ezone 98');
         final resyncFetch = Completer<List<Racquet>>();
         addTearDown(() {
@@ -478,7 +478,7 @@ void main() {
     );
 
     test('[P1] AC-1 a successful LoadBag cancels a pending re-sync', () async {
-      final existing = racquet(id: 1, name: 'Wilson Blade 98');
+      final existing = racquet(id: 1, name: 'Tour 98');
       var loads = 0;
       when(() => mockBagEndpoint.getVirtualBag()).thenAnswer((_) {
         loads++;
@@ -508,7 +508,7 @@ void main() {
     });
 
     test('[P1] AC-1 no re-sync runs after close()', () async {
-      final existing = racquet(id: 1, name: 'Wilson Blade 98');
+      final existing = racquet(id: 1, name: 'Tour 98');
       final (bloc, _) = await loadedBlocWithFailingReload(
         [existing],
         resyncDelay: const Duration(milliseconds: 20),
@@ -529,7 +529,7 @@ void main() {
     test(
       '[P1] AC-3 logSession rejected with 401 is not queued offline and prompts re-authentication',
       () async {
-        final target = racquet(id: 1, name: 'Wilson Blade 98');
+        final target = racquet(id: 1, name: 'Tour 98');
         final (bloc, states) = await loadedBlocWithFailingReload([target]);
         final unauthorized = ServerpodClientUnauthorized();
         when(
@@ -572,7 +572,7 @@ void main() {
     test(
       '[P1] AC-3 BagException(401) is routed like ServerpodClientUnauthorized and reverts the gauge',
       () async {
-        final target = racquet(id: 1, name: 'Wilson Blade 98');
+        final target = racquet(id: 1, name: 'Tour 98');
         final (bloc, states) = await loadedBlocWithFailingReload([target]);
         when(() => mockSessionEndpoint.logSession(any())).thenThrow(
           BagException(message: 'expired', statusCode: 401),
@@ -617,7 +617,7 @@ void main() {
       test(
         '[P1] logSession rejected with $statusCode is dropped, not queued (regression)',
         () async {
-          final target = racquet(id: 1, name: 'Wilson Blade 98');
+          final target = racquet(id: 1, name: 'Tour 98');
           final (bloc, _) = await loadedBlocWithFailingReload([target]);
           final rejection = BagException(
             message: 'rejected',

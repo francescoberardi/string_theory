@@ -27,17 +27,17 @@ void main() {
     final sampleRacquet = Racquet(
       id: 1,
       userId: Namespace.nil.uuidValue,
-      name: 'Wilson Blade 98',
-      brand: 'Wilson',
-      model: 'Blade 98',
+      name: 'Tour 98',
+      brand: 'Baseline',
+      model: 'Tour 98',
       isPrimary: true,
       activeStringJob: StringJob(
         id: 101,
         userId: Namespace.nil.uuidValue,
         racquetId: 1,
         materialCategory: StringMaterialCategory.coPoly,
-        brand: 'Luxilon',
-        model: 'ALU Power',
+        brand: 'Baseline',
+        model: 'Poly Tour',
         stringingDate: DateTime.utc(2026, 9, 20),
         installedTension: 52.0,
         maxRatedHours: 20.0,
@@ -179,7 +179,7 @@ void main() {
         );
 
         // Verifies session cards with racquet name, duration, and court hours added
-        expect(find.text('Wilson Blade 98'), findsWidgets);
+        expect(find.text('Tour 98'), findsWidgets);
         expect(find.text('90 min'), findsOneWidget);
         expect(find.text('+1.5 hrs'), findsOneWidget);
         expect(find.text('60 min'), findsOneWidget);
@@ -292,7 +292,7 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.byKey(const Key('sessions_list_view')), findsOneWidget);
-        expect(find.text('Wilson Blade 98'), findsOneWidget);
+        expect(find.text('Tour 98'), findsOneWidget);
       },
     );
 

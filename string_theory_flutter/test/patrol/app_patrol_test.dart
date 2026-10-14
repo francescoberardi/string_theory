@@ -32,9 +32,9 @@ void main() {
   final sampleBlade = Racquet(
     id: 1,
     userId: Namespace.nil.uuidValue,
-    name: 'Wilson Blade 98',
-    brand: 'Wilson',
-    model: 'Blade 98',
+    name: 'Tour 98',
+    brand: 'Baseline',
+    model: 'Tour 98',
     isPrimary: true,
     activeStringJobId: 101,
     activeStringJob: StringJob(
@@ -42,8 +42,8 @@ void main() {
       userId: Namespace.nil.uuidValue,
       racquetId: 1,
       materialCategory: StringMaterialCategory.coPoly,
-      brand: 'Luxilon',
-      model: 'ALU Power',
+      brand: 'Baseline',
+      model: 'Poly Tour',
       stringingDate: DateTime.utc(2026, 9, 25),
       installedTension: 52.0,
       maxRatedHours: 20.0,
@@ -59,9 +59,9 @@ void main() {
   final samplePureAero = Racquet(
     id: 2,
     userId: Namespace.nil.uuidValue,
-    name: 'Babolat Pure Aero',
-    brand: 'Babolat',
-    model: 'Pure Aero',
+    name: 'Spin 100',
+    brand: 'Baseline',
+    model: 'Spin 100',
     isPrimary: false,
     activeStringJobId: 102,
     activeStringJob: StringJob(
@@ -69,8 +69,8 @@ void main() {
       userId: Namespace.nil.uuidValue,
       racquetId: 2,
       materialCategory: StringMaterialCategory.coPoly,
-      brand: 'Babolat',
-      model: 'RPM Blast',
+      brand: 'Baseline',
+      model: 'Spin Poly',
       stringingDate: DateTime.utc(2026, 9, 10),
       installedTension: 54.0,
       maxRatedHours: 20.0,
@@ -86,9 +86,9 @@ void main() {
   final sampleRadical = Racquet(
     id: 3,
     userId: Namespace.nil.uuidValue,
-    name: 'Head Radical MP',
-    brand: 'Head',
-    model: 'Radical MP',
+    name: 'Control MP',
+    brand: 'Baseline',
+    model: 'Control MP',
     isPrimary: false,
     activeStringJobId: 103,
     activeStringJob: StringJob(
@@ -96,8 +96,8 @@ void main() {
       userId: Namespace.nil.uuidValue,
       racquetId: 3,
       materialCategory: StringMaterialCategory.multifilament,
-      brand: 'Head',
-      model: 'Velocity MLT',
+      brand: 'Baseline',
+      model: 'Soft Multi',
       stringingDate: DateTime.utc(2026, 8, 1),
       installedTension: 55.0,
       maxRatedHours: 35.0,
@@ -165,9 +165,9 @@ void main() {
         bagStateController.add(BagLoaded(seededRacquets));
         await $.pumpAndSettle();
 
-        expect($(find.text('Wilson Blade 98')), findsOneWidget);
-        expect($(find.text('Babolat Pure Aero')), findsOneWidget);
-        expect($(find.text('Head Radical MP')), findsOneWidget);
+        expect($(find.text('Tour 98')), findsOneWidget);
+        expect($(find.text('Spin 100')), findsOneWidget);
+        expect($(find.text('Control MP')), findsOneWidget);
 
         // 3. Simulated Workout Ingestion
         fakeHealth.emit(
@@ -184,7 +184,7 @@ void main() {
         expect($(find.text('Assign')), findsOneWidget);
         expect($(find.byType(WorkoutAssignmentSheet)), findsOneWidget);
 
-        // 4. Decay Wilson Blade (76% -> 67%)
+        // 4. Decay Tour 98 (76% -> 67%)
         final decayedBlade = sampleBlade.copyWith(
           activeStringJob: sampleBlade.activeStringJob!.copyWith(
             currentHealthScore: 67,
@@ -209,7 +209,7 @@ void main() {
 
         expect($(find.text('67%')), findsOneWidget);
 
-        // 5. Restring Head Radical
+        // 5. Restring Control MP
         final restringButton = $(RacquetCard.restrungTodayKey(3));
         expect(restringButton, findsOneWidget);
 
@@ -229,8 +229,8 @@ void main() {
             userId: Namespace.nil.uuidValue,
             racquetId: 3,
             materialCategory: StringMaterialCategory.coPoly,
-            brand: 'Luxilon',
-            model: 'ALU Power',
+            brand: 'Baseline',
+            model: 'Poly Tour',
             stringingDate: DateTime.now().toUtc(),
             installedTension: 52.0,
             maxRatedHours: 20.0,
@@ -264,7 +264,7 @@ void main() {
               userId: Namespace.nil.uuidValue,
               racquetId: 3,
               stringJobId: 103,
-              stringDescription: 'Head Velocity MLT',
+              stringDescription: 'Baseline Soft Multi',
               materialCategory: StringMaterialCategory.multifilament,
               installedTension: 55.0,
               stringingDate: DateTime.utc(2026, 8, 1),
@@ -277,7 +277,7 @@ void main() {
           ],
         );
 
-        final radicalTextFinder = find.text('Head Radical MP');
+        final radicalTextFinder = find.text('Control MP');
         await $.tester.ensureVisible(radicalTextFinder);
         await $.pumpAndSettle();
         await $(radicalTextFinder).tap();
@@ -289,7 +289,7 @@ void main() {
         await $(find.text('History')).tap();
         await $.pumpAndSettle();
 
-        expect($(find.text('Head Velocity MLT')), findsOneWidget);
+        expect($(find.text('Baseline Soft Multi')), findsOneWidget);
         expect($(find.textContaining('25.0 court hours')), findsOneWidget);
       },
     );

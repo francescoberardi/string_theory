@@ -25,7 +25,7 @@ void main() {
       id: id,
       userId: Namespace.nil.uuidValue,
       name: name,
-      brand: 'Wilson',
+      brand: 'Baseline',
       model: name,
       isPrimary: isPrimary,
       activeStringJob: healthScore != null
@@ -34,8 +34,8 @@ void main() {
               userId: Namespace.nil.uuidValue,
               racquetId: id,
               materialCategory: StringMaterialCategory.coPoly,
-              brand: 'Luxilon',
-              model: 'ALU Power 125 Rough',
+              brand: 'Baseline',
+              model: 'Poly Tour 125 Rough',
               stringingDate: DateTime.utc(2026, 9, 20),
               installedTension: 54.0,
               maxRatedHours: 20.0,
@@ -145,7 +145,7 @@ void main() {
           ),
           createRacquet(
             id: 2,
-            name: 'Blade 98 V8',
+            name: 'Tour 98 V8',
             healthScore: 25,
           ), // Dead stringbed badge
         ];

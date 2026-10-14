@@ -16,15 +16,15 @@ void main() {
   final racquet = Racquet(
     id: 7,
     userId: Namespace.nil.uuidValue,
-    name: 'Wilson Blade 98',
+    name: 'Tour 98',
     isPrimary: true,
     activeStringJob: StringJob(
       id: 70,
       userId: Namespace.nil.uuidValue,
       racquetId: 7,
       materialCategory: StringMaterialCategory.coPoly,
-      brand: 'Luxilon',
-      model: 'ALU Power',
+      brand: 'Baseline',
+      model: 'Poly Tour',
       stringingDate: DateTime.utc(2026, 8, 1),
       installedTension: 52.0,
       maxRatedHours: 20.0,
@@ -85,7 +85,7 @@ void main() {
       await openSheet(tester);
 
       expect(find.byKey(RestringSheet.keySheet), findsOneWidget);
-      expect(find.text('Wilson Blade 98'), findsOneWidget);
+      expect(find.text('Tour 98'), findsOneWidget);
       expect(find.byKey(RestringSheet.keyKeepSameButton), findsOneWidget);
       expect(find.byKey(RestringSheet.keyChangeSpecsToggle), findsOneWidget);
       expect(find.text('Keep Same & Reset'), findsOneWidget);
@@ -117,8 +117,8 @@ void main() {
 
       String textOf(Key key) =>
           tester.widget<TextFormField>(find.byKey(key)).controller!.text;
-      expect(textOf(RestringSheet.keyBrandField), 'Luxilon');
-      expect(textOf(RestringSheet.keyModelField), 'ALU Power');
+      expect(textOf(RestringSheet.keyBrandField), 'Baseline');
+      expect(textOf(RestringSheet.keyModelField), 'Poly Tour');
       expect(textOf(RestringSheet.keyTensionField), '52.0');
       expect(find.text('Co-Polyester'), findsOneWidget);
       verifyNever(() => mockBagBloc.add(any()));
@@ -132,11 +132,11 @@ void main() {
 
         await tester.enterText(
           find.byKey(RestringSheet.keyBrandField),
-          'Babolat',
+          'Baseline',
         );
         await tester.enterText(
           find.byKey(RestringSheet.keyModelField),
-          'RPM Blast',
+          'Spin Poly',
         );
         await tester.enterText(
           find.byKey(RestringSheet.keyTensionField),
@@ -150,8 +150,8 @@ void main() {
               7,
               keepSame: false,
               materialCategory: StringMaterialCategory.coPoly,
-              stringBrand: 'Babolat',
-              stringModel: 'RPM Blast',
+              stringBrand: 'Baseline',
+              stringModel: 'Spin Poly',
               tension: 54.5,
               maxRatedHours: 20.0,
             ),
@@ -180,8 +180,8 @@ void main() {
             7,
             keepSame: false,
             materialCategory: StringMaterialCategory.multifilament,
-            stringBrand: 'Luxilon',
-            stringModel: 'ALU Power',
+            stringBrand: 'Baseline',
+            stringModel: 'Poly Tour',
             tension: 52.0,
             maxRatedHours: 35.0,
           ),

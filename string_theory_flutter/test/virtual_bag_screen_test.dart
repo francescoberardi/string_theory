@@ -26,17 +26,17 @@ void main() {
     Racquet(
       id: 1,
       userId: Namespace.nil.uuidValue,
-      name: 'Wilson Blade 98',
-      brand: 'Wilson',
-      model: 'Blade 98',
+      name: 'Tour 98',
+      brand: 'Baseline',
+      model: 'Tour 98',
       isPrimary: true,
       activeStringJob: StringJob(
         id: 1,
         userId: Namespace.nil.uuidValue,
         racquetId: 1,
         materialCategory: StringMaterialCategory.coPoly,
-        brand: 'Luxilon',
-        model: 'ALU Power',
+        brand: 'Baseline',
+        model: 'Poly Tour',
         stringingDate: DateTime.utc(2026, 9, 25),
         installedTension: 52.0,
         maxRatedHours: 20.0,
@@ -51,17 +51,17 @@ void main() {
     Racquet(
       id: 2,
       userId: Namespace.nil.uuidValue,
-      name: 'Babolat Pure Drive',
-      brand: 'Babolat',
-      model: 'Pure Drive',
+      name: 'Power 100',
+      brand: 'Baseline',
+      model: 'Power 100',
       isPrimary: false,
       activeStringJob: StringJob(
         id: 2,
         userId: Namespace.nil.uuidValue,
         racquetId: 2,
         materialCategory: StringMaterialCategory.coPoly,
-        brand: 'Babolat',
-        model: 'RPM Blast',
+        brand: 'Baseline',
+        model: 'Spin Poly',
         stringingDate: DateTime.utc(2026, 9, 10),
         installedTension: 54.0,
         maxRatedHours: 20.0,
@@ -76,17 +76,17 @@ void main() {
     Racquet(
       id: 3,
       userId: Namespace.nil.uuidValue,
-      name: 'Head Radical MP',
-      brand: 'Head',
-      model: 'Radical MP',
+      name: 'Control MP',
+      brand: 'Baseline',
+      model: 'Control MP',
       isPrimary: false,
       activeStringJob: StringJob(
         id: 3,
         userId: Namespace.nil.uuidValue,
         racquetId: 3,
         materialCategory: StringMaterialCategory.multifilament,
-        brand: 'Head',
-        model: 'Velocity MLT',
+        brand: 'Baseline',
+        model: 'Soft Multi',
         stringingDate: DateTime.utc(2026, 8, 1),
         installedTension: 55.0,
         maxRatedHours: 35.0,
@@ -236,7 +236,7 @@ void main() {
         );
 
         expect(find.byType(RacquetCard), findsNWidgets(sampleRacquets.length));
-        expect(find.text('Wilson Blade 98'), findsOneWidget);
+        expect(find.text('Tour 98'), findsOneWidget);
 
         // Bottom navigation bar is visible on mobile
         expect(find.byKey(VirtualBagScreen.keyBottomNav), findsOneWidget);
@@ -276,7 +276,7 @@ void main() {
         );
 
         expect(find.byType(RacquetCard), findsNWidgets(sampleRacquets.length));
-        expect(find.text('Wilson Blade 98'), findsOneWidget);
+        expect(find.text('Tour 98'), findsOneWidget);
 
         // NavigationRail is visible on tablet
         expect(find.byKey(VirtualBagScreen.keyNavigationRail), findsOneWidget);
@@ -401,7 +401,7 @@ void main() {
           id: 99,
           userId: Namespace.nil.uuidValue,
           name: 'Pro Staff 97',
-          brand: 'Wilson',
+          brand: 'Baseline',
           model: 'Pro Staff',
           isPrimary: false,
           activeStringJob: null,
@@ -816,7 +816,7 @@ void main() {
           findsOneWidget,
         );
         // Racquets are still displayed
-        expect(find.text('Wilson Blade 98'), findsOneWidget);
+        expect(find.text('Tour 98'), findsOneWidget);
         // Fatal error screen is NOT displayed
         expect(find.byIcon(Icons.error_outline), findsNothing);
 
@@ -881,7 +881,7 @@ void main() {
         );
         // Not treated as a failure.
         expect(find.byIcon(Icons.error_outline), findsNothing);
-        expect(find.text('Wilson Blade 98'), findsOneWidget);
+        expect(find.text('Tour 98'), findsOneWidget);
       },
     );
 
@@ -927,7 +927,7 @@ void main() {
           ),
           findsOneWidget,
         );
-        expect(find.text('Wilson Blade 98'), findsOneWidget);
+        expect(find.text('Tour 98'), findsOneWidget);
       },
     );
 
@@ -1188,7 +1188,7 @@ void main() {
       (tester) async {
         await pumpWithStream(tester, BagLoaded(sampleRacquets));
 
-        // Head Radical MP is the 34% (dead) racquet, third in the list.
+        // Control MP is the 34% (dead) racquet, third in the list.
         final button = find.byKey(RacquetCard.restrungTodayKey(3));
         await tester.ensureVisible(button);
         await tester.tap(button);
