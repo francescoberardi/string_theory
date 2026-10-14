@@ -371,6 +371,40 @@ void main() {
         expect(await storage.read(), isEmpty);
       },
     );
+
+    test(
+      'a sync started after a clear sends newly queued sessions, not the old '
+      'drain result',
+      () async {
+        final queue = OfflineSessionQueue(
+          storage: InMemorySessionQueueStorage(),
+        );
+        await queue.enqueue(_log(externalWorkoutId: 'hk-1'));
+        final firstSend = Completer<void>();
+        final sent = <String?>[];
+
+        final oldSync = queue.sync((log) async {
+          sent.add(log.externalWorkoutId);
+          await firstSend.future;
+          return log;
+        });
+        await pumpEventQueue();
+        await queue.clear();
+        await queue.enqueue(_log(externalWorkoutId: 'hk-new'));
+
+        final newSync = queue.sync((log) async {
+          sent.add(log.externalWorkoutId);
+          return log;
+        });
+        final result = await newSync;
+        firstSend.complete();
+        await oldSync;
+
+        expect(sent, ['hk-1', 'hk-new']);
+        expect(result.synced, 1);
+        expect(queue.pendingCount, 0);
+      },
+    );
   });
 
   group('isPermanentSessionRejection', () {

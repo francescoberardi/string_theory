@@ -257,6 +257,50 @@ void main() {
       },
     );
 
+    test(
+      'a token refresh for the same user keeps the account and the offline queue',
+      () async {
+        final storage = InMemoryAuthSuccessStorage(sampleAuthSuccess);
+        final client = buildTestClient(storage);
+        final queue = OfflineSessionQueue(
+          storage: InMemorySessionQueueStorage(),
+        );
+        await queue.enqueue(_queuedLog());
+        var fetches = 0;
+        final authService = AuthService(
+          client: client,
+          anonymousEndpoint: FakeEndpointAnonymousIdp(),
+          fetchAccountEmail: () async {
+            fetches++;
+            return 'judge@example.com';
+          },
+          offlineQueue: queue,
+        );
+        await authService.initialize();
+        await pumpEventQueue();
+        final accountBefore = authService.account.value;
+        final fetchesBefore = fetches;
+
+        await client.auth.updateSignedInUser(
+          AuthSuccess(
+            authStrategy: 'session',
+            token: 'rotated-token',
+            authUserId: testUserId,
+            scopeNames: {},
+          ),
+        );
+        await pumpEventQueue();
+
+        expect(queue.pendingCount, 1);
+        expect(authService.account.value, accountBefore);
+        expect(
+          authService.account.value,
+          const AccountInfo.email('judge@example.com'),
+        );
+        expect(fetches, fetchesBefore);
+      },
+    );
+
     group('account', () {
       test('given a stored email session, loads the account email', () async {
         final storage = InMemoryAuthSuccessStorage(sampleAuthSuccess);
@@ -496,6 +540,33 @@ void main() {
         );
         await withClock(
           Clock.fixed(start.add(AuthService.validationCooldown)),
+          authService.validateSession,
+        );
+
+        expect(calls, 2);
+      });
+
+      test('a new identity does not inherit the previous cooldown', () async {
+        final client = buildTestClient(
+          InMemoryAuthSuccessStorage(sampleAuthSuccess),
+        );
+        var calls = 0;
+        final authService = AuthService(
+          client: client,
+          anonymousEndpoint: FakeEndpointAnonymousIdp(),
+          fetchAccountEmail: () async => null,
+          validateAuthentication: () async {
+            calls++;
+            return true;
+          },
+        );
+        await authService.initialize();
+        final start = DateTime.utc(2026, 10, 14, 9);
+
+        await withClock(Clock.fixed(start), authService.validateSession);
+        await client.auth.updateSignedInUser(otherAuthSuccess);
+        await withClock(
+          Clock.fixed(start.add(const Duration(seconds: 1))),
           authService.validateSession,
         );
 

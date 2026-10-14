@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:serverpod_auth_idp_flutter/serverpod_auth_idp_flutter.dart';
 import 'package:string_theory_flutter/bloc/bag_bloc.dart';
+import 'package:string_theory_flutter/bloc/bag_error_messages.dart';
 import 'package:string_theory_flutter/client.dart' as app_client;
 import 'package:string_theory_flutter/main.dart';
 import 'package:string_theory_flutter/screens/settings_screen.dart';
@@ -12,6 +16,8 @@ import 'package:string_theory_flutter/services/offline_session_queue.dart';
 
 import 'helpers/fake_auth.dart';
 import 'helpers/fake_health_sync_service.dart';
+
+class MockBagBloc extends Mock implements BagBloc {}
 
 void main() {
   late FakeHealthSyncService fakeHealth;
@@ -46,6 +52,30 @@ void main() {
     final button = find.byKey(SignInScreen.keyContinueAsGuestButton);
     await tester.ensureVisible(button);
     await tester.tap(button);
+  }
+
+  /// A bag bloc that reports an expired session (a 401 on logSession) once
+  /// [expire] is called.
+  ({MockBagBloc bloc, void Function() expire}) expiringBagBloc(
+    WidgetTester tester,
+  ) {
+    final controller = StreamController<BagState>.broadcast();
+    addTearDown(controller.close);
+    final bloc = MockBagBloc();
+    when(() => bloc.state).thenReturn(const BagLoaded([]));
+    when(() => bloc.stream).thenAnswer((_) => controller.stream);
+    when(() => bloc.isClosed).thenReturn(false);
+    when(bloc.close).thenAnswer((_) async {});
+    return (
+      bloc: bloc,
+      expire: () => controller.add(
+        const BagLoaded(
+          [],
+          errorMessage: logSessionExpiredMessage,
+          reauthRequired: true,
+        ),
+      ),
+    );
   }
 
   setUp(() {
@@ -199,6 +229,90 @@ void main() {
         expect(find.byType(SignInScreen), findsOneWidget);
         expect(find.byType(VirtualBagScreen), findsNothing);
         expect(checks, 0);
+      },
+    );
+
+    testWidgets(
+      'a guest tapping Sign in after a 401 is warned first, and confirming '
+      'signs out to the sign-in screen',
+      (tester) async {
+        await setUpAuth(stored: testAuthSuccess(guestUserId));
+        final expiring = expiringBagBloc(tester);
+
+        await tester.pumpWidget(
+          MyApp(
+            healthSyncService: fakeHealth,
+            bagBlocFactory: () => expiring.bloc,
+          ),
+        );
+        await tester.pumpAndSettle();
+        expiring.expire();
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.widgetWithText(SnackBarAction, 'Sign in'));
+        await tester.pumpAndSettle();
+
+        expect(find.text(SettingsScreen.guestSignOutWarning), findsOneWidget);
+        expect(app_client.authService.isAuthenticated, isTrue);
+
+        await tester.tap(find.byKey(SettingsScreen.keyConfirmSignOutButton));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(SignInScreen), findsOneWidget);
+        expect(app_client.authService.isAuthenticated, isFalse);
+      },
+    );
+
+    testWidgets('cancelling the 401 sign-out warning keeps the bag', (
+      tester,
+    ) async {
+      await setUpAuth(stored: testAuthSuccess(guestUserId));
+      final expiring = expiringBagBloc(tester);
+
+      await tester.pumpWidget(
+        MyApp(
+          healthSyncService: fakeHealth,
+          bagBlocFactory: () => expiring.bloc,
+        ),
+      );
+      await tester.pumpAndSettle();
+      expiring.expire();
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(SnackBarAction, 'Sign in'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(VirtualBagScreen), findsOneWidget);
+      expect(find.byType(SignInScreen), findsNothing);
+      expect(app_client.authService.isAuthenticated, isTrue);
+    });
+
+    testWidgets(
+      'a tab on the sign-in screen opens the bag when it regains focus after '
+      'another tab signed in',
+      (tester) async {
+        await setUpAuth();
+
+        await tester.pumpWidget(MyApp(healthSyncService: fakeHealth));
+        await tester.pumpAndSettle();
+        expect(find.byType(SignInScreen), findsOneWidget);
+
+        // Another tab sharing the stored session signs in; this tab comes
+        // back to focus.
+        await authStorage.set(testAuthSuccess(guestUserId));
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.inactive,
+        );
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.resumed,
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byType(VirtualBagScreen), findsOneWidget);
+        expect(find.byType(SignInScreen), findsNothing);
+        expect(anonymousIdp.loginCalls, 0);
       },
     );
 
