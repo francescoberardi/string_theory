@@ -40,11 +40,6 @@ jobs:
     timeout-minutes: 15
     env:
       VERSION: '4.0.3'
-      SERVERPOD_PASSWORD_database: 'WdpOsfODtQAerx3UBObqFkOTBCt0-BzX'
-      SERVERPOD_PASSWORD_redis: 'U66M8P1Mmb6Bc935BI4d5lghgtEbwfgJ'
-      SERVERPOD_PASSWORD_jwtHmacSha512PrivateKey: 'U9NulwfQO5yTWil2FAlXbDyFhUGxHJ7q'
-      SERVERPOD_PASSWORD_jwtRefreshTokenHashPepper: 'DvHB3LSDiedPXFiPamJh4P8W3Zl6yb_U'
-      SERVERPOD_PASSWORD_emailSecretHashPepper: 'rB86LuGVpzstLfd222yRpDrco13BbIfw'
 
     steps:
       - uses: actions/checkout@v4
@@ -74,6 +69,10 @@ jobs:
           # on the PATH of a GitHub runner.
           echo "${XDG_STATE_HOME:-$HOME/.local/state}/Dart/install/bin" >> "$GITHUB_PATH"
 
+      # Scope rule: check only the generated code, i.e. the server's
+      # lib/src/generated/ and the string_theory_client package. A repo-wide
+      # diff trips on files the runner rewrites itself, such as pubspec.lock
+      # after `flutter pub get`.
       - name: Run Serverpod generator check
         working-directory: string_theory_server
         run: |
@@ -84,6 +83,12 @@ jobs:
             git status --porcelain lib/src/generated/ ../string_theory_client
             exit 1
           fi
+
+      # The secrets come from the same script a fresh clone runs, so CI and
+      # local setups always have the same set. No SERVERPOD_PASSWORD_* env.
+      - name: Generate test secrets
+        working-directory: string_theory_server
+        run: ./tool/init_passwords.sh
 
       - name: Run tests
         working-directory: string_theory_server
