@@ -120,6 +120,11 @@ CI (`.github/workflows/`) runs analyze, format, the generator drift check, all o
 
 The app opens on a **sign-in screen**. For a quick look, tap **Continue as guest** and follow the **[90-second demo script](docs/DEMO_SCRIPT.md)**: load the sample bag, simulate a workout, assign it, restring a dead racquet, and look at the timeline and the sessions history.
 
+You don't have to wait a day for the nightly job. **Settings** (gear icon) has a **Developer & Judge Controls** section:
+
+- **⚡ Trigger FutureCall Decay** runs the `DailyDecayFutureCall` decay calculation now. A snackbar shows how many string jobs it updated, and every changed score is pushed to open windows over the bag stream.
+- **Fast-Forward 30 Days** moves the stringing date of your primary racquet (or, if none, the first strung one) back in time and recalculates its health score, so you can watch it drop through the tiers.
+
 To check live sync and tenant isolation, use email accounts:
 
 1. **Sign up.** On the sign-in screen tap **Sign up**, enter an email (any address works locally, nothing is sent) and accept the terms. In development the server logs the verification code instead of emailing it: find the line `Registration code for <email>: <a1b2c3d4>` in the `serverpod start` output and enter the 8-character code between the angle brackets, then choose a password. Forgot it later? **Forgot password** works the same way: look for `Password reset code for <email>: <…>`. You land on an empty bag. Settings (gear icon) shows the account email.
