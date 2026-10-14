@@ -58,8 +58,8 @@ AuthSuccess testAuthSuccess(UuidValue userId) => AuthSuccess(
 /// `validateAuthentication`) and to sign out.
 ///
 /// By default `isSignedIn` answers [signedIn]; it throws [isSignedInError]
-/// when set, or never completes when [isSignedInHangs]. `signOutDevice`
-/// throws [signOutError] when set.
+/// when set, or never completes when [isSignedInHangs]. `signOutDevice` and
+/// `signOutAllDevices` throw [signOutError] when set.
 class FakeAuthStatus implements EndpointStatus {
   bool signedIn;
   Object? isSignedInError;
@@ -67,6 +67,7 @@ class FakeAuthStatus implements EndpointStatus {
   Object? signOutError;
   int isSignedInCalls = 0;
   int signOutDeviceCalls = 0;
+  int signOutAllDevicesCalls = 0;
 
   FakeAuthStatus({
     this.signedIn = true,
@@ -75,10 +76,14 @@ class FakeAuthStatus implements EndpointStatus {
     this.signOutError,
   });
 
-  /// Every session check fails with a server error, so a stored session is
-  /// kept, like a server that can't be reached.
-  FakeAuthStatus.serverError()
-    : this(isSignedInError: ServerpodClientInternalServerError());
+  /// Every session check fails with a network error, like a server that
+  /// can't be reached, so a stored session is kept.
+  FakeAuthStatus.unreachable()
+    : this(
+        isSignedInError: const ServerpodClientNetworkException(
+          'FakeAuthStatus: server unreachable',
+        ),
+      );
 
   @override
   Future<bool> isSignedIn() async {
@@ -92,6 +97,13 @@ class FakeAuthStatus implements EndpointStatus {
   @override
   Future<void> signOutDevice() async {
     signOutDeviceCalls++;
+    final error = signOutError;
+    if (error != null) throw error;
+  }
+
+  @override
+  Future<void> signOutAllDevices() async {
+    signOutAllDevicesCalls++;
     final error = signOutError;
     if (error != null) throw error;
   }
@@ -111,10 +123,15 @@ class FakeAuthCoreCaller extends Caller {
 }
 
 /// A client whose auth session checks and sign-outs go to [status] (by
-/// default [FakeAuthStatus.serverError]) instead of the network.
+/// default [FakeAuthStatus.unreachable]) instead of the network.
 ///
 /// The URL is a closed local port, so a call that misses a fake fails fast
 /// with a connection error instead of reaching a dev server on :8080.
+///
+/// Only the status endpoint is faked, so stored sessions must use the
+/// 'session' auth strategy (as [testAuthSuccess] builds): a 'jwt' session
+/// would make the session check refresh its token through the real
+/// refreshJwtTokens endpoint.
 Client buildOfflineTestClient(
   ClientAuthSuccessStorage storage, {
   FakeAuthStatus? status,
@@ -124,7 +141,7 @@ Client buildOfflineTestClient(
   // The authSessionManager setter installs the real caller, so the fake
   // goes in afterwards.
   client.auth.setCaller(
-    FakeAuthCoreCaller(client, status ?? FakeAuthStatus.serverError()),
+    FakeAuthCoreCaller(client, status ?? FakeAuthStatus.unreachable()),
   );
   addTearDown(client.close);
   return client;

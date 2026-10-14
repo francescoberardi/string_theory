@@ -144,6 +144,7 @@ void main() {
           await pumpEventQueue();
 
           expect(result, isFalse);
+          expect(status.isSignedInCalls, 1);
           expect(status.signOutDeviceCalls, 1);
           expect(authService.isAuthenticated, isFalse);
           expect(await storage.get(), isNull);
@@ -170,6 +171,7 @@ void main() {
           );
 
           final result = await authService.initialize();
+          await pumpEventQueue();
 
           expect(result, isTrue);
           expect(status.isSignedInCalls, 1);
@@ -200,7 +202,9 @@ void main() {
             expect(status.isSignedInCalls, 1);
             expect(status.signOutDeviceCalls, 0);
             expect(authService.currentUserId, testUserId.uuid);
+            expect(queue.pendingCount, 1);
           });
+          expect(await storage.get(), sampleAuthSuccess);
         },
       );
 
@@ -536,7 +540,8 @@ void main() {
         'given the server check fails, keeps the session (real validation path)',
         () async {
           final storage = InMemoryAuthSuccessStorage(sampleAuthSuccess);
-          final client = buildOfflineTestClient(storage);
+          final status = FakeAuthStatus.unreachable();
+          final client = buildOfflineTestClient(storage, status: status);
           final authService = AuthService(
             client: client,
             anonymousEndpoint: FakeEndpointAnonymousIdp(),
@@ -546,8 +551,41 @@ void main() {
 
           await authService.validateSession();
 
+          expect(status.isSignedInCalls, 2);
           expect(authService.isAuthenticated, isTrue);
           expect(await storage.get(), isNotNull);
+        },
+      );
+
+      test(
+        'given the session is revoked after start-up, signs out and clears the offline queue (real validation path)',
+        () async {
+          final storage = InMemoryAuthSuccessStorage(sampleAuthSuccess);
+          final status = FakeAuthStatus(signedIn: true);
+          final client = buildOfflineTestClient(storage, status: status);
+          final queueStorage = InMemorySessionQueueStorage();
+          final queue = OfflineSessionQueue(storage: queueStorage);
+          await queue.enqueue(_queuedLog());
+          final authService = AuthService(
+            client: client,
+            anonymousEndpoint: FakeEndpointAnonymousIdp(),
+            fetchAccountEmail: () async => null,
+            offlineQueue: queue,
+          );
+          await authService.initialize();
+          expect(authService.isAuthenticated, isTrue);
+
+          status.signedIn = false;
+          await authService.validateSession();
+          await pumpEventQueue();
+
+          expect(status.isSignedInCalls, 2);
+          expect(status.signOutDeviceCalls, 1);
+          expect(authService.isAuthenticated, isFalse);
+          expect(await storage.get(), isNull);
+          expect(authService.account.value, AccountInfo.signedOut);
+          expect(queue.pendingCount, 0);
+          expect(await queueStorage.read(), isEmpty);
         },
       );
 
