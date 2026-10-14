@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-02-2026 17:45
-last_updated: 10-14-2026 11:22
+last_updated: 10-14-2026 11:34
 project: string_theory
 project_key: NOKEY
 tracking_system: file-system
@@ -77,13 +77,13 @@ development_status:
   5-4-patrol-headless-end-to-end-test-automation-in-ci: done
   epic-5-retrospective: done
 
-  epic-6: in-progress
+  epic-6: done
   6-1-state-management-resilience-mutation-refresh-decoupling-asyn: done
   6-2-health-ingestion-hardening-lifecycle-resumed-sync-workout-ar: done
   6-3-native-uuid-tenant-migration-backend-concurrency-live-update: done
   6-4-dedicated-sessions-history-screen-domain-model-extraction: done
   6-6-real-email-sign-in-multi-window-testing: done
-  6-5-ci-environment-parity-deterministic-auth-testing: review
+  6-5-ci-environment-parity-deterministic-auth-testing: done
   epic-6-retrospective: optional
 action_items:
   - id: "epic-1-retro-item-1-extract-racquetcard-and-radialhealthgaug"
