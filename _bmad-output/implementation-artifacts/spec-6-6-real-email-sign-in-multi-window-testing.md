@@ -100,6 +100,8 @@ context:
 
 - Iteration 2 review patches (`c6bd77b` red, `ebc728f`): R30 (the 401 action reuses `SettingsScreen.confirmSignOut` unless the account is known to be email, with tests for the default path), R33 (`SignInScreen` re-reads the shared session on resume), R38 (DEMO Step 7 copy), R40 (same-user token-rotation test), R43 (`clear()` detaches the stopped drain; `sync()` only resets its own slot), R46 (cooldown reset per identity). Deferred: R37 (CI run of `init_passwords.sh`, Story 6.5). Final verification: Flutter 469 and server 105 tests pass; analyze and format are clean in both packages.
 
+- Browser (verified by the user, 2026-10-14): with the final focus re-read, signing out in tab 1 sends tab 2 to sign-in on switching to it.
+
 ## Spec Change Log
 
 - Iteration 1 (intent_gap, resolved by the human): reviewers found that the focus check forced a token refresh behind a 10 s cooldown. The cooldown made "as soon as you switch" untrue, and concurrent forced refreshes from two tabs sharing a refresh token can make the server revoke the session (verified: `RefreshTokenInvalidSecretServerException` revokes it). The frozen decision was amended so focus re-reads the shared stored session locally, and the forced server check runs only after a 401. Re-derive only the re-check code (`213fab6`, `f03be2d`). KEEP: the auth gate, the per-identity BagBloc, `AccountEndpoint`, `init_passwords.sh`, the sign-in screen and the Settings changes, all of which reviewers found sound.
