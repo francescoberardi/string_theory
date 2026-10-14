@@ -345,6 +345,32 @@ void main() {
 
       expect(queue.pending.single.externalWorkoutId, 'hk-2');
     });
+
+    test(
+      'stops a drain in flight: no queued session is sent after a clear',
+      () async {
+        final storage = InMemorySessionQueueStorage();
+        final queue = OfflineSessionQueue(storage: storage);
+        await queue.enqueue(_log(externalWorkoutId: 'hk-1'));
+        await queue.enqueue(_log(externalWorkoutId: 'hk-2'));
+        final firstSend = Completer<void>();
+        final sent = <String?>[];
+
+        final sync = queue.sync((log) async {
+          sent.add(log.externalWorkoutId);
+          if (sent.length == 1) await firstSend.future;
+          return log;
+        });
+        await pumpEventQueue();
+        await queue.clear();
+        firstSend.complete();
+        await sync;
+
+        expect(sent, ['hk-1']);
+        expect(queue.pendingCount, 0);
+        expect(await storage.read(), isEmpty);
+      },
+    );
   });
 
   group('isPermanentSessionRejection', () {

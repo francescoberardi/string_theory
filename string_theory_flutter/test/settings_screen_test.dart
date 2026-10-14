@@ -142,6 +142,44 @@ void main() {
       },
     );
 
+    testWidgets(
+      'given the account type is unknown, the sign-out dialog warns like a guest',
+      (tester) async {
+        final auth = await signedIn(fails: true);
+        await pumpSettings(tester, auth);
+
+        await openSignOutDialog(tester);
+
+        expect(find.text(SettingsScreen.guestSignOutWarning), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'opening Settings retries a failed account lookup and shows the email',
+      (tester) async {
+        var fail = true;
+        final client = buildOfflineTestClient(
+          InMemoryAuthSuccessStorage(sampleAuthSuccess),
+        );
+        final auth = AuthService(
+          client: client,
+          fetchAccountEmail: () async {
+            if (fail) throw Exception('offline');
+            return 'judge@example.com';
+          },
+        );
+        await auth.initialize();
+        await tester.pump();
+        expect(auth.account.value, AccountInfo.unknown);
+
+        fail = false;
+        await pumpSettings(tester, auth);
+
+        expect(find.byKey(SettingsScreen.keyAccountEmail), findsOneWidget);
+        expect(find.text('judge@example.com'), findsWidgets);
+      },
+    );
+
     testWidgets('cancelling the sign-out dialog keeps the user signed in', (
       tester,
     ) async {

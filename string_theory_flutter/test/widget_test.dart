@@ -17,6 +17,7 @@ void main() {
   late FakeHealthSyncService fakeHealth;
   late FakeEndpointAnonymousIdp anonymousIdp;
   late InMemorySessionQueueStorage queueStorage;
+  late InMemoryAuthSuccessStorage authStorage;
 
   /// Installs the app globals with [stored] as the persisted session and
   /// [accountEmail] as the server's answer to the account email lookup.
@@ -26,7 +27,8 @@ void main() {
     String? accountEmail,
     Future<bool> Function()? validateAuthentication,
   }) async {
-    final client = buildOfflineTestClient(InMemoryAuthSuccessStorage(stored));
+    authStorage = InMemoryAuthSuccessStorage(stored);
+    final client = buildOfflineTestClient(authStorage);
     queueStorage = InMemorySessionQueueStorage();
     app_client.client = client;
     app_client.offlineSessionQueue = OfflineSessionQueue(storage: queueStorage);
@@ -167,16 +169,14 @@ void main() {
     );
 
     testWidgets(
-      'a tab whose session was signed out elsewhere re-checks on resume and '
-      'lands on the sign-in screen',
+      'a tab whose shared session was signed out in another tab lands on '
+      'the sign-in screen when it regains focus, without a server check',
       (tester) async {
-        var revoked = false;
         var checks = 0;
         await setUpAuth(
           stored: testAuthSuccess(guestUserId),
           validateAuthentication: () async {
             checks++;
-            if (revoked) await app_client.client.auth.updateSignedInUser(null);
             return true;
           },
         );
@@ -185,8 +185,9 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.byType(VirtualBagScreen), findsOneWidget);
 
-        // Another tab signs this identity out; this tab comes back to focus.
-        revoked = true;
+        // Another tab sharing the stored session signs out; this tab comes
+        // back to focus.
+        await authStorage.set(null);
         tester.binding.handleAppLifecycleStateChanged(
           AppLifecycleState.inactive,
         );
@@ -195,9 +196,9 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(checks, 1);
         expect(find.byType(SignInScreen), findsOneWidget);
         expect(find.byType(VirtualBagScreen), findsNothing);
+        expect(checks, 0);
       },
     );
 

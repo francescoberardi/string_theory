@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:clock/clock.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:serverpod_auth_idp_flutter/serverpod_auth_idp_flutter.dart';
 import 'package:string_theory_client/string_theory_client.dart';
@@ -471,6 +472,36 @@ void main() {
         expect(authService.isAuthenticated, isTrue);
       });
 
+      test('a check runs again once the cooldown has passed', () async {
+        final client = buildTestClient(
+          InMemoryAuthSuccessStorage(sampleAuthSuccess),
+        );
+        var calls = 0;
+        final authService = AuthService(
+          client: client,
+          anonymousEndpoint: FakeEndpointAnonymousIdp(),
+          fetchAccountEmail: () async => null,
+          validateAuthentication: () async {
+            calls++;
+            return true;
+          },
+        );
+        await authService.initialize();
+        final start = DateTime.utc(2026, 10, 14, 9);
+
+        await withClock(Clock.fixed(start), authService.validateSession);
+        await withClock(
+          Clock.fixed(start.add(const Duration(seconds: 5))),
+          authService.validateSession,
+        );
+        await withClock(
+          Clock.fixed(start.add(AuthService.validationCooldown)),
+          authService.validateSession,
+        );
+
+        expect(calls, 2);
+      });
+
       test('handleFailedCall validates only after a 401', () async {
         final client = buildTestClient(
           InMemoryAuthSuccessStorage(sampleAuthSuccess),
@@ -494,6 +525,101 @@ void main() {
         authService.handleFailedCall(ServerpodClientUnauthorized());
         await pumpEventQueue();
         expect(calls, 1);
+      });
+    });
+
+    group('onAppResumed', () {
+      late InMemoryAuthSuccessStorage storage;
+      late Client client;
+      late InMemorySessionQueueStorage queueStorage;
+      late OfflineSessionQueue queue;
+      late int validations;
+
+      Future<AuthService> signedInService({
+        Future<String?> Function()? fetchAccountEmail,
+      }) async {
+        storage = InMemoryAuthSuccessStorage(sampleAuthSuccess);
+        client = buildTestClient(storage);
+        queueStorage = InMemorySessionQueueStorage();
+        queue = OfflineSessionQueue(storage: queueStorage);
+        await queue.enqueue(_queuedLog());
+        validations = 0;
+        final authService = AuthService(
+          client: client,
+          anonymousEndpoint: FakeEndpointAnonymousIdp(),
+          fetchAccountEmail: fetchAccountEmail ?? () async => null,
+          offlineQueue: queue,
+          validateAuthentication: () async {
+            validations++;
+            return true;
+          },
+        );
+        await authService.initialize();
+        return authService;
+      }
+
+      test(
+        'given another tab signed the shared session out, signs out at once without a server check',
+        () async {
+          final authService = await signedInService();
+
+          await storage.set(null); // the other tab signed out
+          await authService.onAppResumed();
+          await pumpEventQueue();
+
+          expect(authService.isAuthenticated, isFalse);
+          expect(authService.account.value, AccountInfo.signedOut);
+          expect(await queueStorage.read(), isEmpty);
+          expect(validations, 0);
+        },
+      );
+
+      test(
+        'given another tab switched to another user, follows it and drops the old queue',
+        () async {
+          final authService = await signedInService();
+
+          await storage.set(otherAuthSuccess);
+          await authService.onAppResumed();
+          await pumpEventQueue();
+
+          expect(authService.currentUserId, otherUserId);
+          expect(queue.pendingCount, 0);
+          expect(await queueStorage.read(), isEmpty);
+          expect(validations, 0);
+        },
+      );
+
+      test('given an unchanged session, keeps it and the queue', () async {
+        final authService = await signedInService();
+
+        await authService.onAppResumed();
+        await pumpEventQueue();
+
+        expect(authService.currentUserId, testUserId);
+        expect(queue.pendingCount, 1);
+        expect(validations, 0);
+      });
+
+      test('retries a failed account lookup', () async {
+        var fail = true;
+        final authService = await signedInService(
+          fetchAccountEmail: () async {
+            if (fail) throw Exception('offline');
+            return 'judge@example.com';
+          },
+        );
+        await pumpEventQueue();
+        expect(authService.account.value, AccountInfo.unknown);
+
+        fail = false;
+        await authService.onAppResumed();
+        await pumpEventQueue();
+
+        expect(
+          authService.account.value,
+          const AccountInfo.email('judge@example.com'),
+        );
       });
     });
   });
