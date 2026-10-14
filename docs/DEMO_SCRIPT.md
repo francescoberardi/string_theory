@@ -77,7 +77,7 @@ This demo script provides a step-by-step presentation narrative engineered to sh
 ### Step 7: Live Two-Window Sync (1:05 - 1:25)
 - **Visual:** Switch to the two prepared windows signed in to the same email account. In window A press `L` (or tap **Log Session**), log a session on the Wilson Blade, and point at window B.
 - **Presenter Spoken Narrative:**
-  > "Here is one email account open in two windows. I log a session on the left... and the gauge on the right moves on its own, no reload. Serverpod streams push the new score to every client of this user, and only this user: a second account sees its own bag and none of these updates."
+  > "Here is one email account open in two windows. I log a session on the left... and the gauge on the right moves on its own, no reload. Serverpod streams push the new score to every client of this user."
 
 ---
 

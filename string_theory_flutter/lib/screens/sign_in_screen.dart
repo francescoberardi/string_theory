@@ -39,6 +39,24 @@ class _SignInScreenState extends State<SignInScreen> {
   bool _guestInFlight = false;
   bool _guestFailed = false;
 
+  /// Re-reads the stored session on focus: if another tab sharing it signed
+  /// in, the auth gate opens the bag instead of a guest overwriting it.
+  late final AppLifecycleListener _lifecycle;
+
+  @override
+  void initState() {
+    super.initState();
+    _lifecycle = AppLifecycleListener(
+      onResume: () => app_client.authService.onAppResumed(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _lifecycle.dispose();
+    super.dispose();
+  }
+
   Future<void> _continueAsGuest() async {
     if (_guestInFlight) return;
     setState(() {

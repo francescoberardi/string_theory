@@ -34,45 +34,16 @@ class SettingsScreen extends StatefulWidget {
       'You are signed in as a guest. After signing out, this guest bag becomes '
       "unreachable and can't be recovered.";
 
-  @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
-}
-
-class _SettingsScreenState extends State<SettingsScreen> {
-  bool _isDecaying = false;
-  bool _isFastForwarding = false;
-
-  AuthService get _authService => widget.authService ?? app_client.authService;
-  Client get _client => widget.client ?? app_client.client;
-
-  @override
-  void initState() {
-    super.initState();
-    // Retry an account lookup that failed earlier (e.g. offline at launch).
-    _authService.refreshAccount();
-  }
-
-  void _showSuccessFeedback(BuildContext context, String message) {
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          style: GoogleFonts.inter(
-            color: Colors.black,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        backgroundColor: const Color(0xFFC6F10E),
-        duration: const Duration(seconds: 3),
-      ),
-    );
-  }
-
-  Future<void> _confirmSignOut(BuildContext context) async {
-    // Warn unless the account is known to be an email account: a guest whose
-    // lookup failed would otherwise lose the bag without a warning.
-    final isGuest = _authService.account.value.kind != AccountKind.email;
+  /// Asks to confirm a sign-out; resolves to whether the user confirmed.
+  ///
+  /// Warns that a guest bag becomes unreachable unless the account is known
+  /// to be an email account: a guest whose lookup failed would otherwise lose
+  /// the bag without a warning.
+  static Future<bool> confirmSignOut(
+    BuildContext context,
+    AuthService authService,
+  ) async {
+    final isGuest = authService.account.value.kind != AccountKind.email;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -119,10 +90,53 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ],
       ),
     );
+    return confirmed == true;
+  }
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  bool _isDecaying = false;
+  bool _isFastForwarding = false;
+
+  AuthService get _authService => widget.authService ?? app_client.authService;
+  Client get _client => widget.client ?? app_client.client;
+
+  @override
+  void initState() {
+    super.initState();
+    // Retry an account lookup that failed earlier (e.g. offline at launch).
+    _authService.refreshAccount();
+  }
+
+  void _showSuccessFeedback(BuildContext context, String message) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: GoogleFonts.inter(
+            color: Colors.black,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        backgroundColor: const Color(0xFFC6F10E),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  Future<void> _confirmSignOut(BuildContext context) async {
+    final confirmed = await SettingsScreen.confirmSignOut(
+      context,
+      _authService,
+    );
 
     // The auth gate replaces the whole signed-in app with the sign-in screen,
     // so this screen goes away on its own.
-    if (confirmed == true) {
+    if (confirmed) {
       try {
         await _authService.signOut();
       } catch (e) {

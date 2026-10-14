@@ -225,6 +225,8 @@ class AuthService {
     if (userId == _accountUserId) return;
     final wasSignedIn = _accountUserId != null;
     _accountUserId = userId;
+    // The cooldown belongs to the previous identity's session.
+    _lastValidation = null;
     // Queued sessions are not keyed by user: drop them whenever the signed-in
     // identity goes away, whether to signed-out or to another user.
     if (wasSignedIn) unawaited(_offlineQueue?.clear());

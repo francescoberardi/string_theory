@@ -198,9 +198,14 @@ class OfflineSessionQueue {
   Future<SessionSyncResult> sync(
     Future<SessionLog> Function(SessionLog log) send,
   ) {
-    return _syncInFlight ??= _drain(
-      send,
-    ).whenComplete(() => _syncInFlight = null);
+    final inFlight = _syncInFlight;
+    if (inFlight != null) return inFlight;
+    late final Future<SessionSyncResult> drain;
+    drain = _drain(send).whenComplete(() {
+      // A clear() may have detached this drain already.
+      if (identical(_syncInFlight, drain)) _syncInFlight = null;
+    });
+    return _syncInFlight = drain;
   }
 
   Future<SessionSyncResult> _drain(
@@ -251,9 +256,12 @@ class OfflineSessionQueue {
   ///
   /// Used on sign-out: queued sessions are not keyed by user, so they must
   /// not be sent later under another identity. A drain already in flight
-  /// stops after the session it is sending.
+  /// stops after the session it is sending, and is not shared with later
+  /// [sync] calls.
   Future<void> clear() async {
     _items = <SessionLog>[];
+    // A later sync() starts a new drain instead of joining the stopped one.
+    _syncInFlight = null;
     await storage.write(const <String>[]);
   }
 

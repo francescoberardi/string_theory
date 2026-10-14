@@ -10,6 +10,7 @@ import 'package:string_theory_client/string_theory_client.dart';
 import '../bloc/bag_bloc.dart';
 import '../client.dart';
 import '../domain/workout_formatting.dart' as formatting;
+import '../services/auth_service.dart';
 import '../services/health/health_sync_service.dart';
 import '../theme/court_midnight_theme.dart';
 import '../widgets/add_racquet_modal.dart';
@@ -328,7 +329,15 @@ class _VirtualBagScreenState extends State<VirtualBagScreen>
   /// After a 401, signs out locally so the sign-in screen shows. It never
   /// creates a new guest and never queues anything offline.
   Future<void> _signInAgain() async {
-    final signOut = widget.onSignInRequired ?? authService.signOut;
+    final override = widget.onSignInRequired;
+    // The 401 may be transient: like Settings, warn before a guest (or an
+    // account not known to be email) signs out and loses the bag.
+    if (override == null &&
+        authService.account.value.kind != AccountKind.email &&
+        !await SettingsScreen.confirmSignOut(context, authService)) {
+      return;
+    }
+    final signOut = override ?? authService.signOut;
     try {
       await signOut();
     } catch (e) {
