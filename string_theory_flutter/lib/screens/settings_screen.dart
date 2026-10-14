@@ -70,7 +70,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _confirmSignOut(BuildContext context) async {
-    final isGuest = _authService.account.value.isGuest;
+    // Warn unless the account is known to be an email account: a guest whose
+    // lookup failed would otherwise lose the bag without a warning.
+    final isGuest = _authService.account.value.kind != AccountKind.email;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -533,7 +535,11 @@ class _AccountCard extends StatelessWidget {
     ) = switch (account.kind) {
       AccountKind.email => ('Email Account', 'Signed in with email', 'EMAIL'),
       AccountKind.guest => ('Guest Account', 'Anonymous session', 'GUEST'),
-      AccountKind.signedOut => ('Signed Out', 'No active session', 'OFFLINE'),
+      AccountKind.signedOut => (
+        'Signed Out',
+        'No active session',
+        'SIGNED OUT',
+      ),
       AccountKind.unknown => ('Account', 'Signed in', 'ACTIVE'),
     };
 

@@ -153,9 +153,23 @@ class AuthService {
     }
   }
 
-  /// Re-checks the session with the server and signs out locally when it was
-  /// revoked, e.g. signed out in another tab sharing this identity (its JWT
-  /// access token otherwise keeps working until it expires).
+  /// Called when the app regains focus: re-reads the stored session, which
+  /// other tabs of the same browser profile share. If another tab signed out
+  /// or switched user, this one follows at once. Local only: it never
+  /// rotates tokens. Also retries a failed account lookup.
+  Future<void> onAppResumed() async {
+    try {
+      await _client.auth.restore();
+    } catch (e) {
+      debugPrint('AuthService: session re-read failed: $e');
+    }
+    await refreshAccount();
+  }
+
+  /// Re-checks the session with the server (forced refresh plus
+  /// `status.isSignedIn`) and signs out locally when it was revoked. Runs
+  /// after a 401: a tab's JWT access token keeps working for a while after
+  /// its session is revoked.
   ///
   /// Checks in flight are shared and repeat checks within
   /// [validationCooldown] are skipped. Network failures and timeouts keep the
@@ -211,11 +225,11 @@ class AuthService {
     if (userId == _accountUserId) return;
     final wasSignedIn = _accountUserId != null;
     _accountUserId = userId;
+    // Queued sessions are not keyed by user: drop them whenever the signed-in
+    // identity goes away, whether to signed-out or to another user.
+    if (wasSignedIn) unawaited(_offlineQueue?.clear());
     if (userId == null) {
       _account.value = AccountInfo.signedOut;
-      // Queued sessions are not keyed by user: drop them on every path to
-      // signed-out, including a session check that found a revoked session.
-      if (wasSignedIn) unawaited(_offlineQueue?.clear());
     } else if (userId == _newGuestUserId) {
       _account.value = AccountInfo.guest;
     } else {

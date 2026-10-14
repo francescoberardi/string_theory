@@ -115,9 +115,9 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void initState() {
     super.initState();
-    // Coming back to this tab or app: the session may have been signed out
-    // in another tab sharing it, so re-check it.
-    _lifecycle = AppLifecycleListener(onResume: authService.validateSession);
+    // Coming back to this tab or app: another tab sharing the stored session
+    // may have signed out or switched user.
+    _lifecycle = AppLifecycleListener(onResume: authService.onAppResumed);
   }
 
   @override

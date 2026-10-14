@@ -583,7 +583,7 @@ void main() {
           await authService.onAppResumed();
           await pumpEventQueue();
 
-          expect(authService.currentUserId, otherUserId);
+          expect(authService.currentUserId, otherUserId.uuid);
           expect(queue.pendingCount, 0);
           expect(await queueStorage.read(), isEmpty);
           expect(validations, 0);
@@ -596,7 +596,7 @@ void main() {
         await authService.onAppResumed();
         await pumpEventQueue();
 
-        expect(authService.currentUserId, testUserId);
+        expect(authService.currentUserId, testUserId.uuid);
         expect(queue.pendingCount, 1);
         expect(validations, 0);
       });

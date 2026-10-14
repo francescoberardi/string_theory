@@ -212,7 +212,8 @@ class OfflineSessionQueue {
     var discarded = 0;
     var interrupted = false;
 
-    while (items.isNotEmpty) {
+    // A clear() replaces _items: stop sending the old list.
+    while (items.isNotEmpty && identical(items, _items)) {
       final next = items.first;
       try {
         await send(next);
@@ -250,7 +251,7 @@ class OfflineSessionQueue {
   ///
   /// Used on sign-out: queued sessions are not keyed by user, so they must
   /// not be sent later under another identity. A drain already in flight
-  /// persists the emptied queue.
+  /// stops after the session it is sending.
   Future<void> clear() async {
     _items = <SessionLog>[];
     await storage.write(const <String>[]);
