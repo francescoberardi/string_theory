@@ -1,23 +1,14 @@
 import 'dart:async';
 
 import 'package:clock/clock.dart';
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:serverpod_auth_idp_flutter/serverpod_auth_idp_flutter.dart';
 import 'package:string_theory_client/string_theory_client.dart';
 import 'package:string_theory_flutter/services/auth_service.dart';
 import 'package:string_theory_flutter/services/offline_session_queue.dart';
 
-class InMemoryAuthSuccessStorage implements ClientAuthSuccessStorage {
-  AuthSuccess? _stored;
-
-  InMemoryAuthSuccessStorage([this._stored]);
-
-  @override
-  Future<AuthSuccess?> get() async => _stored;
-
-  @override
-  Future<void> set(AuthSuccess? data) async => _stored = data;
-}
+import 'helpers/fake_auth.dart' hide FakeEndpointAnonymousIdp;
 
 class FakeEndpointAnonymousIdp implements EndpointAnonymousIdp {
   AuthSuccess? successToReturn;
@@ -44,16 +35,6 @@ class FakeEndpointAnonymousIdp implements EndpointAnonymousIdp {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-/// Builds a client against a closed local port so session validation in
-/// `client.auth.initialize()` fails fast with a connection error (which keeps
-/// the restored session) instead of reaching a dev server on :8080.
-Client buildTestClient(ClientAuthSuccessStorage storage) {
-  final client = Client('http://127.0.0.1:1/')
-    ..authSessionManager = FlutterAuthSessionManager(storage: storage);
-  addTearDown(client.close);
-  return client;
 }
 
 SessionLog _queuedLog() => SessionLog(
@@ -90,7 +71,7 @@ void main() {
       'given fresh install (no session), when initialize() is called, then stays signed out without creating a guest',
       () async {
         final storage = InMemoryAuthSuccessStorage();
-        final client = buildTestClient(storage);
+        final client = buildOfflineTestClient(storage);
         final fakeEndpoint = FakeEndpointAnonymousIdp()
           ..successToReturn = sampleAuthSuccess;
 
@@ -109,33 +90,147 @@ void main() {
       },
     );
 
-    test(
-      'given stored session and unreachable server, when initialize() is called, then rehydrates without calling login',
-      () async {
-        final storage = InMemoryAuthSuccessStorage(sampleAuthSuccess);
-        final client = buildTestClient(storage);
-        final fakeEndpoint = FakeEndpointAnonymousIdp();
+    group('initialize with a stored session', () {
+      late InMemoryAuthSuccessStorage storage;
+      late FakeAuthStatus status;
+      late FakeEndpointAnonymousIdp fakeEndpoint;
+      late InMemorySessionQueueStorage queueStorage;
+      late OfflineSessionQueue queue;
 
-        final authService = AuthService(
-          client: client,
+      Future<AuthService> storedSession(FakeAuthStatus authStatus) async {
+        storage = InMemoryAuthSuccessStorage(sampleAuthSuccess);
+        status = authStatus;
+        fakeEndpoint = FakeEndpointAnonymousIdp();
+        queueStorage = InMemorySessionQueueStorage();
+        queue = OfflineSessionQueue(storage: queueStorage);
+        await queue.enqueue(_queuedLog());
+        return AuthService(
+          client: buildOfflineTestClient(storage, status: status),
           anonymousEndpoint: fakeEndpoint,
-          fetchAccountEmail: () async => null,
+          fetchAccountEmail: () async => 'judge@example.com',
+          offlineQueue: queue,
         );
+      }
 
-        final result = await authService.initialize();
+      test(
+        'given the server confirms the session, keeps the user and the account without a guest login',
+        () async {
+          final authService = await storedSession(FakeAuthStatus());
 
-        expect(result, isTrue);
-        expect(fakeEndpoint.loginCalls, equals(0));
-        expect(authService.isAuthenticated, isTrue);
-        expect(authService.currentUserId, equals(testUserId.toString()));
-      },
-    );
+          final result = await authService.initialize();
+          await pumpEventQueue();
+
+          expect(result, isTrue);
+          expect(status.isSignedInCalls, 1);
+          expect(status.signOutDeviceCalls, 0);
+          expect(authService.currentUserId, testUserId.uuid);
+          expect(
+            authService.account.value,
+            const AccountInfo.email('judge@example.com'),
+          );
+          expect(queue.pendingCount, 1);
+          expect(fakeEndpoint.loginCalls, 0);
+        },
+      );
+
+      test(
+        'given the session was revoked, signs out once, clears the queue, and a later guest sign-in works',
+        () async {
+          final authService = await storedSession(
+            FakeAuthStatus(signedIn: false),
+          );
+
+          final result = await authService.initialize();
+          await pumpEventQueue();
+
+          expect(result, isFalse);
+          expect(status.signOutDeviceCalls, 1);
+          expect(authService.isAuthenticated, isFalse);
+          expect(await storage.get(), isNull);
+          expect(authService.account.value, AccountInfo.signedOut);
+          expect(queue.pendingCount, 0);
+          expect(await queueStorage.read(), isEmpty);
+
+          fakeEndpoint.successToReturn = otherAuthSuccess;
+          expect(await authService.continueAsGuest(), isTrue);
+
+          expect(authService.currentUserId, otherUserId.uuid);
+          expect(authService.account.value, AccountInfo.guest);
+          expect(fakeEndpoint.loginCalls, 1);
+        },
+      );
+
+      test(
+        'given the server check fails, keeps the session without calling login',
+        () async {
+          final authService = await storedSession(
+            FakeAuthStatus(
+              isSignedInError: ServerpodClientInternalServerError(),
+            ),
+          );
+
+          final result = await authService.initialize();
+
+          expect(result, isTrue);
+          expect(status.isSignedInCalls, 1);
+          expect(status.signOutDeviceCalls, 0);
+          expect(authService.currentUserId, testUserId.uuid);
+          expect(await storage.get(), sampleAuthSuccess);
+          expect(queue.pendingCount, 1);
+          expect(fakeEndpoint.loginCalls, 0);
+        },
+      );
+
+      test(
+        'given the server never answers, keeps the session once the 2 s check times out',
+        () async {
+          final authService = await storedSession(
+            FakeAuthStatus(isSignedInHangs: true),
+          );
+
+          fakeAsync((async) {
+            bool? result;
+            unawaited(authService.initialize().then((r) => result = r));
+
+            async.elapse(const Duration(milliseconds: 1999));
+            expect(result, isNull, reason: 'still waiting for the server');
+
+            async.elapse(const Duration(milliseconds: 1));
+            expect(result, isTrue);
+            expect(status.isSignedInCalls, 1);
+            expect(status.signOutDeviceCalls, 0);
+            expect(authService.currentUserId, testUserId.uuid);
+          });
+        },
+      );
+
+      test(
+        'given the sign-out call fails, clears the local session anyway',
+        () async {
+          final authService = await storedSession(
+            FakeAuthStatus(
+              signOutError: const ServerpodClientNetworkException('offline'),
+            ),
+          );
+          await authService.initialize();
+          expect(authService.isAuthenticated, isTrue);
+
+          await authService.signOut();
+
+          expect(status.signOutDeviceCalls, 1);
+          expect(authService.isAuthenticated, isFalse);
+          expect(await storage.get(), isNull);
+          expect(authService.account.value, AccountInfo.signedOut);
+          expect(queue.pendingCount, 0);
+        },
+      );
+    });
 
     test(
       'given continueAsGuest, when the anonymous login succeeds, then signs in as a guest',
       () async {
         final storage = InMemoryAuthSuccessStorage();
-        final client = buildTestClient(storage);
+        final client = buildOfflineTestClient(storage);
         var emailFetches = 0;
         final fakeEndpoint = FakeEndpointAnonymousIdp()
           ..successToReturn = sampleAuthSuccess;
@@ -163,7 +258,7 @@ void main() {
       'given continueAsGuest and network failure, then the error is propagated and the user stays signed out',
       () async {
         final storage = InMemoryAuthSuccessStorage();
-        final client = buildTestClient(storage);
+        final client = buildOfflineTestClient(storage);
         final fakeEndpoint = FakeEndpointAnonymousIdp()
           ..exceptionToThrow = Exception(
             'Network error connecting to Serverpod',
@@ -187,7 +282,7 @@ void main() {
       'given concurrent continueAsGuest calls, then deduplicates in-flight calls to single endpoint invocation',
       () async {
         final storage = InMemoryAuthSuccessStorage();
-        final client = buildTestClient(storage);
+        final client = buildOfflineTestClient(storage);
         final fakeEndpoint = FakeEndpointAnonymousIdp()
           ..successToReturn = sampleAuthSuccess
           ..gate = Completer<void>();
@@ -214,7 +309,7 @@ void main() {
       'given continueAsGuest with token, then forwards token to anonymous endpoint',
       () async {
         final storage = InMemoryAuthSuccessStorage();
-        final client = buildTestClient(storage);
+        final client = buildOfflineTestClient(storage);
         final fakeEndpoint = FakeEndpointAnonymousIdp()
           ..successToReturn = sampleAuthSuccess;
 
@@ -232,7 +327,7 @@ void main() {
       'given authenticated user, when signOut() is called, then the session and the offline queue are cleared',
       () async {
         final storage = InMemoryAuthSuccessStorage(sampleAuthSuccess);
-        final client = buildTestClient(storage);
+        final client = buildOfflineTestClient(storage);
         final queueStorage = InMemorySessionQueueStorage();
         final queue = OfflineSessionQueue(storage: queueStorage);
         await queue.enqueue(_queuedLog());
@@ -261,7 +356,7 @@ void main() {
       'a token refresh for the same user keeps the account and the offline queue',
       () async {
         final storage = InMemoryAuthSuccessStorage(sampleAuthSuccess);
-        final client = buildTestClient(storage);
+        final client = buildOfflineTestClient(storage);
         final queue = OfflineSessionQueue(
           storage: InMemorySessionQueueStorage(),
         );
@@ -304,7 +399,7 @@ void main() {
     group('account', () {
       test('given a stored email session, loads the account email', () async {
         final storage = InMemoryAuthSuccessStorage(sampleAuthSuccess);
-        final client = buildTestClient(storage);
+        final client = buildOfflineTestClient(storage);
         final authService = AuthService(
           client: client,
           anonymousEndpoint: FakeEndpointAnonymousIdp(),
@@ -323,7 +418,7 @@ void main() {
 
       test('given a stored guest session, reports a guest', () async {
         final storage = InMemoryAuthSuccessStorage(sampleAuthSuccess);
-        final client = buildTestClient(storage);
+        final client = buildOfflineTestClient(storage);
         final authService = AuthService(
           client: client,
           anonymousEndpoint: FakeEndpointAnonymousIdp(),
@@ -341,7 +436,7 @@ void main() {
         'given the email lookup fails, reports an unknown account',
         () async {
           final storage = InMemoryAuthSuccessStorage(sampleAuthSuccess);
-          final client = buildTestClient(storage);
+          final client = buildOfflineTestClient(storage);
           final authService = AuthService(
             client: client,
             anonymousEndpoint: FakeEndpointAnonymousIdp(),
@@ -358,7 +453,7 @@ void main() {
 
       test('refreshAccount retries a failed lookup', () async {
         final storage = InMemoryAuthSuccessStorage(sampleAuthSuccess);
-        final client = buildTestClient(storage);
+        final client = buildOfflineTestClient(storage);
         var fail = true;
         final authService = AuthService(
           client: client,
@@ -383,7 +478,7 @@ void main() {
 
       test('a lookup for a previous identity is ignored', () async {
         final storage = InMemoryAuthSuccessStorage(sampleAuthSuccess);
-        final client = buildTestClient(storage);
+        final client = buildOfflineTestClient(storage);
         final firstLookup = Completer<String?>();
         var calls = 0;
         final authService = AuthService(
@@ -410,7 +505,7 @@ void main() {
         'given the session was revoked elsewhere, signs out and clears the offline queue',
         () async {
           final storage = InMemoryAuthSuccessStorage(sampleAuthSuccess);
-          final client = buildTestClient(storage);
+          final client = buildOfflineTestClient(storage);
           final queueStorage = InMemorySessionQueueStorage();
           final queue = OfflineSessionQueue(storage: queueStorage);
           await queue.enqueue(_queuedLog());
@@ -438,10 +533,10 @@ void main() {
       );
 
       test(
-        'given the server is unreachable, keeps the session (real validation path)',
+        'given the server check fails, keeps the session (real validation path)',
         () async {
           final storage = InMemoryAuthSuccessStorage(sampleAuthSuccess);
-          final client = buildTestClient(storage);
+          final client = buildOfflineTestClient(storage);
           final authService = AuthService(
             client: client,
             anonymousEndpoint: FakeEndpointAnonymousIdp(),
@@ -457,7 +552,7 @@ void main() {
       );
 
       test('given no session, does not validate', () async {
-        final client = buildTestClient(InMemoryAuthSuccessStorage());
+        final client = buildOfflineTestClient(InMemoryAuthSuccessStorage());
         var calls = 0;
         final authService = AuthService(
           client: client,
@@ -475,7 +570,7 @@ void main() {
       });
 
       test('concurrent and back-to-back checks share one validation', () async {
-        final client = buildTestClient(
+        final client = buildOfflineTestClient(
           InMemoryAuthSuccessStorage(sampleAuthSuccess),
         );
         final gate = Completer<bool>();
@@ -501,7 +596,7 @@ void main() {
       });
 
       test('a failed validation does not throw', () async {
-        final client = buildTestClient(
+        final client = buildOfflineTestClient(
           InMemoryAuthSuccessStorage(sampleAuthSuccess),
         );
         final authService = AuthService(
@@ -517,7 +612,7 @@ void main() {
       });
 
       test('a check runs again once the cooldown has passed', () async {
-        final client = buildTestClient(
+        final client = buildOfflineTestClient(
           InMemoryAuthSuccessStorage(sampleAuthSuccess),
         );
         var calls = 0;
@@ -547,7 +642,7 @@ void main() {
       });
 
       test('a new identity does not inherit the previous cooldown', () async {
-        final client = buildTestClient(
+        final client = buildOfflineTestClient(
           InMemoryAuthSuccessStorage(sampleAuthSuccess),
         );
         var calls = 0;
@@ -574,7 +669,7 @@ void main() {
       });
 
       test('handleFailedCall validates only after a 401', () async {
-        final client = buildTestClient(
+        final client = buildOfflineTestClient(
           InMemoryAuthSuccessStorage(sampleAuthSuccess),
         );
         var calls = 0;
@@ -610,7 +705,7 @@ void main() {
         Future<String?> Function()? fetchAccountEmail,
       }) async {
         storage = InMemoryAuthSuccessStorage(sampleAuthSuccess);
-        client = buildTestClient(storage);
+        client = buildOfflineTestClient(storage);
         queueStorage = InMemorySessionQueueStorage();
         queue = OfflineSessionQueue(storage: queueStorage);
         await queue.enqueue(_queuedLog());
