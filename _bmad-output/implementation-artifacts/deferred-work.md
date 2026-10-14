@@ -144,3 +144,12 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-fix-sample-bag-health-reset-on-first-session.md`
   summary: Make sample bag seeding atomic (single server-side seed call or rollback) to avoid partial bags and duplicates on retry.
   evidence: _onSeedSampleBag issues three independent createRacquet calls; a mid-sequence failure leaves a partial bag and a retry duplicates racquets. Pre-existing.
+- source_spec: none
+  summary: Guest to email bag linking (Story 6.6 AC-6 to AC-8 and the Settings [Continue with Email] flow, as Story 6.7) — GuestClaim table, AccountEndpoint.createGuestClaim/claimGuestBag, AccountMerger applicationMergeHandler, conflict rules and BagStreamMessage to the kept account.
+  evidence: Split from Story 6.6 at the user's choice. It ships independently of email sign-in/sign-out and is the riskiest part (transactional ownership transfer with its own security rules). epic-6-context already allows splitting it off as Story 6.7.
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-6-real-email-sign-in-multi-window-testing.md`
+  summary: Remove the template greeting endpoint (`string_theory_server/lib/src/greetings/`, `greeting.spy.yaml`), which is unused and unauthenticated now that `greetings_screen.dart` is gone.
+  evidence: Story 6.6 review R17; pre-existing template code that still appears in the generated client.
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-6-real-email-sign-in-multi-window-testing.md`
+  summary: Exercise `string_theory_server/tool/init_passwords.sh` in CI (Story 6.5): run it into a temp path, boot the server tests on the generated file, and assert that a second run refuses.
+  evidence: Story 6.6 review R37. The README makes the script the setup step, but CI injects SERVERPOD_PASSWORD_* env vars and never runs it; so far it has only been verified manually on a fresh clone.
