@@ -7,7 +7,7 @@ This demo script provides a step-by-step presentation narrative engineered to sh
 ## 🧰 Before You Start
 
 - Run `serverpod start` (see the README) so the app opens in the browser.
-- For the live-sync beat, prepare **two browser windows side by side, signed in to the same email account**: sign up once (the verification code is in the `serverpod start` output), tap `[⚡ Load Sample Bag]`, then open the app in a second window of the same browser, which is already signed in to that account.
+- For the live-sync beat, prepare **two browser windows side by side, signed in to the same email account**: sign up once (the verification code is in the `serverpod start` output), tap `[⚡ Load Sample Bag]`, then open the app's address (the `http://localhost:<port>` page `serverpod start` opened) in a second window of the same browser, which is already signed in to that account.
 - For Step 1, keep a **private window** on the sign-in screen (windows of one browser profile share the sign-in, so a normal window would open straight into the bag).
 
 ---
