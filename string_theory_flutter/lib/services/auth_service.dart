@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:clock/clock.dart';
 import 'package:flutter/foundation.dart';
 import 'package:serverpod_auth_idp_flutter/serverpod_auth_idp_flutter.dart';
 import 'package:string_theory_client/string_theory_client.dart';
@@ -61,9 +62,18 @@ class AuthService {
   final EndpointAnonymousIdp? _anonymousEndpointOverride;
   final Future<String?> Function()? _fetchAccountEmailOverride;
   final OfflineSessionQueue? _offlineQueue;
+  final Future<bool> Function()? _validateAuthenticationOverride;
+
+  /// Minimum time between two session checks in [validateSession].
+  static const validationCooldown = Duration(seconds: 10);
+
+  /// How long a session check may wait for the server.
+  static const validationTimeout = Duration(seconds: 5);
 
   final _account = ValueNotifier<AccountInfo>(AccountInfo.signedOut);
   Future<bool>? _inFlightLogin;
+  Future<void>? _inFlightValidation;
+  DateTime? _lastValidation;
 
   /// Auth user the [account] value belongs to.
   UuidValue? _accountUserId;
@@ -71,15 +81,19 @@ class AuthService {
   /// Auth user just created by [continueAsGuest], known to be a guest.
   UuidValue? _newGuestUserId;
 
-  /// [offlineQueue] is cleared on [signOut]. [fetchAccountEmail] overrides
-  /// `client.account.getAccountEmail` (for tests).
+  /// [offlineQueue] is cleared whenever the user ends up signed out.
+  /// [fetchAccountEmail] and [validateAuthentication] override
+  /// `client.account.getAccountEmail` and `client.auth.validateAuthentication`
+  /// (for tests).
   AuthService({
     required this._client,
     EndpointAnonymousIdp? anonymousEndpoint,
     Future<String?> Function()? fetchAccountEmail,
     this._offlineQueue,
+    Future<bool> Function()? validateAuthentication,
   }) : _anonymousEndpointOverride = anonymousEndpoint,
-       _fetchAccountEmailOverride = fetchAccountEmail {
+       _fetchAccountEmailOverride = fetchAccountEmail,
+       _validateAuthenticationOverride = validateAuthentication {
     _client.auth.authInfoListenable.addListener(_onAuthInfoChanged);
     _onAuthInfoChanged();
   }
@@ -139,6 +153,45 @@ class AuthService {
     }
   }
 
+  /// Re-checks the session with the server and signs out locally when it was
+  /// revoked, e.g. signed out in another tab sharing this identity (its JWT
+  /// access token otherwise keeps working until it expires).
+  ///
+  /// Checks in flight are shared and repeat checks within
+  /// [validationCooldown] are skipped. Network failures and timeouts keep the
+  /// session; this never throws.
+  Future<void> validateSession() {
+    if (!isAuthenticated) return Future.value();
+    final inFlight = _inFlightValidation;
+    if (inFlight != null) return inFlight;
+    final now = clock.now();
+    final last = _lastValidation;
+    if (last != null && now.difference(last) < validationCooldown) {
+      return Future.value();
+    }
+    _lastValidation = now;
+    return _inFlightValidation = _validate().whenComplete(
+      () => _inFlightValidation = null,
+    );
+  }
+
+  Future<void> _validate() async {
+    try {
+      final validate =
+          _validateAuthenticationOverride ??
+          () => _client.auth.validateAuthentication(timeout: validationTimeout);
+      await validate();
+    } catch (e) {
+      debugPrint('AuthService: session check failed, keeping session: $e');
+    }
+  }
+
+  /// Hook for the client's `onFailedCall`: a 401 means the session may have
+  /// been revoked, so it is re-checked (see [validateSession]).
+  void handleFailedCall(Object error) {
+    if (error is ServerpodClientUnauthorized) unawaited(validateSession());
+  }
+
   /// Reloads the account email if the account type is [AccountKind.unknown].
   Future<void> refreshAccount() async {
     final userId = _client.auth.authInfo?.authUserId;
@@ -156,9 +209,13 @@ class AuthService {
     final userId = _client.auth.authInfo?.authUserId;
     // A token refresh keeps the identity, and so the account.
     if (userId == _accountUserId) return;
+    final wasSignedIn = _accountUserId != null;
     _accountUserId = userId;
     if (userId == null) {
       _account.value = AccountInfo.signedOut;
+      // Queued sessions are not keyed by user: drop them on every path to
+      // signed-out, including a session check that found a revoked session.
+      if (wasSignedIn) unawaited(_offlineQueue?.clear());
     } else if (userId == _newGuestUserId) {
       _account.value = AccountInfo.guest;
     } else {

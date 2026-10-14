@@ -98,7 +98,7 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class MyHomePage extends StatelessWidget {
+class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
 
   final String title;
@@ -106,16 +106,37 @@ class MyHomePage extends StatelessWidget {
   static const keyGuestBadge = Key('app_bar_guest_badge');
 
   @override
+  State<MyHomePage> createState() => _MyHomePageState();
+}
+
+class _MyHomePageState extends State<MyHomePage> {
+  late final AppLifecycleListener _lifecycle;
+
+  @override
+  void initState() {
+    super.initState();
+    // Coming back to this tab or app: the session may have been signed out
+    // in another tab sharing it, so re-check it.
+    _lifecycle = AppLifecycleListener(onResume: authService.validateSession);
+  }
+
+  @override
+  void dispose() {
+    _lifecycle.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(title),
+        title: Text(widget.title),
         actions: [
           ValueListenableBuilder<AccountInfo>(
             valueListenable: authService.account,
             builder: (context, account, _) {
               if (!account.isGuest) return const SizedBox.shrink();
-              return const _GuestBadge(key: keyGuestBadge);
+              return const _GuestBadge(key: MyHomePage.keyGuestBadge);
             },
           ),
           IconButton(

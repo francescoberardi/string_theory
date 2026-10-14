@@ -32,9 +32,14 @@ late OfflineSessionQueue offlineSessionQueue;
 /// Builds [client] and [authService] and restores a stored session, if any.
 /// No session is created here: without one the app shows the sign-in screen.
 Future<void> initializeClient() async {
-  client = Client(await serverUrl)
-    ..connectivityMonitor = FlutterConnectivityMonitor()
-    ..authSessionManager = FlutterAuthSessionManager();
+  client =
+      Client(
+          await serverUrl,
+          // A 401 may mean the session was signed out elsewhere: re-check it.
+          onFailedCall: (_, error, _) => authService.handleFailedCall(error),
+        )
+        ..connectivityMonitor = FlutterConnectivityMonitor()
+        ..authSessionManager = FlutterAuthSessionManager();
   offlineSessionQueue = OfflineSessionQueue(
     storage: SharedPreferencesSessionQueueStorage(),
   );
