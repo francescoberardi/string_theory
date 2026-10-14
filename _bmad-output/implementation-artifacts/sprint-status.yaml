@@ -82,7 +82,7 @@ development_status:
   6-2-health-ingestion-hardening-lifecycle-resumed-sync-workout-ar: done
   6-3-native-uuid-tenant-migration-backend-concurrency-live-update: done
   6-4-dedicated-sessions-history-screen-domain-model-extraction: done
-  6-6-real-email-sign-in-multi-window-testing: review
+  6-6-real-email-sign-in-multi-window-testing: done
   6-5-ci-environment-parity-deterministic-auth-testing: backlog
   epic-6-retrospective: optional
 action_items:
