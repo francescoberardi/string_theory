@@ -20,7 +20,12 @@ void main() {
 
   /// Installs the app globals with [stored] as the persisted session and
   /// [accountEmail] as the server's answer to the account email lookup.
-  Future<void> setUpAuth({AuthSuccess? stored, String? accountEmail}) async {
+  /// [validateAuthentication] replaces the server session check.
+  Future<void> setUpAuth({
+    AuthSuccess? stored,
+    String? accountEmail,
+    Future<bool> Function()? validateAuthentication,
+  }) async {
     final client = buildOfflineTestClient(InMemoryAuthSuccessStorage(stored));
     queueStorage = InMemorySessionQueueStorage();
     app_client.client = client;
@@ -30,6 +35,7 @@ void main() {
       anonymousEndpoint: anonymousIdp,
       fetchAccountEmail: () async => accountEmail,
       offlineQueue: app_client.offlineSessionQueue,
+      validateAuthentication: validateAuthentication,
     );
     await app_client.authService.initialize();
   }
@@ -157,6 +163,41 @@ void main() {
         expect(blocs, hasLength(2));
         expect(blocs.last.isClosed, isFalse);
         expect(blocs.last.state, isNot(isA<BagInitial>()));
+      },
+    );
+
+    testWidgets(
+      'a tab whose session was signed out elsewhere re-checks on resume and '
+      'lands on the sign-in screen',
+      (tester) async {
+        var revoked = false;
+        var checks = 0;
+        await setUpAuth(
+          stored: testAuthSuccess(guestUserId),
+          validateAuthentication: () async {
+            checks++;
+            if (revoked) await app_client.client.auth.updateSignedInUser(null);
+            return true;
+          },
+        );
+
+        await tester.pumpWidget(MyApp(healthSyncService: fakeHealth));
+        await tester.pumpAndSettle();
+        expect(find.byType(VirtualBagScreen), findsOneWidget);
+
+        // Another tab signs this identity out; this tab comes back to focus.
+        revoked = true;
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.inactive,
+        );
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.resumed,
+        );
+        await tester.pumpAndSettle();
+
+        expect(checks, 1);
+        expect(find.byType(SignInScreen), findsOneWidget);
+        expect(find.byType(VirtualBagScreen), findsNothing);
       },
     );
 

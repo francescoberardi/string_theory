@@ -359,5 +359,142 @@ void main() {
         expect(authService.account.value, const AccountInfo.email('b@x.com'));
       });
     });
+
+    group('validateSession', () {
+      test(
+        'given the session was revoked elsewhere, signs out and clears the offline queue',
+        () async {
+          final storage = InMemoryAuthSuccessStorage(sampleAuthSuccess);
+          final client = buildTestClient(storage);
+          final queueStorage = InMemorySessionQueueStorage();
+          final queue = OfflineSessionQueue(storage: queueStorage);
+          await queue.enqueue(_queuedLog());
+          final authService = AuthService(
+            client: client,
+            anonymousEndpoint: FakeEndpointAnonymousIdp(),
+            fetchAccountEmail: () async => null,
+            offlineQueue: queue,
+            // Mirrors validateAuthentication on a revoked session.
+            validateAuthentication: () async {
+              await client.auth.updateSignedInUser(null);
+              return true;
+            },
+          );
+          await authService.initialize();
+
+          await authService.validateSession();
+          await pumpEventQueue();
+
+          expect(authService.isAuthenticated, isFalse);
+          expect(authService.account.value, AccountInfo.signedOut);
+          expect(queue.pendingCount, 0);
+          expect(await queueStorage.read(), isEmpty);
+        },
+      );
+
+      test(
+        'given the server is unreachable, keeps the session (real validation path)',
+        () async {
+          final storage = InMemoryAuthSuccessStorage(sampleAuthSuccess);
+          final client = buildTestClient(storage);
+          final authService = AuthService(
+            client: client,
+            anonymousEndpoint: FakeEndpointAnonymousIdp(),
+            fetchAccountEmail: () async => null,
+          );
+          await authService.initialize();
+
+          await authService.validateSession();
+
+          expect(authService.isAuthenticated, isTrue);
+          expect(await storage.get(), isNotNull);
+        },
+      );
+
+      test('given no session, does not validate', () async {
+        final client = buildTestClient(InMemoryAuthSuccessStorage());
+        var calls = 0;
+        final authService = AuthService(
+          client: client,
+          anonymousEndpoint: FakeEndpointAnonymousIdp(),
+          validateAuthentication: () async {
+            calls++;
+            return true;
+          },
+        );
+        await authService.initialize();
+
+        await authService.validateSession();
+
+        expect(calls, 0);
+      });
+
+      test('concurrent and back-to-back checks share one validation', () async {
+        final client = buildTestClient(
+          InMemoryAuthSuccessStorage(sampleAuthSuccess),
+        );
+        final gate = Completer<bool>();
+        var calls = 0;
+        final authService = AuthService(
+          client: client,
+          anonymousEndpoint: FakeEndpointAnonymousIdp(),
+          fetchAccountEmail: () async => null,
+          validateAuthentication: () {
+            calls++;
+            return gate.future;
+          },
+        );
+        await authService.initialize();
+
+        final first = authService.validateSession();
+        final second = authService.validateSession();
+        gate.complete(true);
+        await Future.wait<void>([first, second]);
+        await authService.validateSession();
+
+        expect(calls, 1);
+      });
+
+      test('a failed validation does not throw', () async {
+        final client = buildTestClient(
+          InMemoryAuthSuccessStorage(sampleAuthSuccess),
+        );
+        final authService = AuthService(
+          client: client,
+          anonymousEndpoint: FakeEndpointAnonymousIdp(),
+          fetchAccountEmail: () async => null,
+          validateAuthentication: () async => throw TimeoutException('slow'),
+        );
+        await authService.initialize();
+
+        await expectLater(authService.validateSession(), completes);
+        expect(authService.isAuthenticated, isTrue);
+      });
+
+      test('handleFailedCall validates only after a 401', () async {
+        final client = buildTestClient(
+          InMemoryAuthSuccessStorage(sampleAuthSuccess),
+        );
+        var calls = 0;
+        final authService = AuthService(
+          client: client,
+          anonymousEndpoint: FakeEndpointAnonymousIdp(),
+          fetchAccountEmail: () async => null,
+          validateAuthentication: () async {
+            calls++;
+            return true;
+          },
+        );
+        await authService.initialize();
+
+        authService.handleFailedCall(ServerpodClientForbidden());
+        await pumpEventQueue();
+        expect(calls, 0);
+
+        authService.handleFailedCall(ServerpodClientUnauthorized());
+        await pumpEventQueue();
+        expect(calls, 1);
+      });
+    });
   });
 }
