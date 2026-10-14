@@ -24,14 +24,14 @@ class RacquetPreset {
     required this.maxRatedHours,
   });
 
-  /// Popular Poly preset: Babolat RPM Blast @ 52 lbs on Babolat Pure Aero
+  /// Popular Poly preset: Baseline Spin Poly @ 52 lbs on Baseline Spin 100
   static const popularPoly = RacquetPreset(
-    name: 'Babolat Pure Aero',
-    brand: 'Babolat',
-    model: 'Pure Aero',
+    name: 'Baseline Spin 100',
+    brand: 'Baseline',
+    model: 'Spin 100',
     materialCategory: StringMaterialCategory.coPoly,
-    stringBrand: 'Babolat',
-    stringModel: 'RPM Blast',
+    stringBrand: 'Baseline',
+    stringModel: 'Spin Poly',
     tension: 52.0,
     maxRatedHours: 20.0,
   );

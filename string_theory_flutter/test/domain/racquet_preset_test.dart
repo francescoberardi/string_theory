@@ -38,7 +38,7 @@ void main() {
 
         // 2. Canonical popularPoly default preset properties
         const popular = RacquetPreset.popularPoly;
-        expect(popular.name, equals('Spin 100'));
+        expect(popular.name, equals('Baseline Spin 100'));
         expect(popular.brand, equals('Baseline'));
         expect(popular.model, equals('Spin 100'));
         expect(popular.materialCategory, equals(StringMaterialCategory.coPoly));

@@ -182,12 +182,12 @@ void main() {
         await tester.tap(find.byKey(AddRacquetModal.keyPresetRpmBlast));
         await tester.pumpAndSettle();
 
-        // Criterion-defining primary assertion: frame / name populated with Spin 100
+        // Criterion-defining primary assertion: frame / name populated with Baseline Spin 100
         expect(
-          find.text('Spin 100'),
+          find.text('Baseline Spin 100'),
           findsOneWidget,
           reason:
-              'Popular Poly preset must fill racquet frame name with Spin 100',
+              'Popular Poly preset must fill racquet frame name with Baseline Spin 100',
         );
 
         // Secondary assertions: string specs and tension
@@ -224,7 +224,7 @@ void main() {
           () => mockBagBloc.add(
             any(
               that: isA<AddRacquet>()
-                  .having((e) => e.name, 'name', 'Spin 100')
+                  .having((e) => e.name, 'name', 'Baseline Spin 100')
                   .having(
                     (e) => e.materialCategory,
                     'category',

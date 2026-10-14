@@ -19,8 +19,8 @@ This demo script provides a step-by-step presentation narrative engineered to sh
 | **0:00 - 0:10** | **The Problem & Sign-In** | Sign-in screen, tap `[Continue as guest]` | Co-poly strings die silently and hurt elbows. Email or one-tap guest sign-in, backed by Serverpod auth. |
 | **0:10 - 0:20** | **Instant Seeding** | Tap `[⚡ Load Sample Bag]` | 1-tap demo bag seeds 3 racquets across Green, Amber, Red health tiers via Serverpod BagEndpoint. |
 | **0:20 - 0:30** | **Health Ingestion** | Tap `[🧪 Simulate Workout]` (or press `S`) | Wearable workout ingested in background; instant assignment prompt appears in <3 seconds. |
-| **0:30 - 0:45** | **Real-Time Decay** | Assign 90m match to Wilson Blade | Pure Dart `DecayEngine` drops health from 78% to 72% on the device and on the server. |
-| **0:45 - 0:55** | **Restring Reset** | Tap `[Restrung Today]` on Head Radical | Dead stringbed (39% Red) resets instantly to 100% Green; previous job archived to historical timeline. |
+| **0:30 - 0:45** | **Real-Time Decay** | Assign 90m match to Tour 98 | Pure Dart `DecayEngine` drops health from 78% to 72% on the device and on the server. |
+| **0:45 - 0:55** | **Restring Reset** | Tap `[Restrung Today]` on Control MP | Dead stringbed (39% Red) resets instantly to 100% Green; previous job archived to historical timeline. |
 | **0:55 - 1:05** | **Sessions History** | Open the `Sessions` tab | Every logged session in time order, with its source (simulated, Apple Health, Health Connect, manual). |
 | **1:05 - 1:25** | **Live Two-Window Sync** | Prepared email account in two windows: log a session in A | Window B's gauge moves without a reload, over Serverpod streams on a per-user channel. |
 | **1:25 - 1:30** | **Wrap-Up** | Resize a window / shortcuts (`L`, `N`, `S`, `Esc`) | Responsive layouts and keyboard accelerators across mobile, tablet, and web. |
@@ -40,9 +40,9 @@ This demo script provides a step-by-step presentation narrative engineered to sh
 - **Visual:** Tap `[⚡ Load Sample Bag]` on the empty state banner (or from the navigation drawer).
 - **Presenter Spoken Narrative:**
   > "With a single tap, our Serverpod endpoint seeds a realistic player bag with three racquets:
-  > - **Wilson Blade 98**: Freshly strung at 78% (Green — Optimal tension & pocketing)
-  > - **Babolat Pure Drive**: Mid-life at 59% (Amber — Noticeable tension loss)
-  > - **Head Radical MP**: Severely decayed at 39% (Red — Dead string alert!)"
+  > - **Tour 98**: Freshly strung at 78% (Green — Optimal tension & pocketing)
+  > - **Power 100**: Mid-life at 59% (Amber — Noticeable tension loss)
+  > - **Control MP**: Severely decayed at 39% (Red — Dead string alert!)"
 
 ---
 
@@ -54,16 +54,16 @@ This demo script provides a step-by-step presentation narrative engineered to sh
 ---
 
 ### Step 4: Real-Time Decay (0:30 - 0:45)
-- **Visual:** Tap **Assign** $\rightarrow$ select the **Wilson Blade 98** $\rightarrow$ Confirm.
+- **Visual:** Tap **Assign** $\rightarrow$ select the **Tour 98** $\rightarrow$ Confirm.
 - **Presenter Spoken Narrative:**
-  > "We assign the session to the Wilson Blade. Watch the radial health gauge: the composite decay calculation (70% court impact + 30% calendar aging) drops the health from 78% down to 72% instantly. Because the pure Dart DecayEngine is shared between client and server, the device and the backend cron jobs produce identical results."
+  > "We assign the session to the Tour 98. Watch the radial health gauge: the composite decay calculation (70% court impact + 30% calendar aging) drops the health from 78% down to 72% instantly. Because the pure Dart DecayEngine is shared between client and server, the device and the backend cron jobs produce identical results."
 
 ---
 
 ### Step 5: 1-Tap Restring Reset & Historical Timeline (0:45 - 0:55)
-- **Visual:** On the **Head Radical MP** (39% Red), tap `[Restrung Today]` $\rightarrow$ Confirm restringing $\rightarrow$ Tap card to inspect **Racquet Details & Timeline**.
+- **Visual:** On the **Control MP** (39% Red), tap `[Restrung Today]` $\rightarrow$ Confirm restringing $\rightarrow$ Tap card to inspect **Racquet Details & Timeline**.
 - **Presenter Spoken Narrative:**
-  > "The Head Radical is in the red hazard zone. One tap on 'Restrung Today' resets the stringbed to 100% Green, and the racquet details show the timeline: Serverpod archived the old string job and timestamped the restring."
+  > "The Control MP is in the red hazard zone. One tap on 'Restrung Today' resets the stringbed to 100% Green, and the racquet details show the timeline: Serverpod archived the old string job and timestamped the restring."
 
 ---
 
@@ -75,7 +75,7 @@ This demo script provides a step-by-step presentation narrative engineered to sh
 ---
 
 ### Step 7: Live Two-Window Sync (1:05 - 1:25)
-- **Visual:** Switch to the two prepared windows signed in to the same email account. In window A press `L` (or tap **Log Session**), log a session on the Wilson Blade, and point at window B.
+- **Visual:** Switch to the two prepared windows signed in to the same email account. In window A press `L` (or tap **Log Session**), log a session on the Tour 98, and point at window B.
 - **Presenter Spoken Narrative:**
   > "Here is one email account open in two windows. I log a session on the left... and the gauge on the right moves on its own, no reload. Serverpod streams push the new score to every client of this user."
 

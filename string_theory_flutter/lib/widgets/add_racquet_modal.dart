@@ -298,7 +298,7 @@ class _AddRacquetModalState extends State<AddRacquetModal> {
                         size: 18,
                       ),
                       label: Text(
-                        'Popular Poly: Babolat RPM Blast @ 52 lbs',
+                        'Popular Poly: Baseline Spin Poly @ 52 lbs',
                         style: GoogleFonts.inter(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
@@ -333,7 +333,7 @@ class _AddRacquetModalState extends State<AddRacquetModal> {
                       ),
                       decoration: _inputDecoration(
                         labelText: 'Racquet Nickname / Frame *',
-                        hintText: 'e.g. Babolat Pure Aero',
+                        hintText: 'e.g. Spin 100',
                       ),
                       validator: (val) {
                         if (val == null || val.trim().isEmpty) {
