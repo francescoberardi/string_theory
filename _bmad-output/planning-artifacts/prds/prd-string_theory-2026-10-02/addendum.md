@@ -22,7 +22,7 @@ Downstream architectural notes, technical implementation details, and parked roa
       "name": "Wilson Blade 98",
       "currentStringJob": {
         "brand": "Luxilon ALU Power 1.25",
-        "material": "coPoly",
+        "material": "monofilament",
         "tensionLbs": 52.0,
         "strungAt": "2026-10-01T12:00:00Z",
         "hoursPlayed": 8.5,
@@ -33,7 +33,7 @@ Downstream architectural notes, technical implementation details, and parked roa
       "pastStringJobs": [
         {
           "brand": "Head Lynx 1.25",
-          "material": "coPoly",
+          "material": "monofilament",
           "tensionLbs": 50.0,
           "strungAt": "2026-08-01T10:00:00Z",
           "hoursPlayed": 19.2,
@@ -50,6 +50,7 @@ Downstream architectural notes, technical implementation details, and parked roa
     ```json
     {
       "racquetId": "{racquetId}",
+      "stringJobId": "{currentStringJob.id}",
       "durationHours": 1.5,
       "playedAt": "2026-10-23T16:00:00Z",
       "createdAt": "FieldValue.serverTimestamp()",

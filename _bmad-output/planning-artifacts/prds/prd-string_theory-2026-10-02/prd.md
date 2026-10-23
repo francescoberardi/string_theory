@@ -58,7 +58,7 @@ Backed by **Firebase** (Google Sign-In, Cloud Firestore real-time `.snapshots()`
   1. Elena sees a clean, branded welcome screen explaining string health and arm protection, featuring a prominent `[Sign in with Google]` button.
   2. Elena taps `[Sign in with Google]`. Authentication completes in 1 tap via Google Play Services (or Web OAuth popup).
   3. Elena is guided directly into `[Add Your First Racquet]`.
-  4. She types "Babolat Pure Drive", selects String Material Category `[Co-Polyester]`, enters "Babolat RPM Blast 1.25", and sets Stringing Date (defaults to today; she picks 3 weeks ago). The app pre-populates Manufacturer Max Hours to 20h.
+  4. She types "Babolat Pure Drive", selects String Material Category `[Monofilament]`, enters "Babolat RPM Blast 1.25", and sets Stringing Date (defaults to today; she picks 3 weeks ago). The app pre-populates Manufacturer Max Hours to 20h.
   5. Elena taps `[Save Racquet]`.
 * **Climax:** Her Virtual Bag appears with the Babolat Pure Drive card showing an initial calculated Health Score of 88% based on 3 weeks of calendar shelf-life.
 * **Resolution:** Her gear bag is live, saved securely to `/users/{uid}/racquets`, and automatically synchronized across devices.
@@ -94,7 +94,7 @@ Backed by **Firebase** (Google Sign-In, Cloud Firestore real-time `.snapshots()`
 * **StringJob:** A specific string installation characterized by brand, model, material category, stringing date, tension in lbs, and hours played.
 * **currentStringJob:** The active string job embedded directly inside the `Racquet` document.
 * **pastStringJobs:** An array of archived historical string jobs embedded on the `Racquet` document, recording total court hours, days elapsed, and retirement reasons (`dead`, `broken`, `manual_restring`).
-* **StringMaterialCategory:** Enum representing string polymer type: `coPoly`, `multifilament`, `syntheticGut`, `naturalGut`. Drives decay rates and calendar shelf-life.
+* **StringMaterialCategory:** Enum representing string construction type, exactly four values: `monofilament` (co-polyester and other polyester monos), `multifilament`, `syntheticGut`, `naturalGut`. Drives decay rates and calendar shelf-life.
 * **HealthScore:** Normalized integer percentage (0–100%) computed client-side upon read using the pure Dart `DecayEngine`.
 * **SessionLog:** Dedicated document at `/users/{uid}/sessions/{sessionId}` capturing playing duration, played timestamp, racquet ID, and optional court notes/surface.
 * **WriteBatch:** An atomic Firestore write operation combining the creation of a `SessionLog` document with the numerical increment of `currentStringJob.hoursPlayed` on the corresponding `Racquet`.
@@ -149,11 +149,11 @@ flowchart TD
 * **FR-5: Add Racquet with Embedded String Setup**  
   The user can add a racquet by specifying:
   - Frame Name / Model (Required, string, e.g., "Wilson Blade 98").
-  - String Material Category (Required, Enum: `coPoly`, `multifilament`, `syntheticGut`, `naturalGut`).
+  - String Material Category (Required, Enum: `monofilament`, `multifilament`, `syntheticGut`, `naturalGut`).
   - String Brand & Model (Optional, string, e.g., "Luxilon ALU Power 1.25").
   - Stringing Date (Required, DateTime; defaults to today).
   - Installed Tension (Optional, double; in lbs).
-  - Manufacturer Max Hours (Optional, double; pre-filled with category defaults: Co-Poly = 20h, Multifilament = 35h, Synthetic Gut = 30h, Natural Gut = 50h).  
+  - Manufacturer Max Hours (Optional, double; pre-filled with category defaults: Monofilament = 20h, Multifilament = 35h, Synthetic Gut = 30h, Natural Gut = 50h).  
   *Consequences (testable):* Creates `/users/{uid}/racquets/{racquetId}` with embedded `currentStringJob`; appears immediately in the UI.
 * **FR-6: Multi-Racquet Inventory Display**  
   The Virtual Bag screen must display a scrollable list/grid of all registered racquets streamed live via `.snapshots()`, showing frame name, string specs, hours played, calendar days elapsed, and an animated radial Health Gauge.
@@ -173,7 +173,7 @@ flowchart TD
   Where:
   * $\text{DynamicPenalty} = \left(\frac{\text{HoursPlayed}}{\text{MaxRatedHours}}\right) \times 70$
   * $\text{CalendarPenalty} = \left(\frac{\text{DaysElapsed}}{\text{MaxCalendarShelfLife}}\right) \times 30$
-  * `MaxCalendarShelfLife`: `coPoly` = 75 days, `multifilament` = 180 days, `syntheticGut` = 180 days, `naturalGut` = 365 days.
+  * `MaxCalendarShelfLife`: `monofilament` = 75 days, `multifilament` = 180 days, `syntheticGut` = 180 days, `naturalGut` = 365 days.
   * **Secondary Metric Derivations**:
     - **Estimated Tension Loss**: $\text{TensionLossLbs} = \text{InstalledTensionLbs} \times \left(\frac{100 - \text{HealthScore}}{100}\right) \times 0.25$ (modeling tension relaxation capped at ~25% total loss).
     - **Remaining Court Hours to Dead Zone**: $\text{RemainingHours} = \max\left(0, \operatorname{round}\left(\frac{\text{HealthScore} - 40}{70} \times \text{MaxRatedHours}\right)\right)$ (displaying remaining play hours before crossing into Red $< 40\%$).
@@ -196,7 +196,7 @@ flowchart TD
   [ASSUMPTION: §4.4 / FR-12] (Eliminating smartwatch auto-detection in v1 is an acceptable trade-off to bypass Google Play Health Connect policy bottlenecks for immediate public launch).
 * **FR-13: Atomic WriteBatch Session Logging**  
   Logging a session must execute as a single Firestore `WriteBatch`:
-  1. Creates `/users/{uid}/sessions/{sessionId}` with `racquetId`, `durationHours`, `playedAt`, and `createdAt`.
+  1. Creates `/users/{uid}/sessions/{sessionId}` with `racquetId`, `stringJobId` (the `id` of the racquet's `currentStringJob` at logging time), `durationHours`, `playedAt`, and `createdAt`.
   2. Updates `/users/{uid}/racquets/{racquetId}` with `currentStringJob.hoursPlayed = FieldValue.increment(durationHours)` and `updatedAt = FieldValue.serverTimestamp()`.  
   *Consequences (testable):* Either both writes succeed or neither does; works seamlessly offline via Firestore local persistence.
 * **FR-14: Real-Time Multi-Device Sync**  
@@ -212,7 +212,7 @@ flowchart TD
   * `[Keep Same & Reset]`: Retains identical string specs, resets hours to 0, and sets stringing date to today.
   * `[Change Strings]`: Allows updating brand, model, material, tension, or date before resetting.
 * **FR-16: Historical String Job Archiving**  
-  Executing restringing moves the active `currentStringJob` into the `pastStringJobs` array on the `Racquet` document, populating `endedAt: FieldValue.serverTimestamp()` and the specific user-selected `endReason` (`"dead"`, `"broken"`, or `"manual_restring"`), and initializes the fresh active `currentStringJob` with 0 hours played. This structured history ensures clean dataset capture for future String Lab longevity analytics.
+  Executing restringing moves the active `currentStringJob` into the `pastStringJobs` array on the `Racquet` document, populating `endedAt` with the client timestamp (`Timestamp.now()`; Firestore does not allow server timestamps inside arrays) and the specific user-selected `endReason` (`"dead"`, `"broken"`, or `"manual_restring"`), and initializes the fresh active `currentStringJob` with 0 hours played. This structured history ensures clean dataset capture for future String Lab longevity analytics.
 * **FR-17: Restring History Timeline UI**  
   The Racquet Detail view must display a chronological timeline of past string jobs with court hours played and calendar duration (e.g., *"Aug 1 – Oct 2 • Luxilon ALU Power • 19.2 court hours • 62 days"*).
 
@@ -229,7 +229,7 @@ flowchart TD
 * **FR-20: Firebase Hosting & Static Legal Pages**  
   The Flutter Web app must be hosted on Firebase Hosting with SPA rewrites to `/index.html` while serving static `/privacy.html` (Privacy Policy & Account Deletion instructions) directly for Google Play Store compliance.
 * **FR-21: Day-1 Telemetry & Crash Reporting**  
-  The app must integrate Firebase Crashlytics (catching uncaught Flutter and platform errors), Firebase Performance Monitoring, and Firebase Analytics (logging `sign_in`, `racquet_created`, `session_logged`, and `racquet_restrung`).
+  The app must integrate Firebase Crashlytics on Android (catching uncaught Flutter and platform errors; Crashlytics has no Flutter Web support), Firebase Performance Monitoring, and Firebase Analytics (logging `sign_in`, `racquet_created`, `session_logged`, and `racquet_restrung`).
 * **FR-22: Remote Config Feature Flags & Monetization Sensors**  
   The app must initialize Firebase Remote Config with default flags (`show_ads: false`, `pro_paywall_trigger: false`, `free_racquet_limit: 99`) and activate fetched parameters on launch to enable zero-code remote adjustments post-launch.
 
@@ -265,7 +265,7 @@ flowchart TD
 
 ### Primary Metrics
 * **SM-1 (Sub-10s Logging Speed):** $> 90\%$ of manual session logs completed in $\le 10$ seconds. *Validates FR-12.*
-* **SM-2 (Day-1 Crash-Free Rate):** $> 99.5\%$ crash-free sessions across Android and Web reported via Firebase Crashlytics. *Validates FR-21.*
+* **SM-2 (Day-1 Crash-Free Rate):** $> 99.5\%$ crash-free sessions on Android reported via Firebase Crashlytics (Crashlytics does not support Flutter Web; web errors are not covered by this metric). *Validates FR-21.*
 * **SM-3 (App Check Verification):** $> 98\%$ of incoming Firestore operations verified with valid App Check tokens. *Validates FR-19.*
 * **SM-4 (Multi-Racquet Adoption):** Average of $\ge 1.8$ racquets registered per active user bag. *Validates FR-5, FR-6.*
 * **SM-5 (Restring Lifecycle Completion):** $\ge 75\%$ of racquets reaching $<40\%$ health execute a "Restrung Today" action. *Validates FR-15, FR-16.*
@@ -301,7 +301,7 @@ flowchart TD
 ## 9. Open Questions & Resolutions
 
 1. **[RESOLVED] OQ-1 (Tension Loss Modeling):** Display Health Score (0–100%) as the primary hero metric, accompanied by secondary estimated tension loss text (e.g. *"~1.4 lbs tension drop"*) for player clarity.
-2. **[RESOLVED] OQ-2 (Hybrid Stringing Setups):** For v1, hybrid setups are categorized by the dominant stringbed material (e.g., Co-Poly). Dual main/cross separate spec inputs are deferred to v1.1.
+2. **[RESOLVED] OQ-2 (Hybrid Stringing Setups):** For v1, hybrid setups are categorized by the dominant stringbed material (e.g., Monofilament). Dual main/cross separate spec inputs are deferred to v1.1.
 3. **[RESOLVED] OQ-3 (Account Deletion Mechanism):** Satisfy Google Play store mandatory web account deletion by pointing the Play Console Data Safety URL to the hosted Flutter Web app, which executes the identical Firebase Auth deletion and `delete-user-data` purge.
 4. **[RESOLVED] OQ-4 (Offline Multi-Device Batch Resolution):** Multi-device and offline session logging adheres to Firestore's standard last-write-wins commit ordering. Increments to `hoursPlayed` utilize `FieldValue.increment()`, guaranteeing that session court hours accumulate atomically on the server regardless of offline write queuing order.
 
