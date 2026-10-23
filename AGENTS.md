@@ -13,7 +13,7 @@ Tennis string decay and stringbed health tracker for Android (Google Play Store)
 - Never add, upgrade, or remove any package dependency in any `pubspec.yaml` without explicit prior approval from the user.
 - When introducing an approved tool, SDK, or library, always check whether it provides official MCP servers or agent skills; if available, ask the user whether to install them and provide step-by-step setup instructions.
 - Stay on the latest stable Flutter and Dart SDK versions unless blocked by an approved dependency that does not yet support them.
-- Never commit secrets, API keys, service account JSONs, keystores, or `.env` files to the repository; store secrets only in local untracked config and GitHub Actions secrets.
+- Never commit secrets (service account JSONs, keystores, signing passwords, deploy tokens, or `.env` files holding secrets) to the repository; store them only in local untracked config and GitHub Actions secrets. Firebase client config (`firebase_options_*.dart`, `google-services.json`) and non-secret extension parameter files (`extensions/*.env`) are public identifiers protected by App Check, security rules, and API-key restrictions, and are committed.
 - Never modify `string_theory_server/` or `string_theory_client/` — legacy Serverpod packages slated for removal; all backend work targets Firebase.
 - Keep `README.md` accurate to what has shipped on `main` within the same story or an immediate follow-up `docs(...)` commit; never document planned or unverified behavior as working.
 
@@ -37,7 +37,7 @@ Tennis string decay and stringbed health tracker for Android (Google Play Store)
 - Apply DRY and KISS across all layers; prefer simple, flat implementations over speculative abstractions.
 - Style all UI components exclusively through `ThemeData` and `ThemeExtension`s in `string_theory_flutter/lib/theme/` — never hardcode colors, text styles, or component decorations inline inside widget files.
 - Authentication is Google Sign-In only via Firebase Auth; never implement email/password auth or unauthenticated local/guest mode.
-- Firestore data is strictly multi-tenant under `/users/{uid}/**`: embed the active `StringJob` and `stringHistory` inside each `Racquet` document (no separate `RestringEvent` model), keep `SessionLog` in `/users/{uid}/sessions/{sessionId}`, and use a single Firestore `WriteBatch` when logging a session to create the session document and increment the racquet's `hoursPlayed` atomically.
+- Firestore data is strictly multi-tenant under `/users/{uid}/**`: embed the active `currentStringJob` and the `pastStringJobs` history array inside each `Racquet` document (no separate `RestringEvent` model), keep `SessionLog` in `/users/{uid}/sessions/{sessionId}`, and use a single Firestore `WriteBatch` when logging a session to create the session document and increment the racquet's `hoursPlayed` atomically.
 - Compute live string health scores client-side on read using `DecayEngine` + Firestore `.snapshots()` — do not add scheduled Cloud Functions or server cron jobs for decay calculation.
 
 ## Known pitfalls
