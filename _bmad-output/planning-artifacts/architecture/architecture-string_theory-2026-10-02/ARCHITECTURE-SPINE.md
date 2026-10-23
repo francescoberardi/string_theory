@@ -5,7 +5,8 @@ purpose: build-substrate
 altitude: system
 paradigm: 'Layered Reactive Monorepo (Serverpod RPC/Streams + Flutter BLoC)'
 scope: 'Full-stack application architecture for String Theory'
-status: final
+status: superseded
+superseded_by: '_bmad-output/planning-artifacts/architecture/architecture-string_theory-2026-10-23/ARCHITECTURE-SPINE.md'
 created: '2026-10-02'
 updated: '2026-10-02'
 binds:
