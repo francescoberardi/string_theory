@@ -2,7 +2,7 @@
 title: "PRD: String Theory"
 status: final
 created: 2026-10-02
-updated: 2026-10-02
+updated: 2026-10-23
 ---
 
 # PRD: String Theory
@@ -10,7 +10,7 @@ updated: 2026-10-02
 
 ## 0. Document Purpose
 
-This Product Requirements Document (PRD) establishes the functional, architectural, and quality specifications for **String Theory**, built for the Serverpod Hackathon ("Build Something Real"). It serves as the single source of truth for the System Architect (Winston) and Developer (Amelia). It builds directly upon the [Product Brief](file:///Users/francescoberardi/projects/personal/string_theory/_bmad-output/planning-artifacts/briefs/brief-string_theory-2026-10-01/brief.md) and technical [Addendum](file:///Users/francescoberardi/projects/personal/string_theory/_bmad-output/planning-artifacts/briefs/brief-string_theory-2026-10-01/addendum.md), translating high-level vision into numbered, testable Functional Requirements (`FR-1` through `FR-19`), grounded User Journeys (`UJ-1` through `UJ-4`), and Serverpod-specific architectural non-functional requirements.
+This Product Requirements Document (PRD) establishes the functional, architectural, and quality specifications for **String Theory v1.0**, targeting a public release on the **Google Play Store (Android)** and **Firebase Hosting (Flutter Web)**. It serves as the single source of truth for the System Architect (Winston) and Developer (Amelia). It supersedes the Serverpod hackathon prototype specifications, transitioning the platform to a serverless Firebase architecture with strict Google Play store compliance, Day-1 security/billing protection via App Check, and built-in telemetry + Remote Config sensors ready for future monetization.
 
 ---
 
@@ -18,88 +18,87 @@ This Product Requirements Document (PRD) establishes the functional, architectur
 
 Modern tennis strings—particularly co-polyester—lose elasticity rapidly through court impacts and passive static relaxation while resting in a tennis bag. When strings go "dead," their ball-pocketing capability collapses, and high-frequency shock vibration bypasses the ball, transferring directly into the player's wrist, forearm, and elbow. This is a primary mechanical cause of lateral epicondylitis ("tennis elbow"). Recreational and club players routinely keep strings in their racquets for 6 to 12 months, unaware of the degradation until chronic pain develops or their control vanishes.
 
-**String Theory** is an intelligent, low-friction virtual gear bag that actively monitors string degradation through a composite **Health Score (0–100%)**. By combining automated Apple Health / Health Connect tennis workout detection with an ultra-fast sub-10-second manual quick log, String Theory eliminates the data-entry friction that doomed previous gear tracking apps. 
+**String Theory** is an intelligent, low-friction virtual gear bag that actively monitors string degradation through a composite **Health Score (0–100%)**. Powered by a pure Dart client-side **Decay Engine** (70% active court hours + 30% calendar shelf-life), String Theory calculates live equipment elasticity dynamically upon read, eliminating server cron overhead.
 
-Powered by **Serverpod** (PostgreSQL ORM, real-time streaming, scheduled background `FutureCalls`, and built-in auth) and **Flutter**, String Theory empowers tennis players to play pain-free, optimize their equipment performance, and restring before injury strikes.
+Backed by **Firebase** (Google Sign-In, Cloud Firestore real-time `.snapshots()`, App Check, Crashlytics, and Hosting) and **Flutter**, String Theory delivers an effortless, ultra-fast sub-10-second manual session logging flow, atomic gear updates, and full Google Play store compliance (including in-app and web-accessible account deletion) from Day 1.
 
 ---
 
 ## 2. Target User
 
 ### 2.1 Jobs To Be Done (JTBD)
-* **Functional:** Know exactly how many hours and calendar days are on each of my racquets without writing notes or doing mental math.
-* **Health & Safety:** Protect my elbow and shoulder by receiving proactive warnings before dead polyester strings transmit destructive shock.
-* **Effortless Capture:** Log my post-match tennis sessions in under 5 seconds—ideally with a single tap after my smartwatch detects my workout.
+* **Functional:** Know exactly how many court hours and calendar days are on each of my racquets without notes or mental math.
+* **Health & Safety:** Protect my elbow and shoulder by receiving clear visual warnings before dead strings transmit destructive shock.
+* **Effortless Capture:** Log my post-match tennis sessions in under 10 seconds with a streamlined 3-tap quick logger.
 * **Equipment Maintenance:** Keep a clean history of string models, tensions, and stringing dates to discover which setups perform best and last longest.
+* **Trust & Privacy:** Sign in securely with Google and delete my account and data at any time with 1 click in-app or via the web. [ASSUMPTION: §2.1] (Google Sign-In will not significantly depress conversion compared to guest mode, while permanently eliminating guest-to-cloud data migration issues).
 
 ### 2.2 Non-Users (v1)
 * **Touring Professionals:** Players who restring every 1–2 days and track tension with on-site tournament stringers using ERT 300 / Babolat RDC machines.
 * **Multi-Sport Generalists (v1):** Players seeking an all-in-one tracker for squash, badminton, golf, and running. v1 is intentionally laser-focused on tennis strings and racquets.
+* **Unauthenticated / Anonymous Guests:** Users refusing to sign in. v1 requires Google cloud authentication to ensure persistent cloud state, multi-device sync, and zero-friction store compliance.
 
 ### 2.3 Key User Journeys
 
-#### UJ-1: Marco Logs Playtime in 3 Seconds After a Match
-* **Persona & Context:** Marco (34), intermediate club player, wearing an Apple Watch. Just finished a 90-minute doubles match.
-* **Entry State:** Authenticated via background guest session; phone in tennis bag.
+#### UJ-1: Marco Logs Playtime in 5 Seconds After a Match
+* **Persona & Context:** Marco (34), intermediate club player. Just finished a 90-minute doubles match.
+* **Entry State:** Authenticated via Google Sign-In; phone in his tennis bag.
 * **Path:**
-  1. Marco ends his "Tennis" workout on his watch. Within 30 seconds, an in-app sync / local notification fires: *"🎾 1h 30m Tennis Workout detected. Assign to your gear?"*
-  2. Marco taps the notification. String Theory opens a bottom sheet showing his registered racquets.
-  3. Marco taps `[Wilson Blade 98]`. *(Optional: an "Advanced options" expandable accordion allows splitting time between racquets or adjusting court surface, but Marco does not need it today).*
-  4. Marco taps `[Confirm]`.
-* **Climax:** The Wilson Blade 98 health gauge smoothly animates downward from 76% (Green) to 67% (Amber), displaying: *"~1.4 lbs tension drop. 11 court hours remaining before dead zone."*
-* **Resolution:** Marco pockets his phone. The entire interaction took less than 4 seconds.
-* **Edge Case:** If Apple Health is unavailable or permissions are denied, Marco taps a persistent FAB `[+ Log Session]` on the Virtual Bag, selects 1.5 hours and Wilson Blade in 3 taps, and saves.
+  1. Marco opens String Theory on his phone and lands on his Virtual Bag dashboard.
+  2. He taps the persistent floating action button `[+ Log Session]`.
+  3. A quick-logger bottom sheet opens with pre-selected duration chips (`30m`, `1h`, `1.5h`, `2h`) and his racquets.
+  4. Marco taps `[1.5h]` (or leaves it if default), confirms his primary racquet `[Wilson Blade 98]` is highlighted, and taps `[Save Session]`.
+* **Climax:** An atomic Firestore `WriteBatch` records the session document and increments the Wilson Blade's hours played. The health gauge smoothly animates downward from 76% (Green) to 67% (Amber), displaying: *"~1.4 lbs tension drop. 11 court hours remaining before dead zone."*
+* **Resolution:** Marco pockets his phone. The entire interaction took less than 5 seconds.
 
 #### UJ-2: Elena Onboards and Adds Her First Racquet
 * **Persona & Context:** Elena (28), recreational player recovering from mild wrist soreness. Downloaded String Theory on recommendation from her coach.
-* **Entry State:** First launch of the Flutter app.
+* **Entry State:** First launch of the Flutter app on Android or Web.
 * **Path:**
-  1. Elena sees a welcoming splash screen highlighting string health and arm protection, with a prominent button: `[Continue as Guest]`.
-  2. Elena taps `[Continue as Guest]`. An anonymous Serverpod session is established instantly without email or password forms.
+  1. Elena sees a clean, branded welcome screen explaining string health and arm protection, featuring a prominent `[Sign in with Google]` button.
+  2. Elena taps `[Sign in with Google]`. Authentication completes in 1 tap via Google Play Services (or Web OAuth popup).
   3. Elena is guided directly into `[Add Your First Racquet]`.
-  4. She types "Babolat Pure Drive", selects String Material Category `[Co-Polyester]`, types "Babolat RPM Blast 1.25", and sets Stringing Date (defaults to today; she picks 3 weeks ago). The app automatically pre-populates Manufacturer Max Hours to 20h.
+  4. She types "Babolat Pure Drive", selects String Material Category `[Co-Polyester]`, enters "Babolat RPM Blast 1.25", and sets Stringing Date (defaults to today; she picks 3 weeks ago). The app pre-populates Manufacturer Max Hours to 20h.
   5. Elena taps `[Save Racquet]`.
-* **Climax:** Her Virtual Bag appears with the Babolat Pure Drive card showing an initial calculated Health Score of 88% based on the 3 weeks of calendar shelf-life.
-* **Resolution:** An in-context modal politely asks: *"Automatically sync tennis sessions from Apple Health?"* She approves permission. Her bag is ready.
+* **Climax:** Her Virtual Bag appears with the Babolat Pure Drive card showing an initial calculated Health Score of 88% based on 3 weeks of calendar shelf-life.
+* **Resolution:** Her gear bag is live, saved securely to `/users/{uid}/racquets`, and automatically synchronized across devices.
 
 #### UJ-3: David Gets Restrung and Resets the Gauge
 * **Persona & Context:** David (42), weekend warrior. His Head Radical racquet has 19 hours of play and 70 days elapsed; its gauge sits at 34% (Red: Dead String Alert).
-* **Entry State:** Receives a push notification scheduled by a Serverpod `FutureCall`: *"⚠️ Head Radical stringbed is exhausted (34% Health). Restringing recommended to prevent elbow stress."*
+* **Entry State:** David opens the app before heading to his match.
 * **Path:**
-  1. David takes his racquet to his local pro shop. The stringer puts in fresh Head Lynx strings.
-  2. David opens String Theory and navigates to the Head Radical card.
+  1. David has just picked up his racquet from the local pro shop strung with fresh Head Lynx strings.
+  2. He opens String Theory and navigates to the Head Radical card in his Virtual Bag.
   3. He taps the prominent button: `[Restrung Today]`.
   4. A confirmation sheet asks: *"Restrung with the same setup (Head Lynx 1.25 @ 52 lbs)?"*
   5. David taps `[Keep Same & Reset]`.
-* **Climax:** The gauge instantly resets to 100% (Solid Green). The previous cycle is archived into his `[Restring History]` timeline with a summary: *"Active Aug 1 – Oct 2 • 19.2 hrs • 62 days"*.
-* **Resolution:** David closes the app, confident his equipment is fresh.
+* **Climax:** The current string job is moved to `pastStringJobs` on the racquet document with retirement timestamp and stats, and a fresh active string job is set with 0 hours played. The gauge instantly resets to 100% (Solid Green).
+* **Resolution:** David closes the app, confident his equipment is fresh and his history is preserved.
 
-#### UJ-4: Hackathon Judge Explores the End-to-End System in 90 Seconds
-* **Persona & Context:** Hackathon Judge reviewing the project submission on Flutter Web or macOS Desktop (no physical Apple Watch attached).
-* **Entry State:** App loaded in browser/desktop with sample racquets seeded.
+#### UJ-4: Play Store User Exercises Mandatory Account Deletion
+* **Persona & Context:** App user or Google Play reviewer testing GDPR and store compliance.
+* **Entry State:** User signed into String Theory on Android or visiting the hosted Web app.
 * **Path:**
-  1. Judge opens String Theory and sees a visual floating action badge: `[🧪 Demo: Simulate Workout]`.
-  2. Judge taps `[Simulate 2h Tennis Match]`.
-  3. A simulated Apple Health workout event is triggered through the ingestion pipeline; an instant bottom sheet prompts gear assignment.
-  4. Judge assigns the session to "Babolat Pure Aero".
-  5. Serverpod real-time stream pushes updated stats; the gauge visibly drops, transitioning from Amber to Red with an arm-injury risk alert.
-* **Climax:** Judge taps `[Restrung Today]`, changes string type from Co-Poly to Multifilament, and watches the Serverpod backend persist the change and update the decay curve parameters in real-time.
-* **Resolution:** The judge witnesses full-stack Serverpod execution (streaming, ORM, business logic) and seamless Flutter UI in under 2 minutes.
+  1. User navigates to `[Settings]` (or visits the web URL declared in the Play Console Data Safety section).
+  2. User taps `[Delete Account & All Data]`.
+  3. A high-contrast confirmation modal appears warning that all racquets, string history, and sessions will be permanently purged.
+  4. User confirms. The app invokes `FirebaseAuth.instance.currentUser.delete()`.
+* **Climax:** Firebase Authentication deletes the user account. The server-side Firebase `delete-user-data` extension triggers immediately, recursively deleting `/users/{uid}` and all subcollections (`racquets`, `sessions`).
+* **Resolution:** The user is signed out and redirected to the welcome screen. Google Play store compliance requirements for account deletion are completely fulfilled.
 
 ---
 
 ## 3. Glossary
 
-* **Racquet:** A physical tennis frame owned by the user (e.g., Wilson Blade 98 v8), represented as a parent gear entity.
-* **StringBed:** The current active set of strings installed on a Racquet, characterized by brand, model, material category, stringing date, installed tension, and max rated hours.
-* **StringMaterialCategory:** Enum representing string polymer type: `coPoly`, `multifilament`, `syntheticGut`, `naturalGut`. Drives default decay rates and calendar shelf-life.
-* **HealthScore:** A normalized integer percentage (0–100) reflecting remaining string elasticity and playability.
-* **DynamicHourPenalty:** Decay percentage subtracted based on active court playtime relative to the rated max hours.
-* **CalendarAgePenalty:** Decay percentage subtracted based on days elapsed since the stringing date, modeling static polymer creep and tension relaxation.
-* **SessionLog:** Record of a tennis session (start time, duration in minutes, court surface, notes) linked to one or more Racquets.
-* **RestringEvent:** Historical record generated when a StringBed is retired and replaced, capturing total hours played, total calendar days, and final string specs.
-* **VirtualBag:** The primary dashboard aggregating all registered Racquets and equipment for a user.
-* **GuestSession:** An anonymous user account authenticated via Serverpod built-in auth, persistent on device, upgradable to full credentials.
+* **Racquet:** Parent tennis frame owned by the user (e.g., Wilson Blade 98 v8), represented as a document at `/users/{uid}/racquets/{racquetId}`.
+* **StringJob:** A specific string installation characterized by brand, model, material category, stringing date, tension in lbs, and hours played.
+* **currentStringJob:** The active string job embedded directly inside the `Racquet` document.
+* **pastStringJobs:** An array of archived historical string jobs embedded on the `Racquet` document, recording total court hours, days elapsed, and retirement reasons (`dead`, `broken`, `manual_restring`).
+* **StringMaterialCategory:** Enum representing string polymer type: `coPoly`, `multifilament`, `syntheticGut`, `naturalGut`. Drives decay rates and calendar shelf-life.
+* **HealthScore:** Normalized integer percentage (0–100%) computed client-side upon read using the pure Dart `DecayEngine`.
+* **SessionLog:** Dedicated document at `/users/{uid}/sessions/{sessionId}` capturing playing duration, played timestamp, racquet ID, and optional court notes/surface.
+* **WriteBatch:** An atomic Firestore write operation combining the creation of a `SessionLog` document with the numerical increment of `currentStringJob.hoursPlayed` on the corresponding `Racquet`.
+* **App Check:** Firebase abuse prevention verifying app authenticity via Play Integrity on Android and reCAPTCHA Enterprise on Web.
 
 ---
 
@@ -107,206 +106,210 @@ Powered by **Serverpod** (PostgreSQL ORM, real-time streaming, scheduled backgro
 
 ```mermaid
 flowchart TD
-    A[Post-Match / Apple Health Workout] --> B{Logging Method}
-    B -->|HealthKit Auto-Detect| C[Auto-Detect Prompt Sheet]
-    B -->|Manual 3-Tap| D[Quick Log Dialog]
-    B -->|Demo Simulation| E[Judge Simulator Trigger]
-    C --> F[1-Tap Racquet Picker]
-    D --> F
-    E --> F
-    F -->|Optional| G[Advanced Options Accordion: Split Time / Notes]
-    F --> H[Serverpod Session Endpoint]
-    H --> I[PostgreSQL SessionLog Created]
-    H --> J[Composite Decay Engine Recalculates Score]
-    J --> K[Serverpod Streaming Real-Time Push]
-    K --> L[Flutter UI Live Animated Gauge Update]
-    J --> M{Health < 40%?}
-    M -->|Yes| N[Visual Warning Card + Serverpod FutureCall Alert]
-    M -->|No| O[Bag Remains Healthy]
-    N --> P[1-Tap 'Restrung Today' Flow]
-    P --> Q[Archive to Restring History Timeline & Reset to 100%]
+    A[User Opens App] --> B{Authenticated?}
+    B -->|No| C[Google Sign-In 1-Tap]
+    C --> D[Firebase Auth Verified]
+    B -->|Yes| E[Load /users/{uid}/racquets Stream]
+    D --> E
+    E --> F[Client-Side DecayEngine Evaluates Health Scores]
+    F --> G[Render Virtual Bag & Animated Gauges]
+    G --> H{User Action}
+    H -->|Add Racquet| I[Create Racquet with Embedded currentStringJob]
+    H -->|Quick Log Session| J[Atomic Firestore WriteBatch]
+    J --> K[Create SessionLog Document]
+    J --> L[Increment currentStringJob.hoursPlayed]
+    K & L --> M[Firestore .snapshots() Emits Updated State]
+    M --> F
+    H -->|Restrung Today| N[Archive currentStringJob to pastStringJobs & Reset]
+    N --> M
+    H -->|Delete Account| O[FirebaseAuth delete + delete-user-data Extension]
 ```
 
-### 4.1 Guest Onboarding & Authentication
-**Description:** Provides zero-friction entry for new users and hackathon judges. Users can immediately manage their bag as a guest. Later, they can optionally link an email or Google login without losing data. Realizes UJ-2.
+### 4.1 Authentication & User Lifecycle
+**Description:** Secure, verified cloud authentication using Google Sign-In only. Ensures continuous cloud persistence, real-time sync, and effortless store compliance. Realizes UJ-2, UJ-4.
 
-* **FR-1: Anonymous Guest Session**  
-  The system must generate an anonymous authenticated user session upon first launch via Serverpod's built-in auth mechanism without requiring email, password, or third-party OAuth.  
-  *Consequences (testable):* Client receives a valid auth key; subsequent API calls authenticate successfully without login prompts.
-* **FR-2: Account Linking (Upgrade)**  
-  The user can at any time link an email/password identity to their guest account from the Settings screen. (Google linking deferred to v1.1.)  
-  *Consequences (testable):* Upon linking, the guest's Racquets, StringJobs, SessionLogs and RestringEvents are reassigned to the email account's `userId` in a single transaction; the bag shows the same racquets and health scores.
-* **FR-3: Auth Persistence & Re-hydration**  
-  The client must persist the authentication token securely on device storage (Keychain on iOS, Keystore on Android, shared_preferences on Web) and restore the active session on app relaunch.
-* **FR-20: Sign-In Screen & Sign-Out**  
-  Without a stored session, the app opens on a sign-in screen offering email/password sign-in or sign-up and `[Continue as Guest]`. Signing out from Settings returns to that screen.  
-  *Consequences (testable):* Two windows signed into the same email account share one bag and receive live updates; a second email account starts with an empty bag.
+* **FR-1: Google-Only Authentication**  
+  The system must authenticate users exclusively via Google Sign-In (`firebase_auth` and `google_sign_in`) across Android and Web. Email/password authentication, anonymous guest mode, and local-only unauthenticated state are strictly omitted.  
+  *Consequences (testable):* Unauthenticated users cannot access core routes; signing in provisions a verified Firebase Auth UID.
+* **FR-2: Cloud Session Persistence & Auto-Rehydration**  
+  The client must persist the Firebase Authentication state across app launches and network interruptions, automatically restoring the session and user identity on launch.
+* **FR-3: Sign-Out & Account Switching**  
+  The user can sign out from the Settings screen at any time. Signing out terminates the active session, clears local memory caches, and returns the user to the Google Sign-In screen.
+* **FR-4: GDPR & Play Store Account Deletion**  
+  The app must provide a prominent `[Delete Account & Data]` flow in Settings on both Android and Web:
+  - Invokes `FirebaseAuth.instance.currentUser?.delete()`.
+  - Prompts Google re-authentication if the session requires recent login.
+  - Relies on the server-side Firebase `delete-user-data` extension to purge `/users/{uid}` and all nested subcollections (`racquets`, `sessions`) upon user deletion.
 
 ---
 
 ### 4.2 Virtual Bag & Multi-Racquet Management
-**Description:** The core hub where users manage their equipment inventory. Supports multiple racquets, displaying live health statuses and string specs. Realizes UJ-1, UJ-2, UJ-3.
+**Description:** The core equipment inventory dashboard. Backed by user-scoped Firestore subcollections with real-time stream sync. Realizes UJ-1, UJ-2, UJ-3.
 
-* **FR-4: Add Racquet with String Setup**  
+* **FR-5: Add Racquet with Embedded String Setup**  
   The user can add a racquet by specifying:
-  - Racquet Name / Frame Model (Required, string).
+  - Frame Name / Model (Required, string, e.g., "Wilson Blade 98").
   - String Material Category (Required, Enum: `coPoly`, `multifilament`, `syntheticGut`, `naturalGut`).
-  - String Brand & Model (Optional, string; e.g. "Luxilon ALU Power").
-  - Stringing Date (Required, DateTime; defaults to current date).
-  - Installed Tension (Optional, double; supports lbs or kg).
-  - Manufacturer Max Hours (Optional, double; automatically pre-filled with category defaults: Co-Poly = 20h, Multifilament = 35h, Synthetic Gut = 30h, Natural Gut = 50h).  
-  *Consequences (testable):* Racquet and active StringBed are persisted in Serverpod ORM; Virtual Bag displays the new card immediately.
-* **FR-5: Multi-Racquet Inventory Display**  
-  The Virtual Bag screen must display a scrollable list/grid of all registered racquets for the authenticated user, showing frame name, string model, stringing date, total hours logged, and an animated radial or linear Health Score Gauge.
-* **FR-6: Racquet Editing & Deletion**  
-  The user can update racquet details (frame nickname, photo/icon, notes) or soft-delete a retired racquet.
-* **FR-7: Primary / Active Racquet Designation**  
-  The user can mark one racquet as "Primary in Bag", causing it to be pre-selected by default in the session logging workflow.
+  - String Brand & Model (Optional, string, e.g., "Luxilon ALU Power 1.25").
+  - Stringing Date (Required, DateTime; defaults to today).
+  - Installed Tension (Optional, double; in lbs).
+  - Manufacturer Max Hours (Optional, double; pre-filled with category defaults: Co-Poly = 20h, Multifilament = 35h, Synthetic Gut = 30h, Natural Gut = 50h).  
+  *Consequences (testable):* Creates `/users/{uid}/racquets/{racquetId}` with embedded `currentStringJob`; appears immediately in the UI.
+* **FR-6: Multi-Racquet Inventory Display**  
+  The Virtual Bag screen must display a scrollable list/grid of all registered racquets streamed live via `.snapshots()`, showing frame name, string specs, hours played, calendar days elapsed, and an animated radial Health Gauge.
+* **FR-7: Racquet Editing & Deletion**  
+  The user can edit frame nicknames/notes or delete a racquet document. Deleting a racquet removes the document and its embedded string history.
+* **FR-8: Primary Racquet Designation**  
+  The user can designate one racquet as "Primary in Bag", causing it to be pre-selected by default in the session quick-logger.
 
 ---
 
-### 4.3 Composite Health Score & Decay Engine
-**Description:** Evaluates dynamic playing stress and static calendar shelf-life to generate a scientifically grounded Health Score. Realizes UJ-1, UJ-3.
+### 4.3 Pure Client-Side Composite Decay Engine
+**Description:** Evaluates active court wear and passive calendar tension relaxation client-side upon read with zero server cron dependencies. Realizes UJ-1, UJ-3.
 
-* **FR-8: Composite Decay Calculation**  
-  The system must calculate `HealthScore` using the composite formula:
-  $$\text{HealthScore} = \max\left(0, 100 - \left(\text{DynamicPenalty} + \text{CalendarPenalty}\right)\right)$$
+* **FR-9: Composite Decay Calculation & Secondary Companion Metrics**  
+  The system must calculate `HealthScore` on the client using the composite formula:
+  $$\text{HealthScore} = \max\left(0, \operatorname{round}\left(100 - \left(\text{DynamicPenalty} + \text{CalendarPenalty}\right)\right)\right)$$
   Where:
   * $\text{DynamicPenalty} = \left(\frac{\text{HoursPlayed}}{\text{MaxRatedHours}}\right) \times 70$
   * $\text{CalendarPenalty} = \left(\frac{\text{DaysElapsed}}{\text{MaxCalendarShelfLife}}\right) \times 30$
-  * `MaxCalendarShelfLife` is determined by StringMaterialCategory:
-    * `coPoly`: 75 days (high tension creep and elasticity loss).
-    * `multifilament`: 180 days.
-    * `syntheticGut`: 180 days.
-    * `naturalGut`: 365 days.  
-  *Consequences (testable):* A co-poly string with 10 hours played (out of 20h max) and 37.5 days elapsed yields: $100 - (35 + 15) = 50\%$ Health Score.
-* **FR-9: Health Status Tiers & Alert Thresholds**  
-  The system must categorize Health Scores into three distinct states:
-  * **Green (Optimal):** $\ge 70\%$. Normal playability; excellent arm protection.
+  * `MaxCalendarShelfLife`: `coPoly` = 75 days, `multifilament` = 180 days, `syntheticGut` = 180 days, `naturalGut` = 365 days.
+  * **Secondary Metric Derivations**:
+    - **Estimated Tension Loss**: $\text{TensionLossLbs} = \text{InstalledTensionLbs} \times \left(\frac{100 - \text{HealthScore}}{100}\right) \times 0.25$ (modeling tension relaxation capped at ~25% total loss).
+    - **Remaining Court Hours to Dead Zone**: $\text{RemainingHours} = \max\left(0, \operatorname{round}\left(\frac{\text{HealthScore} - 40}{70} \times \text{MaxRatedHours}\right)\right)$ (displaying remaining play hours before crossing into Red $< 40\%$).
+  [ASSUMPTION: §4.3 / FR-9] (Client-side decay calculation on read is sufficiently fast and avoids the complexity/cost of scheduled Cloud Functions or server cron jobs).
+* **FR-10: Health Status Tiers & Color Coding**  
+  The UI must categorize Health Scores into three distinct states:
+  * **Green (Optimal):** $\ge 70\%$. Normal playability and elasticity.
   * **Amber (Degraded):** $40\% \le \text{Score} < 70\%$. Noticeable tension drop; control reducing.
-  * **Red (Dead / High Risk):** $< 40\%$. High shock transfer; restringing recommended.
-* **FR-10: Serverpod Scheduled Background Decay (`FutureCalls`)**  
-  The Serverpod backend must run a daily scheduled `FutureCall` (or cron job) that scans all active StringBeds, recalculates the `CalendarPenalty` based on current time, updates the cached health score, and flags racquets that crossed into the Red threshold.
+  * **Red (Dead / High Risk):** $< 40\%$. High shock transfer; restringing recommended to protect arm.
+* **FR-11: Dynamic Client-Side Evaluation (No Server Cron or Write-Backs)**  
+  Health scores must be evaluated dynamically in pure Dart upon reading `currentStringJob.hoursPlayed` and `DateTime.now().difference(currentStringJob.strungAt)`. No scheduled Cloud Functions, server cron jobs, or lazy database write-backs are performed, completely eliminating unnecessary Firestore write costs.
 
 ---
 
-### 4.4 Session Logging & Workout Ingestion
-**Description:** The logging mechanism providing effortless dual entry via smartwatch workout sync and rapid manual logging. Realizes UJ-1, UJ-4.
+### 4.4 Session Logging & Atomic Batching
+**Description:** High-speed manual playing session capture executing atomic batch commits across sessions and racquets. Realizes UJ-1.
 
-* **FR-11: Apple Health & Health Connect Workout Detection**  
-  The Flutter client must query the OS health subsystem (via HealthKit on iOS, Health Connect on Android) for completed workout sessions with activity type `tennis` recorded since the last sync timestamp.  
-  *Consequences (testable):* When a tennis workout is returned, the client surfaces an in-app banner or local push notification prompting gear assignment.
-* **FR-12: 1-Tap Gear Assignment Sheet with Progressive Disclosure**  
-  Tapping a detected workout opens a modal sheet displaying:
-  * Workout metadata (Date, Duration in minutes, estimated calories/heart rate if available).
-  * 1-tap selector buttons for registered racquets (with the Primary Racquet highlighted).
-  * An expandable **"Advanced options"** accordion that, when opened, enables:
-    - Splitting duration across multiple racquets (e.g., 60 min to Racquet A, 30 min to Racquet B).
-    - Selecting court surface (`hard`, `clay`, `grass`, `carpet`).
-    - Adding freeform session notes.  
-  *Consequences (testable):* Selecting a racquet and tapping confirm commits the session in $\le 2$ taps total.
-* **FR-13: Sub-10-Second Manual Quick Log**  
-  From the Virtual Bag, tapping `[+ Log Session]` opens a modal allowing the user to select duration (with quick-chips: `30m`, `1h`, `1.5h`, `2h`), select racquet, and save in under 10 seconds.
-* **FR-14: Real-Time Stream Synchronization**  
-  When a session is saved, the Serverpod backend must broadcast an update through a real-time streaming endpoint (`StreamController`) so connected Flutter clients update their gauges and play hours immediately without manual refresh.
+* **FR-12: Sub-10-Second Manual Quick Logger**  
+  Tapping `[+ Log Session]` opens a bottom sheet allowing the user to select duration chips (`30m`, `1h`, `1.5h`, `2h`), select a racquet, and save in under 10 seconds (typically $\le 3$ taps). While the underlying Firestore schema permits optional metadata (`notes`, `surface`, `location`), the v1.0 quick-logger UI strictly omits these fields to satisfy the sub-10s logging threshold and SM-C1.  
+  [ASSUMPTION: §4.4 / FR-12] (Eliminating smartwatch auto-detection in v1 is an acceptable trade-off to bypass Google Play Health Connect policy bottlenecks for immediate public launch).
+* **FR-13: Atomic WriteBatch Session Logging**  
+  Logging a session must execute as a single Firestore `WriteBatch`:
+  1. Creates `/users/{uid}/sessions/{sessionId}` with `racquetId`, `durationHours`, `playedAt`, and `createdAt`.
+  2. Updates `/users/{uid}/racquets/{racquetId}` with `currentStringJob.hoursPlayed = FieldValue.increment(durationHours)` and `updatedAt = FieldValue.serverTimestamp()`.  
+  *Consequences (testable):* Either both writes succeed or neither does; works seamlessly offline via Firestore local persistence.
+* **FR-14: Real-Time Multi-Device Sync**  
+  Firestore document and collection streams (`.snapshots()`) must push updates automatically to all active screens and across multi-window/multi-device sessions without manual pull-to-refresh.
 
 ---
 
-### 4.5 Restringing Lifecycle & Historical Timeline
-**Description:** Closing the loop when strings go dead, resetting the gauge, and preserving historical equipment logs. Realizes UJ-3.
+### 4.5 Restringing Lifecycle & Historical Archive
+**Description:** Restringing racquets, resetting the health gauge, and archiving lifecycle stats. Realizes UJ-3.
 
 * **FR-15: 1-Tap "Restrung Today" Action**  
-  Each racquet card and detail screen must provide a `[Restrung Today]` action. Tapping it opens a quick confirmation sheet:
-  * `[Keep Same & Reset]`: Immediately creates a new StringBed with the same brand, model, material, and tension, setting stringing date to today and resetting hours to 0.
-  * `[Change Strings]`: Pre-populates the existing specs but allows editing brand, model, material category, tension, or stringing date.
-* **FR-16: Historical StringBed Archive**  
-  Upon restringing, the retired StringBed is marked as inactive and archived into a `RestringEvent` table recording: total court hours logged, total calendar days active, initial/final health score, and retirement timestamp.
+  Each racquet card and detail view must provide a `[Restrung Today]` action opening a quick confirmation sheet:
+  * `[Keep Same & Reset]`: Retains identical string specs, resets hours to 0, and sets stringing date to today.
+  * `[Change Strings]`: Allows updating brand, model, material, tension, or date before resetting.
+* **FR-16: Historical String Job Archiving**  
+  Executing restringing moves the active `currentStringJob` into the `pastStringJobs` array on the `Racquet` document, populating `endedAt: FieldValue.serverTimestamp()` and the specific user-selected `endReason` (`"dead"`, `"broken"`, or `"manual_restring"`), and initializes the fresh active `currentStringJob` with 0 hours played. This structured history ensures clean dataset capture for future String Lab longevity analytics.
 * **FR-17: Restring History Timeline UI**  
-  The Racquet Detail screen must provide a "History" tab showing a chronological timeline of past stringbeds with performance stats (e.g., *"Aug 10 – Oct 2 • Babolat RPM Blast 1.25 • 18.5 court hours • 53 days"*).
+  The Racquet Detail view must display a chronological timeline of past string jobs with court hours played and calendar duration (e.g., *"Aug 1 – Oct 2 • Luxilon ALU Power • 19.2 court hours • 62 days"*).
 
 ---
 
-### 4.6 Hackathon Demo Mode & Simulation Tools
-**Description:** Dedicated simulation controls ensuring judges and web testers can experience the entire end-to-end loop without physical court activity. Realizes UJ-4.
+### 4.6 Store Compliance, Security & Platform Infrastructure
+**Description:** Hardening the public deployment against unauthorized billing, abuse, and store rejections. Realizes UJ-4.
 
-* **FR-18: One-Click Workout Simulator**  
-  The Flutter app must provide an accessible floating badge or dev menu option `[🧪 Simulate Workout]` on web, simulator, and test environments. Tapping it injects a simulated 90-minute tennis workout into the ingestion pipeline, triggering the auto-detection modal.
-* **FR-19: Time-Warp Aging Simulator**  
-  The dev menu must include a `[Fast-Forward 30 Days]` button for any selected racquet, advancing its stringing date by 30 days to immediately demonstrate calendar decay transitions and warning alerts.
-
----
-
-## 5. Non-Goals (Explicit)
-
-* **[Non-Goal] Non-Racquet Gear in v1:** Shoes, ball pressurized cans, and overgrips are deferred to v1.1. Data models will maintain polymorphic `GearItem` compatibility, but UI and logic in v1 are strictly racquet/string focused.
-* **[Non-Goal] Acoustic String-Tension Plucking:** Microphone-based frequency vibration analysis (FFT) is strictly out of scope for the hackathon MVP.
-* **[Non-Goal] Social Feeds & Public Leaderboards:** No friend challenges, public match sharing, or community feeds.
-* **[Non-Goal] Pro Shop Commercial Booking:** No integrated booking or e-commerce marketplace for stringing services in v1.
-* **[Non-Goal] In-Match Point Tracking:** String Theory does not track point-by-point scores, aces, or unforced errors (unlike SwingVision or TennisKeeper).
+* **FR-18: Firestore Security Rules Enforcement**  
+  All Firestore documents must be guarded by path-based ownership (`/users/{uid}/**` accessible only when `request.auth.uid == uid`) and payload schema validation enforcing attribute types, key limits ($\le 15$ keys per racquet, $\le 12$ keys per session), string length bounds, and positive numeric ranges.
+* **FR-19: Firebase App Check Protection**  
+  Firebase App Check must be activated on startup using **Play Integrity** on Android and **reCAPTCHA Enterprise** on Web to protect Firestore from unauthorized scripts, scrapers, and billing abuse.  
+  [ASSUMPTION: §4.6 / FR-19] (Firebase App Check provides sufficient protection against bot abuse and billing inflation).
+* **FR-20: Firebase Hosting & Static Legal Pages**  
+  The Flutter Web app must be hosted on Firebase Hosting with SPA rewrites to `/index.html` while serving static `/privacy.html` (Privacy Policy & Account Deletion instructions) directly for Google Play Store compliance.
+* **FR-21: Day-1 Telemetry & Crash Reporting**  
+  The app must integrate Firebase Crashlytics (catching uncaught Flutter and platform errors), Firebase Performance Monitoring, and Firebase Analytics (logging `sign_in`, `racquet_created`, `session_logged`, and `racquet_restrung`).
+* **FR-22: Remote Config Feature Flags & Monetization Sensors**  
+  The app must initialize Firebase Remote Config with default flags (`show_ads: false`, `pro_paywall_trigger: false`, `free_racquet_limit: 99`) and activate fetched parameters on launch to enable zero-code remote adjustments post-launch.
 
 ---
 
-## 6. MVP Scope Boundary
+## 5. Non-Goals (Explicit for v1.0)
 
-| Category | In-Scope (Hackathon MVP) | Out-of-Scope (Deferred to v1.1+) |
+* **[Non-Goal] Serverpod & Custom Server Infrastructure:** No custom backend server, PostgreSQL database, or custom WebSockets.
+* **[Non-Goal] Apple Health & Health Connect:** No smartwatch or OS health workout auto-detection in v1.0 to eliminate sensitive permission review friction on Google Play.
+* **[Non-Goal] Hackathon Demo Actions:** "Create Sample Bag" and "Simulate Workout" demo-only actions are purged from the UI and state management layer.
+* **[Non-Goal] Local Notifications in v1:** Local scheduled decay notifications are stripped in favor of clean client-side in-app badges (deferred until FCM push in v1.2+).
+* **[Non-Goal] Patrol E2E in CI:** Patrol E2E automated test runs in CI are paused for v1.0 to accelerate build cycles, while retaining unit and widget test coverage.
+* **[Non-Goal] Unauthenticated Guest Mode:** No local-only guest accounts or complex local-to-cloud migration logic.
+* **[Non-Goal] Ads & In-App Purchases:** No AdMob banners or Google Play Billing paywalls in the v1.0 store submission (deferred to v1.1).
+* **[Non-Goal] Server-Side Decay Cron / Cloud Functions:** No scheduled Cloud Functions or server cron jobs for decay math in v1.0.
+* **[Non-Goal] Acoustic String-Tension Plucking:** Microphone-based frequency vibration analysis (FFT) is out of scope.
+* **[Non-Goal] Social Feeds & Match Point Tracking:** No point-by-point scoring, match results, or social feeds.
+
+---
+
+## 6. MVP Scope Boundary (MoSCoW)
+
+| MoSCoW | Scope Items | Rationale |
 |---|---|---|
-| **Equipment** | Tennis Racquets & StringBeds | Tennis Shoes, Ball Cans, Grips, Bags |
-| **Auth** | Serverpod Anonymous Guest + Email sign-in & guest→email linking | Google linking, Apple Sign-In on Web, Enterprise SSO |
-| **Logging** | Apple Health / Health Connect sync + 3-tap quick log + Demo Simulator | GPS court geolocation, SwingVision API sync |
-| **Decay Engine** | Composite formula (hours + calendar days) for 4 string types | Ambient temperature/humidity sensor adjustments |
-| **Lifecycle** | "Restrung Today" 1-tap reset + historical timeline | Local stringer directory & restring job bidding |
-| **Backend** | Serverpod ORM, Streaming WebSockets, `FutureCalls` cron | Multi-tenant club management portal |
+| **Must Have (v1.0)** | • Google-Only Firebase Auth (`FR-1`, `FR-2`, `FR-3`)<br>• Account Deletion & GDPR Flow (`FR-4`)<br>• Denormalized `Racquet` + `currentStringJob` (`FR-5`, `FR-6`)<br>• Racquet Editing, Deletion & Primary Designation (`FR-7`, `FR-8`)<br>• Client-Side `DecayEngine` & Health Tiers (`FR-9`, `FR-10`, `FR-11`)<br>• Sub-10s Quick Logger + Atomic `WriteBatch` (`FR-12`, `FR-13`)<br>• Real-Time Multi-Device Stream Sync (`FR-14`)<br>• "Restrung Today" 1-tap reset + `pastStringJobs` archive (`FR-15`, `FR-16`, `FR-17`)<br>• Production `firestore.rules` + Firebase App Check (`FR-18`, `FR-19`)<br>• Firebase Hosting & Static `/privacy.html` (`FR-20`)<br>• Telemetry & Remote Config Flags (`FR-21`, `FR-22`) | Minimum viable scope required to deliver the core string tracking promise and pass Google Play Store review without friction. |
+| **Should Have (v1.1)** | • AdMob integration & Paid Pro tier (in-app subscription)<br>• Paywall triggers activated via Remote Config<br>• Enriched `SessionLog` metadata (court surface, location, notes) | Monetization and secondary session details immediately following store approval. |
+| **Could Have (v1.2+)** | • **String Lab Pro Insights**: Longevity analytics across brands/materials from archived string jobs<br>• Firebase Cloud Messaging (FCM) background push notifications<br>• Web landing "String Health Calculator" widget for conversion | Differentiating Pro value and engagement drivers. |
+| **Won't Have (v1.0)** | • Serverpod backend, PostgreSQL, or custom server cron<br>• Health Connect / Apple Health permissions<br>• Unauthenticated guest mode<br>• Ads or IAP in initial store submission | Explicitly pruned to minimize operational overhead and store review hurdles. |
 
 ---
 
 ## 7. Success Metrics & Counter-Metrics
 
 ### Primary Metrics
-* **SM-1 (Sub-10s Logging Adherence):** $> 85\%$ of manual session logs completed in $\le 10$ seconds (measured from dialog open to confirm tap). *Validates FR-12, FR-13.*
-* **SM-2 (Auto-Detection Conversion):** $> 70\%$ of auto-detected Apple Health/Health Connect workouts converted into gear logs within 2 taps. *Validates FR-11, FR-12.*
-* **SM-3 (Hackathon Demo Completeness):** 100% pass rate for the end-to-end judge journey (Guest Auth $\rightarrow$ Simulate Workout $\rightarrow$ Assign Gear $\rightarrow$ Decay Animation $\rightarrow$ Restrung Reset) in $< 2$ minutes. *Validates FR-1, FR-14, FR-18.*
-
-### Secondary Metrics
-* **SM-4 (Multi-Racquet Bag Adoption):** Average of $\ge 1.8$ racquets registered per active user bag. *Validates FR-4, FR-5.*
-* **SM-5 (Restring Cycle Archive Rate):** $\ge 80\%$ of racquets reaching $<40\%$ health execute a "Restrung Today" action rather than abandoning the racquet. *Validates FR-15, FR-16.*
+* **SM-1 (Sub-10s Logging Speed):** $> 90\%$ of manual session logs completed in $\le 10$ seconds. *Validates FR-12.*
+* **SM-2 (Day-1 Crash-Free Rate):** $> 99.5\%$ crash-free sessions across Android and Web reported via Firebase Crashlytics. *Validates FR-21.*
+* **SM-3 (App Check Verification):** $> 98\%$ of incoming Firestore operations verified with valid App Check tokens. *Validates FR-19.*
+* **SM-4 (Multi-Racquet Adoption):** Average of $\ge 1.8$ racquets registered per active user bag. *Validates FR-5, FR-6.*
+* **SM-5 (Restring Lifecycle Completion):** $\ge 75\%$ of racquets reaching $<40\%$ health execute a "Restrung Today" action. *Validates FR-15, FR-16.*
 
 ### Counter-Metrics (Do Not Optimize)
-* **SM-C1 (Notification Fatigue):** Maximum of 1 push alert per day for any racquet in the Red threshold. *Do not spam players to drive artificial engagement.*
-* **SM-C2 (Field Clutter):** Advanced options (splitting time, court surface, custom notes) must remain collapsed by default. *Do not expose secondary fields on the primary logging screen.*
+* **SM-C1 (Field Clutter):** Manual quick-logger modal must require $\le 3$ taps for 90% of sessions. Do not add mandatory metadata fields.
+* **SM-C2 (Firestore Read Amplification):** Loading the Virtual Bag must cost exactly 1 collection query (`/users/{uid}/racquets`) with zero joined document reads. *Validates denormalized data design.*
 
 ---
 
 ## 8. Cross-Cutting Non-Functional Requirements (NFRs)
 
-### 8.1 Performance & Latency
-* **NFR-1 (UI Responsiveness):** Gauge animation transitions must render at 60 fps without frame drops on standard mobile devices.
-* **NFR-2 (Real-Time Sync Latency):** Serverpod streaming updates must reflect on the client within $< 300\text{ ms}$ of session persistence.
-* **NFR-3 (Cold Start to Bag):** App cold-start to interactive Virtual Bag screen must be $< 1.2\text{ seconds}$ using local cached state.
+### 8.1 Performance & Responsiveness
+* **NFR-1 (UI Responsiveness):** Radial gauge animations must render smoothly at 60 fps without dropped frames.
+* **NFR-2 (Real-Time Sync Latency):** Firestore `.snapshots()` updates must reflect across active UI surfaces within $< 500\text{ ms}$ of network commit.
+* **NFR-3 (Cold Start to Interactive Bag):** App cold start to interactive Virtual Bag screen must be $< 1.5\text{ seconds}$ leveraging Firestore local disk persistence.
 
 ### 8.2 Reliability & Offline Resilience
-* **NFR-4 (Offline Logging):** If the player is on court without cellular data or Wi-Fi, the Flutter client must queue SessionLogs locally in SQLite/Hive and sync to the Serverpod backend automatically upon network reconnection.
-* **NFR-5 (Atomic Restring Operations):** Archiving a retired StringBed and initializing a new active StringBed must execute within a single Serverpod database transaction to prevent orphan racquets.
+* **NFR-4 (Offline Logging Resilience):** Players logging sessions on courts without cellular coverage must have writes cached locally by Firestore and committed automatically upon reconnection.
+* **NFR-5 (Atomic Gear & Session Mutations):** Session logs and racquet hours played must always be written via atomic `WriteBatch` to guarantee consistency.
 
-### 8.3 Privacy & Health Data Governance
-* **NFR-6 (Minimal Health Data Ingestion):** String Theory requests *read-only* access strictly for `workout` data (specifically filtering for tennis activity). It does not request or store unrelated biometric data (heart rate ECG, blood glucose, sleep stages, or GPS route coordinates).
-* **NFR-7 (Local Health Processing):** Apple Health workout parsing occurs locally on device; only the resulting `SessionLog` (timestamp, duration, gear ID) is transmitted to the Serverpod backend.
-
-### 8.4 Serverpod Architectural Standards
-* **NFR-8 (Serverpod CLI & MCP Compliance):** All database entities must be declared in `.spy.yaml` schemas. No manual edits to generated code. Migrations generated via Serverpod MCP tools.
-* **NFR-9 (Serverpod Auth Module):** Built-in Serverpod authentication module (`serverpod_auth`) utilized for session security, token management, and guest accounts.
+### 8.3 Security, Privacy & Store Governance
+* **NFR-6 (Zero Sensitive Health Permissions):** `AndroidManifest.xml` must declare zero health, body sensor, or background fitness permissions, guaranteeing zero Health Connect review friction.
+* **NFR-7 (Public Security Rules Bounds):** `firestore.rules` must reject any write exceeding schema key counts ($\le 15$ for racquets, $\le 12$ for sessions) or payload string lengths to prevent billing/storage abuse.
+* **NFR-8 (Google Play Data Safety Compliance):** All data collection declared in Google Play Console must align exactly with Firebase Auth and Firestore usage, backed by static `/privacy.html` and the account deletion mechanism:
+  - Personal Info: Name & Email collected via Google Sign-In for account identification.
+  - App Activity & Fitness Equipment: Racquets, StringJobs, and SessionLogs stored under `/users/{uid}`.
+  - App Info & Performance: Firebase Crashlytics crash traces and Performance diagnostics.
+  - Security Practices: Data encrypted in transit; verified account and data deletion mechanism provided.
 
 ---
 
 ## 9. Open Questions & Resolutions
 
-1. **[RESOLVED] OQ-1 (Tension Loss Modeling):** Display Health Score (0–100%) as the primary hero metric, accompanied by secondary estimated tension loss text (e.g. *"Tension down ~1.5 kg / ~3.3 lbs"*) for player clarity.
-2. **[RESOLVED] OQ-2 (Hybrid Stringing Setups):** For v1, hybrid setups are categorized by the dominant stringbed material (e.g., Co-Poly). Explicit dual main/cross separate spec inputs are formally deferred to v1.1.
+1. **[RESOLVED] OQ-1 (Tension Loss Modeling):** Display Health Score (0–100%) as the primary hero metric, accompanied by secondary estimated tension loss text (e.g. *"~1.4 lbs tension drop"*) for player clarity.
+2. **[RESOLVED] OQ-2 (Hybrid Stringing Setups):** For v1, hybrid setups are categorized by the dominant stringbed material (e.g., Co-Poly). Dual main/cross separate spec inputs are deferred to v1.1.
+3. **[RESOLVED] OQ-3 (Account Deletion Mechanism):** Satisfy Google Play store mandatory web account deletion by pointing the Play Console Data Safety URL to the hosted Flutter Web app, which executes the identical Firebase Auth deletion and `delete-user-data` purge.
+4. **[RESOLVED] OQ-4 (Offline Multi-Device Batch Resolution):** Multi-device and offline session logging adheres to Firestore's standard last-write-wins commit ordering. Increments to `hoursPlayed` utilize `FieldValue.increment()`, guaranteeing that session court hours accumulate atomically on the server regardless of offline write queuing order.
 
 ---
 
 ## 10. Assumptions Index
 
-* **[ASSUMPTION: §2.3 / UJ-2]** Apple Health and Android Health Connect permissions are requested in-context after adding the first racquet, rather than on the initial splash screen, to maximize permission grant rates.
-* **[ASSUMPTION: §4.3 / FR-8]** Calendar decay operates on a maximum shelf-life baseline (75 days for Co-Poly, 180 for Multi, 365 for Gut) which accounts for 30% of total decay, while court playtime accounts for 70%.
-* **[ASSUMPTION: §4.4 / FR-12]** The common 90% use case is playing with a single racquet for the entire workout; splitting time across racquets is handled via an expandable "Advanced options" accordion.
-* **[ASSUMPTION: §4.6 / FR-18]** Hackathon judges will test on web and desktop environments where real Apple Watch hardware is absent, making a simulated workout generator mandatory for a successful submission.
+* **[ASSUMPTION: §2.1]** Requiring Google Sign-In at first launch will not significantly depress conversion compared to guest mode, while permanently eliminating guest-to-cloud data migration issues.
+* **[ASSUMPTION: §4.3 / FR-9]** Client-side decay calculation on read is sufficiently fast and avoids the complexity/cost of scheduled Cloud Functions or server cron jobs.
+* **[ASSUMPTION: §4.4 / FR-12]** Eliminating smartwatch auto-detection in v1 is an acceptable trade-off to bypass Google Play Health Connect policy bottlenecks for immediate public launch.
+* **[ASSUMPTION: §4.6 / FR-19]** Firebase App Check (Play Integrity on Android + reCAPTCHA Enterprise on Web) provides sufficient protection against bot abuse and billing inflation.
