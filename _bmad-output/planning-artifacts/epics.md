@@ -17,11 +17,25 @@ inputDocuments:
   - "_bmad-output/implementation-artifacts/deferred-work.md"
 ---
 
-# string_theory - Epic Breakdown
+# String Theory — Epic Breakdown
 
 ## Overview
 
 This document provides the complete epic and story breakdown for String Theory v1.0 (Firebase, Android + Web), decomposing the requirements from the PRD, the UX Design contract (DESIGN.md + EXPERIENCE.md), and the Firebase v1 Architecture Spine into implementable stories. It replaces the Serverpod hackathon breakdown, which remains in git history.
+
+**Open decisions that gate specific stories**
+- Keyboard shortcuts switch storage (gates Story 5.4; decide before Story 1.7, which removes `shared_preferences`): browser storage (new dependency) vs a field on `/users/{uid}` (AD-3 change). Until decided, the switch resets to On at every visit.
+- Web Analytics consent for EU visitors (gates Story 5.5): banner, Consent Mode defaults, or a documented reason that none is needed. Until decided, Analytics collection is disabled on web (Story 1.4). Does not block the Android launch.
+
+## Epic List
+
+| Epic | Outcome | Stories |
+| --- | --- | --- |
+| 1. Sign in with Google | Google sign-in on Android and Web on a flavored Firebase foundation, with Serverpod and health integrations removed | 1.1–1.7 |
+| 2. Build my live Virtual Bag | Add racquets and see live, device-computed health for each | 2.1–2.4 |
+| 3. Log sessions in seconds, online or offline | Three-tap logging that works offline, sync status, and session history | 3.1–3.4 |
+| 4. Manage racquets and the restring lifecycle | Racquet Detail, edit, primary, delete, restring and history | 4.1–4.6 |
+| 5. Account control, store compliance and public launch | Account deletion, privacy policy, Hosting, Play release and post-launch hardening | 5.1–5.10 |
 
 ## Requirements Inventory
 
@@ -36,19 +50,19 @@ This document provides the complete epic and story breakdown for String Theory v
 - **FR-7 (Edit / delete racquet):** The user can edit the racquet name and notes, or delete a racquet. Deleting removes the document and its embedded string history; sessions logged against it are kept.
 - **FR-8 (Primary racquet):** The user can designate one racquet as Primary, which pre-selects it in the quick logger.
 - **FR-9 (Composite decay + companion metrics):** HealthScore = max(0, round(100 − (DynamicPenalty + CalendarPenalty))), where DynamicPenalty = hoursPlayed / maxHours × 70 and CalendarPenalty = daysElapsed / shelfLife × 30 (shelf life: monofilament 75 d, multifilament 180 d, syntheticGut 180 d, naturalGut 365 d). Companion metrics: TensionLossLbs = tension × (100 − score) / 100 × 0.25; RemainingHours = max(0, round((score − 40) / 70 × maxHours)).
-- **FR-10 (Health tiers):** Scores map to three tiers: Optimal ≥ 70%, Degraded 40–69%, Dead < 40% (UI labels `Optimal`, `Caution`, `Restring`).
+- **FR-10 (Health tiers):** Scores map to three tiers: Optimal ≥ 70%, Degraded 40–69%, Critical < 40% (the PRD calls this tier Dead). The engine names them `optimal`, `degraded` and `critical`; the UI labels are `Optimal`, `Caution` and `Restring`. The tier is always derived from the rounded score.
 - **FR-11 (Client-side evaluation only):** Health is computed in pure Dart on read from `currentStringJob.hoursPlayed` and `now − strungAt`. No scheduled Cloud Functions, cron jobs or health write-backs.
 - **FR-12 (Quick logger):** `[+ Log Session]` opens a bottom sheet with duration chips (`30m`, `1h`, `1.5h`, `2h`) and a racquet selector, saving in ≤ 3 taps and under 10 seconds. The v1 UI shows no notes/surface/location fields.
 - **FR-13 (Atomic session batch):** Logging a session is one `WriteBatch`: create `/users/{uid}/sessions/{sessionId}` (`racquetId`, `stringJobId` = current job id, `durationHours`, `playedAt`, `createdAt`) and update the racquet with `currentStringJob.hoursPlayed: FieldValue.increment(hours)` and `updatedAt: serverTimestamp()`. Both writes succeed or neither does, and it works offline.
 - **FR-14 (Real-time multi-device sync):** Firestore `.snapshots()` streams push updates to every active screen, window and device without manual refresh.
 - **FR-15 (Restrung Today):** Each racquet card and detail view offers `[Restrung Today]`, opening a sheet with `[Keep Same & Reset]` (same specs, hours 0, date today) and `[Change Strings]` (edit material, brand & model, tension, max hours, date before resetting).
 - **FR-16 (String job archiving):** A restring moves `currentStringJob` into `pastStringJobs` with `endedAt` = client timestamp and the user-selected `endReason` (`dead` | `broken` | `manual_restring`), then sets a fresh `currentStringJob` with 0 hours.
-- **FR-17 (Restring history timeline):** Racquet Detail shows past string jobs newest first with dates, string, court hours and calendar duration (e.g. `Aug 1 – Oct 2 • Luxilon ALU Power • 19.2 court hours • 62 days`).
+- **FR-17 (Restring history timeline):** Racquet Detail shows past string jobs newest first with dates, string, court hours and calendar duration (for example `Aug 1 – Oct 2 • Luxilon ALU Power • 19.2 court hours • 62 days`).
 - **FR-18 (Security rules):** All Firestore access is limited to `/users/{uid}/**` with `request.auth.uid == uid`, plus payload validation: types, ≤ 15 keys per racquet, ≤ 12 keys per session, string length bounds and numeric ranges.
 - **FR-19 (App Check):** App Check is activated at startup with Play Integrity on Android and reCAPTCHA Enterprise on Web.
 - **FR-20 (Hosting + legal page):** The Flutter Web app is served from Firebase Hosting with SPA rewrites to `/index.html`, while static `/privacy.html` (privacy policy + account deletion steps) is served directly.
 - **FR-21 (Telemetry):** Crashlytics on Android (uncaught Flutter and platform errors; no web support), Performance Monitoring, and Analytics events `sign_in`, `racquet_created`, `session_logged`, `racquet_restrung`.
-- **FR-22 (Remote Config):** Remote Config initializes with defaults `show_ads: false`, `pro_paywall_trigger: false`, `free_racquet_limit: 99` and activates fetched values on launch. Nothing in v1 changes behaviour based on them.
+- **FR-22 (Remote Config):** Remote Config initializes with defaults `show_ads: false`, `pro_paywall_trigger: false`, `free_racquet_limit: 99` and activates fetched values on launch. Nothing in v1 changes behavior based on them.
 
 ### NonFunctional Requirements
 
@@ -60,7 +74,7 @@ This document provides the complete epic and story breakdown for String Theory v
 - **NFR-6 (Zero sensitive permissions):** The Android manifest declares no health, body-sensor, activity-recognition or fitness permissions.
 - **NFR-7 (Rules bounds):** `firestore.rules` rejects writes exceeding key counts (≤ 15 racquet, ≤ 12 session) or string length bounds.
 - **NFR-8 (Play Data Safety):** Play Console declarations match actual collection (name and email from Google Sign-In; racquets, string jobs and sessions under `/users/{uid}`; Crashlytics and Performance diagnostics; encryption in transit; a working deletion mechanism), backed by `/privacy.html` and account deletion.
-- **NFR-9 (Accessibility):** Android and Web meet WCAG 2.2 AA. Flows 1–4 (log a session, onboard and add a racquet, restring, delete the account) are verified with TalkBack, NVDA + Chrome and VoiceOver + Safari. The behavioural floor is UX-DR26, and contrast follows the DESIGN.md contrast table. (Promoted from the UX spine's upstream note; the PRD does not yet list it.)
+- **NFR-9 (Accessibility):** Android and Web meet WCAG 2.2 AA. Flows 1–4 (log a session, onboard and add a racquet, restring, delete the account) are verified with TalkBack, NVDA + Chrome and VoiceOver + Safari. The behavioral floor is UX-DR26, and contrast follows the DESIGN.md contrast table. (Promoted from the UX spine's upstream note; the PRD does not yet list it.)
 - **SM-C1 (Logger tap budget):** The quick logger needs ≤ 3 taps for 90% of sessions; no mandatory metadata fields may be added.
 - **SM-C2 (Read amplification):** Loading the Virtual Bag costs exactly one collection query (`/users/{uid}/racquets`) with zero joined reads.
 
@@ -78,161 +92,144 @@ This document provides the complete epic and story breakdown for String Theory v
 - `ErrorReporter` and `AnalyticsSink` interfaces live in `lib/domain/` and are implemented in `lib/services/`. Repositories are the only callers of `ErrorReporter`; BLoCs are the only callers of `AnalyticsSink`.
 - The engine owns the single 4-value `StringMaterial` enum, `shelfLifeDays`, `defaultMaxHours`, `healthScore`, `tier`, `tensionLossLbs` and `remainingHours`, with `now` a required parameter. `fromEnum(Enum)`, `other`, `coPoly`, `kevlar` and `hybrid` are removed. `monofilament` takes the former co-poly constants (75 d, 20 h).
 - `lib/domain/` re-exports the engine and defines immutable `Racquet`, `StringJob`, `SessionLog`, `EndReason` and `failures`. Map ↔ domain conversion happens only in `lib/data/` mappers.
-- `RacquetRepository` exposes exactly `watchRacquets()` and `watchRacquet(id)`; `SessionRepository` exposes `watchSessions()` and `logSession(...)` and writes racquet fields only through `lib/data/racquet_fields.dart` constants.
+- `RacquetRepository` exposes exactly `watchRacquets()` and `watchRacquet(id)`; `SessionRepository` exposes `watchSessions({String? racquetId, required int limit})` and `logSession(...)` and writes racquet fields only through `lib/data/racquet_fields.dart` constants.
 - One BLoC per feature: `auth`, `bag`, `session_log`, `sessions`, `restring`, `settings`. Data BLoCs are created under the auth gate's signed-in subtree. State is immutable with `equatable`.
 
 **Wire contract (AD-3, AD-4)**
 - The AD-3 table is the single schema for mappers, `lib/domain/schema_bounds.dart`, `racquet_fields.dart` and `firestore.rules`; the same PR updates all four.
-- Optional fields are absent when empty and cleared with `FieldValue.delete()`; the only nulls are `currentStringJob.endedAt` / `endReason`. Numbers travel as `double` (decode with `(v as num).toDouble()`).
+- Optional fields are absent when empty and cleared with `FieldValue.delete()`; the only nulls are `currentStringJob.endedAt` / `endReason`. `pastStringJobs` is not optional: every racquet is created with `pastStringJobs: []`. Numbers travel as `double` (decode with `(v as num).toDouble()`).
 - A pending server timestamp (`null` in a local snapshot) decodes to `clock.now()` and is never a decode failure.
-- An unknown stored material produces a typed decode failure reported through `ErrorReporter`, and that racquet is left out of the stream.
+- An unknown stored material produces a typed decode failure reported through `ErrorReporter`, and that racquet is left out of the stream. A past string job that fails to decode is skipped and reported on its own, without dropping the racquet.
 
 **Mutations (AD-5, AD-6, AD-14, AD-15)**
 - The only writes are `addRacquet`, `updateRacquet`, `deleteRacquet`, `setPrimary` (batch), `logSession` (batch) and `restring` (update with `arrayUnion`); none uses `runTransaction`. Mutations take the domain object the user acted on.
 - Mutations complete when the write is accepted into the local cache (not on server acknowledgement). Late rejections go to `ErrorReporter` (except expected permission-denied after sign-out or `unavailable`) and to `RacquetRepository.failures` (`Stream<MutationFailure>`), shown as a bag snackbar. Pending state reaches the domain as `isPendingSync` from `hasPendingWrites`.
-- Accepted races: a session syncing after a restring adds to the new job; a session batch against a racquet deleted elsewhere is rejected whole; a second offline restring of the same job is rejected by the `id` check. Readers dedupe `pastStringJobs` by `id`.
-- String job construction: `maxHours` never null; forms fill it from `defaultMaxHours` and refill on material change only if untouched; Keep Same copies material, brand, tension, maxHours with `strungAt = clock.now()` and `manual_restring`; Change Strings defaults to `manual_restring` with optional dead/broken; a picked date is stored as that local date at 12:00 local, converted to UTC; every new job gets `collection(...).doc().id`.
+- Accepted races: a session syncing after a restring adds to the new job; a session batch against a racquet deleted elsewhere is rejected whole; a second offline restring of the same job is rejected by the `id` check; a session from another device that commits before a queued restring is not counted in the archived job's `hoursPlayed` (its session document still exists); two devices setting different primaries offline can leave two racquets flagged, and `resolvePrimary` picks one until the next Set as Primary clears both. Readers dedupe `pastStringJobs` by `id`.
+- String job construction: `maxHours` is never null and always > 0; forms fill it from `defaultMaxHours` and refill on material change only if untouched; Keep Same copies material, brand, tension, and maxHours, with `strungAt = clock.now()` and `manual_restring`; Change Strings defaults to `manual_restring` with optional dead/broken; a picked date is stored as that local date at 12:00 local, converted to UTC, and is validated as a calendar date (picked local date ≤ today's local date), never by comparing the stored timestamp with `clock.now()`; every new job gets `collection(...).doc().id`.
+- Every submit (save, log, restring, delete) is ignored by its BLoC while a previous submit from the same sheet or dialog is in progress, and the submit button is disabled.
 
 **Health and primary (AD-7, AD-8)**
 - No document stores any health-derived field. `RacquetHealth.of(StringJob, DateTime now)` is the only producer of health figures.
-- BLoCs recompute on every racquet snapshot and on `AppResumed`, sent by one `AppLifecycleListener` in the app shell. "Now" comes from `package:clock`; no timers.
+- BLoCs recompute on every racquet snapshot and on `AppResumed`, sent by one `AppLifecycleListener` in the app shell. "Now" comes from `package:clock`; no timers. A screen left in the foreground across midnight shows the previous figures until the next snapshot or resume (accepted).
+- `daysElapsed` = max(0, (now − strungAt) in minutes / 1440), a fractional duration that ignores time zones and DST. The `{days} days` text and timeline durations show it floored to whole days.
 - `resolvePrimary(List<Racquet>)` is the only primary resolver: earliest `createdAt` among flagged racquets (or all if none flagged), ties by lowest document id.
 
 **Auth and account lifecycle (AD-9, AD-10)**
 - `AuthRepository` is the only way into auth. Android: `GoogleSignIn.instance.initialize(serverClientId: <flavor web client id>)` once, then `authenticate()` → `idToken` → `GoogleAuthProvider.credential` → `signInWithCredential`; sign-out also calls `GoogleSignIn.instance.signOut()`. Web: `signInWithPopup(GoogleAuthProvider())`. Re-auth follows the same split; `user-mismatch` aborts with a typed failure.
-- `ensureUserDoc()` runs on every auth state with a user, before the route gate opens: create with `createdAt` if absent, otherwise update only `email` / `displayName`.
+- `ensureUserDoc()` runs on every auth state with a user: create with `createdAt` if the server reports the document absent, otherwise update only `email` / `displayName`. After a fresh sign-in (always online) the gate waits for it; a restored session opens the shell at once and runs it in the background, first calling `currentUser.reload()` when online and signing out instead of writing if the user no longer exists. The create rule requires a recent sign-in (`auth_time` within 5 minutes), so a stale session can never recreate a deleted account. (Changes AD-9; the spine is updated in Story 1.5.)
 - `delete-user-data` extension configured with path `users/{UID}` and delete mode Recursive; the client never deletes that data itself. Replace it with a self-owned 2nd-gen `onUserDeleted` function calling `recursiveDelete` before **2027-03-31** (Extensions shutdown).
-- Repository streams complete without error when the auth uid changes or becomes null; permission-denied errors after the change are dropped. Deletion calls `currentUser.delete()` first, re-authenticates on `requires-recent-login`, and retries; on failure the streams keep running. Sign-out clears in-memory BLoC state only; `clearPersistence()` is never called with pending writes. Rules allow writes only while `/users/{uid}` exists.
+- Repository streams complete without error when the auth uid changes or becomes null; permission-denied errors after the change are dropped. Deletion calls `currentUser.delete()` first, re-authenticates on `requires-recent-login`, and retries; on failure the streams keep running. Sign-out clears in-memory BLoC state only and keeps the local cache, so queued writes sync on the next sign-in. After a successful account deletion the client terminates Firestore and calls `clearPersistence()`, because nothing queued is worth keeping. Rules allow writes only while `/users/{uid}` exists.
 
 **Bootstrap (AD-11)**
-- `main()` runs in `runZonedGuarded`, in order: `Firebase.initializeApp(options: <flavor>)` → `FirebaseAppCheck.instance.activate(providerAndroid: AndroidPlayIntegrityProvider() | AndroidDebugProvider(), providerWeb: ReCaptchaEnterpriseProvider(siteKey) | WebDebugProvider())` → Crashlytics hooks on `FlutterError.onError` and `PlatformDispatcher.onError` (Android only) → `FirebaseFirestore.instance.settings = Settings(persistenceEnabled: true, webPersistentTabManager: WebPersistentMultipleTabManager())` → Remote Config `setDefaults` + `activate()` with `fetch()` in the background → auth gate.
+- `main()` runs in `runZonedGuarded`, in order: `Firebase.initializeApp(options: <flavor>)` → `FirebaseAppCheck.instance.activate(providerAndroid: AndroidPlayIntegrityProvider() | AndroidDebugProvider(), providerWeb: ReCaptchaEnterpriseProvider(siteKey) | WebDebugProvider())` → Crashlytics hooks on `FlutterError.onError` and `PlatformDispatcher.onError` (Android only) → `FirebaseFirestore.instance.settings = Settings(persistenceEnabled: true, webPersistentTabManager: WebPersistentMultipleTabManager())` → Remote Config `setDefaults` + `activate()` with `fetch()` in the background → auth gate. An App Check activation failure is reported and startup continues.
 
 **Environments and release (AD-12)**
 - Two Firebase projects, `dev` and `prod`, with `.firebaserc` aliases of the same names.
 - Android `applicationId` `dev.francescoantonioberardi.stringtheory` with Gradle flavors `prod` and `dev` (`applicationIdSuffix ".dev"`); per-flavor `android/app/src/<flavor>/google-services.json` and `lib/firebase_options_<flavor>.dart` from `flutterfire configure`.
 - Builds use `--flavor X --dart-define=FLAVOR=X` with no default flavor; `main()` stops if `FLAVOR` is missing or (Android) mismatches `appFlavor`.
 - SHA-1/SHA-256 registered per project: debug + upload + Play App Signing for prod; debug for dev.
-- App Check runs monitor-only in prod until verified requests reach ≥ 98% (SM-3), then is enforced on Firestore.
+- App Check runs monitor-only in prod until verified requests reach ≥ 98% (SM-3), then is enforced on Firestore by the post-launch Story 5.10.
 - Extension config lives in the repo (`firebase.json` `extensions` + `extensions/*.env`) and is deployed to both projects.
 - Release: signed AAB built locally → Play internal track → production.
-- Deploy is manual from `main` after green CI, dev then prod: `firebase deploy -P <alias> --only hosting,firestore:rules,firestore:indexes,extensions`.
-- Blaze plan is required by the extension, so billing budget alerts and Firestore PITR/backups are set up before prod opens to the public.
+- Deploy is manual from `main` after green CI, dev then prod: `firebase deploy -P <alias> --only hosting,firestore:rules,firestore:indexes,extensions`. Every story that changes `firestore.rules` or `firestore.indexes.json` also deploys them to dev (`firebase deploy -P dev --only firestore:rules,firestore:indexes`) before it is done, so manual testing on dev runs against the real rules.
+- The Blaze plan is required by the extension, so billing budget alerts and Firestore PITR/backups are set up before prod opens to the public.
 
 **Testing and CI (AD-13, CI convention)**
-- BLoCs: `bloc_test` + `mocktail` fakes of repository interfaces. Repositories: `fake_cloud_firestore`; the first repository story adds one emulator test with the network off proving `increment` and `arrayUnion` are queued and applied. Rules: `@firebase/rules-unit-testing` 6.0.0 (Node ≥ 24.12) in `rules_test/`, one positive and one negative test per AD-5 shape. Engine: `dart test`.
+- BLoCs: `bloc_test` + `mocktail` fakes of repository interfaces. Repositories: `fake_cloud_firestore`; the first repository story adds one emulator test with the network off proving `increment` and `arrayUnion` are queued and applied. These network-off tests need a device or browser, so they run locally against the emulator (Android emulator or Chrome), not in CI, and each run is recorded in the story's verification notes. Rules: `@firebase/rules-unit-testing` 6.0.0 (Node ≥ 24.12) in `rules_test/`, one positive and one negative test per AD-5 shape. Engine: `dart test`.
 - CI jobs: `flutter analyze --fatal-infos`, `dart format`, engine `dart test`, `flutter test`, rules emulator tests, `flutter build web`; all required before merge. Patrol and Serverpod jobs are removed.
 
 **Conventions**
-- Errors: repositories convert `FirebaseException` to typed failures in `lib/domain/failures.dart`; BLoCs map failures to states and never inspect Firebase codes.
+- Errors: repositories convert `FirebaseException` to typed failures in `lib/domain/failures.dart`, with an `unknown` failure for anything unmapped; BLoCs map failures to states and never inspect Firebase codes.
 - Telemetry: snake_case events `sign_in` (with `is_new_user`), `racquet_created`, `session_logged`, `racquet_restrung`; email and display name never appear in telemetry; uid may be the Crashlytics user id.
 - Remote Config: one service with typed getters for exactly the three keys.
 - Offline: Firestore persistence is the only offline mechanism; `offline_session_queue.dart` is removed.
+- Docs: keep `README.md` accurate to what has shipped on `main` (AGENTS.md policy).
 
 **v1 cleanup (bound to NFR-6 and PRD non-goals)**
-- One cleanup story removes `string_theory_server`, `string_theory_client`, `serverpod_*`, `health`, `shared_preferences`, health services and widgets, the offline queue, the dev/judge controls (`SeedSampleBag`, `FastForwardRacquetAge`, Simulate Workout), Health Connect manifest entries, and the Serverpod/Patrol/health CI jobs. Each removal needs explicit user approval, and AGENTS.md (which currently forbids modifying the Serverpod packages and lists them as workspace members) is updated in the same story.
-
-**Open decisions that gate specific stories**
-- Web Analytics consent (EU visitors): banner or Consent Mode must be decided before the web URL is announced publicly. Does not block Android launch.
-- Keyboard shortcuts switch storage: browser storage (new dependency) vs a field on `/users/{uid}` (AD-3 change). Until decided, the switch resets to on each visit.
+- One cleanup story (Story 1.7) removes the Serverpod packages, health integrations, the offline queue, the demo controls and their CI jobs. Each removal needs explicit user approval, and AGENTS.md, which currently forbids modifying the Serverpod packages, is updated in the same story.
 
 **Store compliance operations**
 - Play Console: privacy policy URL → `/privacy.html`; account deletion URL → the hosted web app; Data Safety form per NFR-8.
-- Keep `README.md` accurate to what has shipped on `main` (AGENTS.md policy).
 
-**Still-relevant carryovers from deferred-work.md** (all Serverpod-, health- and guest-specific items become obsolete with the cleanup)
-- Bag grid uses a fixed `mainAxisExtent`, which overflows at large text scales; card height must be flexible (ties to UX 200% text scaling).
-- Racquet Detail stretches to window width on tablet/desktop; constrain its content width.
-- Bag/Sessions/Settings destinations are defined twice (`BagBottomNav`, `BagNavigationRail`); use one shared destinations constant.
-- Raw exception text reaches users; replace with typed failures and friendly messages (covered by the Errors convention).
-- `SessionsPlaceholder` shows stale copy; replace it with the real Sessions screen.
-- A future stringing date counts as 0 days elapsed (100% health); the form should reject future dates.
+**Carryovers from deferred-work.md.** The still-relevant items are acceptance criteria in the stories that close them, tagged `(deferred-work carryover)`: flexible bag cell height (Story 2.3), constrained Racquet Detail width (Story 4.1), one shared destinations definition (Story 1.6), the Sessions placeholder replaced (Story 3.4), and future stringing dates rejected (Story 2.4). Serverpod-, health- and guest-specific items become obsolete with the cleanup.
 
 ### UX Design Requirements
 
 - **UX-DR1 (Theme tokens):** `CourtMidnightTheme` gains `outline` (`#6B767B`, mapped to `colorScheme.outline`), `on-primary` (`#000000`) and a `focus-ring` spec; `bodySmall` moves from `textTertiary` to `textSecondary`; a `data` text style (JetBrains Mono 12/16) joins `metricHero` as a `ThemeExtension` field. All styling stays in `lib/theme/`.
 - **UX-DR2 (Focus ring):** Every focusable element shows a 2px `primary` outline drawn 2px outside the component, following its radius, whenever it has keyboard focus. Hover never replaces focus.
-- **UX-DR3 (Radial Health Gauge):** Full round-capped ring on a 6px `surface-border` track, arc colored by tier, center percentage in `metric-hero` above an uppercase `HEALTH` micro-label. 64px on cards, at least 128px on Racquet Detail; the diameter scales with the text scaler so the center never clips. Value and color tween over 750 ms ease-out from the previous value on data change or app resume; static under reduce motion. Semantics label uses the settled value, e.g. `Wilson Blade 98: string health 82 percent, Optimal, 4 hours played, 12 hours remaining until dead zone`, plus `, waiting to sync` when pending; no glyphs.
+- **UX-DR3 (Radial Health Gauge):** Full round-capped ring on a 6px `surface-border` track, arc colored by tier, center percentage in `metric-hero` above an uppercase `HEALTH` micro-label. 64px on cards, at least 128px on Racquet Detail; the diameter scales with the text scaler so the center never clips. Value and color tween over 750 ms ease-out from the previous value on data change or app resume; static under reduce motion. Semantics label uses the settled value, for example `Wilson Blade 98: string health 82 percent, Optimal, 4 hours played, 12 hours remaining until dead zone`, plus `, waiting to sync` when pending; no glyphs.
 - **UX-DR4 (Tier Label):** `✓ Optimal`, `~ Caution`, `⚠ Restring` in `body-secondary`, tier-colored, always visible on cards and Racquet Detail.
-- **UX-DR5 (Racquet Card):** Gauge and Tier Label on the left; center shows the wrapping (never truncated) name, the string line (brand & model or material, plus `@ {tension} lbs` when set), the usage line `{hours} h played • {days} days`, and the companion line `~{x} lbs tension drop • {n} h left` (tension part omitted without tension; `Restring recommended` at 0 h left). Right side: `[Restrung Today]` (secondary) and `Log` (text button with timer icon) as sibling buttons, never inside the card's tap target. The card body opens Racquet Detail. Critical (< 40%): `health-critical` border on `health-critical-bg`, nothing pulses. Pending: `Waiting to sync` line with cloud-upload icon, no color change. At ≥ 130% text or when content doesn't fit, actions move to a full-width row below. Semantics: one container whose `Open details` label merges name, string line and gauge label, followed by `Log session for {racquet}` and `Restrung today: {racquet}`. Do not copy the mockup's iPhone frame, five tabs, match results, orange 45% card, `Needs Restring!`/`ACTIVE` labels, glowing resting cards, ¾ arc with knob, photos, or missing actions.
+- **UX-DR5 (Racquet Card):**
+  - Layout: Gauge and Tier Label on the left. The center shows the wrapping (never truncated) name, the string line (brand & model or material, plus `@ {tension} lbs` when set), the usage line `{hours} h played • {days} days`, and the companion line `~{x} lbs tension drop • {n} h left` (tension part omitted without tension; `Restring recommended` at 0 h left). The right side holds `[Restrung Today]` (secondary) and `Log` (text button with timer icon) as sibling buttons, never inside the card's tap target. The card body opens Racquet Detail. At ≥ 130% text, or when content doesn't fit, actions move to a full-width row below.
+  - States: Critical (< 40%) uses a `health-critical` border on `health-critical-bg`, and nothing pulses. Pending shows a `Waiting to sync` line with a cloud-upload icon, with no color change.
+  - Semantics: one container whose `Open details` label merges name, string line and gauge label, followed by `Log session for {racquet}` and `Restrung today: {racquet}`.
+  - Exclusions: do not copy the mockup's iPhone frame, five tabs, match results, orange 45% card, `Needs Restring!`/`ACTIVE` labels, glowing resting cards, ¾ arc with knob, photos, or missing actions.
 - **UX-DR6 (Bag Order):** Primary racquet (per `resolvePrimary`) first, then the rest by `createdAt` ascending; the Quick-Log selector uses the same order.
 - **UX-DR7 (Primary Badge):** `Primary` pill (primary text, 1px primary border, transparent) next to the name on Racquet Detail only, shown in place of the Set as Primary action.
-- **UX-DR8 (Bag Sync Summary):** One `body-secondary` line under the bag header, `N changes waiting to sync` / `1 change waiting to sync`, visible only while writes are pending. Not tappable, not a live region.
+- **UX-DR8 (Bag Sync Summary):** One `body-secondary` line under the bag header, `N racquets waiting to sync` / `1 racquet waiting to sync`, visible only while racquet writes are pending. Not tappable, not a live region.
 - **UX-DR9 (Log Session FAB):** Add icon + `Log Session` label, extended on medium/expanded widths and icon-only on compact; fixed while the list scrolls; bottom right of the content area (never in the rail/drawer); hidden on an empty bag; tooltip shows the `L` key on web.
-- **UX-DR10 (Quick-Log Sheet):** Title `Log Session` + Sheet Close Button; four duration chips with `1h` pre-selected and a check icon on the selected chip; wrapping racquet selector (2px primary border + check on the selected item), pre-selected from the opening card or `resolvePrimary`; full-width `Save Session` pinned to the bottom. Closes as soon as the device accepts the write and shows `1.5h logged • Wilson Blade 98 at 67%`. No other fields. Chips read `30 minutes`, `1 hour`, `1 and a half hours`, `2 hours` as a mutually exclusive group.
+- **UX-DR10 (Quick-Log Sheet):** Title `Log Session` + Sheet Close Button; four duration chips with `1h` pre-selected and a check icon on the selected chip; wrapping racquet selector (2px primary border + check on the selected item), pre-selected from the opening card or `resolvePrimary`; full-width `Save Session` pinned to the bottom. The sheet closes as soon as the device accepts the write, and a snackbar shows `1.5h logged • Wilson Blade 98 at 67%`. No other fields. Chips read `30 minutes`, `1 hour`, `1 and a half hours`, `2 hours` as a mutually exclusive group.
 - **UX-DR11 (Restrung Today Sheet):** Prompt `Restrung with the same setup ({brand} @ {tension} lbs)?` with fallbacks `({brand})`, `({material} @ {tension} lbs)`, `({material})`, setup in `data` style. `[Keep Same & Reset]` (primary) resets immediately as `manual_restring`. `[Change Strings]` (secondary) expands pre-filled String material, String brand & model, Stringing date, Tension and Max court hours fields plus reason chips `Routine restring` (default, `manual_restring`), `Strings went dead` (`dead`), `Strings broke` (`broken`), with `Save & Reset` pinned. Success closes the sheet with `Fresh stringbed mounted! Restrung to 100% health.`
 - **UX-DR12 (Sheet Close Button):** Close icon button labeled `Close`, ≥ 48×48, at the right of every sheet header; equivalent to swipe-down, scrim tap and `Esc`.
-- **UX-DR13 (Add Racquet Form):** Sheet on compact/medium, centered dialog on expanded. Fields: Racquet name (required), String material chips (4, required), String brand & model, Stringing date (M3 date picker, defaults to today), Tension (lbs), Max court hours (pre-filled, helper `Suggested for {material}`, cannot be empty, refilled on material change only if untouched). Required labels carry `(required)`. Validation from `schema_bounds` with range-naming messages (`Tension must be between 20 and 80 lbs`); error outline `health-critical` and `text-primary` message after a ⚠ icon; focus moves to the first invalid field on a failed save. `Save Racquet` closes the form; dismissing with input asks `Discard this racquet?`. Opens by itself after sign-in on an empty bag and announces its title; dismissing it returns focus to `[Add Your First Racquet]`. Opened also by `[+ Add Racquet]` and the `N` key.
+- **UX-DR13 (Add Racquet Form):**
+  - Container: sheet on compact/medium, centered dialog on expanded. Opened by `[+ Add Racquet]` and the `N` key, and by itself after sign-in on a server-confirmed empty bag, announcing its title; dismissing it then returns focus to `[Add Your First Racquet]`.
+  - Fields: Racquet name (required), String material chips (4, required), String brand & model, Stringing date (M3 date picker, defaults to today), Tension (lbs), Max court hours (pre-filled, helper `Suggested for {material}`, cannot be empty, refilled on material change only if untouched). Required labels carry `(required)`.
+  - Validation: from `schema_bounds` with range-naming messages (`Tension must be between 20 and 80 lbs`); error outline `health-critical` and a `text-primary` message after a ⚠ icon; focus moves to the first invalid field on a failed save.
+  - Closing: `Save Racquet` closes the form; dismissing with input asks `Discard this racquet?`.
 - **UX-DR14 (Edit Racquet Form):** Same container and styling; Racquet name and Notes only, same validation; `Save` closes; dismissing with edits asks `Discard your changes?`.
-- **UX-DR15 (Racquet Detail):** M3 app bar with tooltipped icon actions Edit, Set as Primary (only when not primary) and Delete Racquet. Single column: gauge + Tier Label, usage and companion lines, current setup and stringing date, `[Restrung Today]`, Restring History Timeline. Content width constrained on wide screens. Detail skeleton while loading. Removed elsewhere: return to bag with `{name} was deleted on another device.` After deleting here: return to bag with focus on the bag header; `resolvePrimary` picks the next default silently. Delete dialog copy: `Delete {name}? Its string history is removed. Sessions you logged stay in your history.`
+- **UX-DR15 (Racquet Detail):**
+  - Layout: M3 app bar with tooltipped icon actions Edit, Set as Primary (only when not primary) and Delete Racquet. Single column: gauge + Tier Label, usage and companion lines, current setup and stringing date, `[Restrung Today]`, Restring History Timeline. Content width constrained on wide screens.
+  - States: detail skeleton while loading. If the racquet is deleted on another device, return to the bag and show `{name} was deleted on another device.` After deleting here, return to the bag with focus on the bag header; `resolvePrimary` picks the next default silently.
+  - Delete dialog copy: `Delete {name}? Its string history is removed. Sessions you logged stay in your history.`
 - **UX-DR16 (Restring History Timeline):** Vertical list, newest first, deduped by job id. Row 1: dates in `data` style; row 2: string (or material), hours and days in `body-secondary`. Dead/broken rows add a critical ⚠ icon and `Went dead` / `Broke`. Empty: `No past string jobs yet.` Semantics read in full words (`August 1 to October 2, Luxilon ALU Power, 19.2 court hours, 62 days`).
-- **UX-DR17 (Session Feed):** M3 rows (date in `data`, duration, racquet name), newest first, loading more on scroll with a loading row at the end, wrapping `FilterChip` racquet row narrowing to one racquet. Sessions are read-only. A session whose racquet is gone shows `Deleted racquet`. States: progress row on first load, `No sessions yet. Log one from your bag.`, and `No sessions with {racquet} yet.` with chips still visible.
+- **UX-DR17 (Session Feed):** M3 rows (date in `data`, duration, racquet name), newest first; more rows load on scroll with a loading row at the end. A wrapping `FilterChip` row narrows the feed to one racquet. Sessions are read-only. A session whose racquet is gone shows `Deleted racquet`. States: progress row on first load, `No sessions yet. Log one from your bag.`, and `No sessions with {racquet} yet.` with chips still visible.
 - **UX-DR18 (Skeleton Card):** Three racquet-card-shaped `surface` blocks with `surface-border` bars under one `Loading your bag` label on a first uncached load; shimmer stops after 5 s and is static under reduce motion.
 - **UX-DR19 (Destructive Confirmation Dialog):** Title, a body listing exactly what is removed, `Cancel` (text button, initial keyboard focus) and a destructive-fill confirm button named for the action (`Delete Racquet`, `Delete Account`, never `OK`). `Esc` and scrim mean Cancel. Reading order: title, body, Cancel, confirm.
-- **UX-DR20 (Settings):** M3 `ListTile`s with `section` group labels: Account (Google name and email), `[Sign Out]`, Keyboard shortcuts switch (web only, on by default, resets each visit until the storage decision), Privacy Policy (opens the browser on Android), `[Delete Account & All Data]` (`text-primary` text, critical delete icon), app version. Sign Out with pending writes asks `{N} changes are still waiting to sync. Sign out anyway?` with `Stay signed in` / `Sign out`; otherwise it signs out at once.
+- **UX-DR20 (Settings):** M3 `ListTile`s with `section` group labels: Account (Google name and email), `[Sign Out]`, Keyboard shortcuts switch (web only, on by default; until the storage decision, the switch resets to On at every visit), Privacy Policy (opens the browser on Android), `[Delete Account & All Data]` (`text-primary` text, critical delete icon), app version. Sign Out with any pending write (including a queued delete) asks `Some changes are still waiting to sync. Sign out anyway?` with `Stay signed in` / `Sign out`; otherwise it signs out at once.
 - **UX-DR21 (Welcome / Sign-In):** Wordmark, `display` headline and one `body` line on string health and arm protection; Google Sign-In button (Google dark variant, not restyled) as the only CTA, showing a `Signing in` progress state that keeps focus. Inline polite messages that persist until the next attempt: `Couldn't sign in. Check your connection and try again.`, `Allow pop-ups for this site to sign in with Google.`, and after deletion `Your account and all data were deleted.` (focus to headline). Cancel returns silently.
 - **UX-DR22 (Account deletion states):** Dialog body `This permanently deletes your account, all racquets, string history and sessions. Google may ask you to confirm your account. This can't be undone.` Re-auth canceled → dialog closes, persistent `Account not deleted.` Different account → `That's a different Google account. Account not deleted.` Failure → inline under the row plus persistent snackbar with `Retry`: `Couldn't delete your account. Check your connection and try again.`; the bag keeps working.
-- **UX-DR23 (Snackbar):** One at a time with a `primary` text action when present. Confirmations auto-dismiss after ~4 s; failures and late rejections persist with `Dismiss` (deletion failure uses `Retry`). Late rejections name the racquet and what was lost, e.g. `Couldn't save your 1.5h session for Wilson Blade 98 — it was deleted on another device.`
+- **UX-DR23 (Snackbar):** One at a time with a `primary` text action when present. Confirmations auto-dismiss after ~4 s; failures and late rejections persist with `Dismiss` (deletion failure uses `Retry`). Late rejections name the racquet and what was lost, for example `Couldn't save your 1.5h session for Wilson Blade 98 — it was deleted on another device.`
 - **UX-DR24 (Responsive navigation and layout):** Destinations Bag, Sessions, Settings from one shared definition. Compact (< 600dp): bottom bar, 1-column bag, bottom sheets. Medium (600–1024dp): `NavigationRail`, 2-column grid, bottom sheets. Expanded (> 1024dp): persistent drawer, 3-column grid, centered dialogs. Grid cells size to content (no fixed extent).
 - **UX-DR25 (Keyboard and hover, web):** `L` opens the Quick-Log Sheet and `N` the Add Racquet Form, only on the bag, with no sheet/dialog open, no text field focused, and the switch on; FAB and `[+ Add Racquet]` tooltips show the keys; `Esc` closes the top sheet or dialog. Hover uses Level 2 (`surface-elevated` + 12% primary glow, 16px blur).
-- **UX-DR26 (Accessibility floor):** WCAG 2.2 AA on Android and Web. Every interactive element ≥ 48×48. Every health color paired with a label; selected chips and selector items show a check. Text scales to 200% without clipping on Racquet Card, gauge, Quick-Log Sheet, Restrung Today Sheet, Destructive Dialog, navigation labels, Snackbar and Timeline; chip rows wrap; sheets scroll with the keyboard inset while keeping the primary action pinned. Reduce motion makes gauge, sheet/dialog transitions, snackbar slide and shimmer static. Screen titles, sheet/dialog titles and settings group labels are headings. No live regions except outcomes announced through snackbars and inline auth messages. Focus returns to the opener when a sheet or dialog closes. Flows 1–4 are verified with TalkBack, NVDA + Chrome and VoiceOver + Safari.
+- **UX-DR26 (Accessibility floor):** WCAG 2.2 AA on Android and Web (verification per NFR-9).
+  - Targets and color: every interactive element ≥ 48×48; every health color paired with a label; the selected chip and the selected racquet show a check.
+  - Text scaling: text scales to 200% without clipping on Racquet Card, gauge, Quick-Log Sheet, Restrung Today Sheet, Destructive Dialog, navigation labels, Snackbar and Timeline; chip rows wrap; sheets scroll with the keyboard inset while keeping the primary action pinned.
+  - Motion: reduce motion makes gauge, sheet/dialog transitions, snackbar slide and shimmer static.
+  - Semantics: screen titles, sheet/dialog titles and settings group labels are headings. No live regions except outcomes announced through snackbars and inline auth messages. Focus returns to the opener when a sheet or dialog closes.
 - **UX-DR27 (Web platform):** Flutter semantics enabled at startup, `lang="en"`, and a page title per route (`My Virtual Bag — String Theory`, `{racquet} — String Theory`). Google sign-in uses a pop-up; tabs share one offline cache.
 - **UX-DR28 (Bag states and live behavior):** No refresh control or pull-to-refresh; no offline banner. Restored session renders the bag straight from cache with no welcome screen. Empty bag shows an illustration and `[Add Your First Racquet]` with the FAB hidden. A racquet that fails to decode is left out silently and reported.
 - **UX-DR29 (Voice and color rules):** Sync copy says what is waiting (`Waiting to sync`), never `Offline` or `Network error`; deletion copy lists exactly what goes. Crimson text only on `background` and `health-critical-bg`; elsewhere error text is `text-primary` after a critical ⚠ icon. Destructive fill only on the confirm button inside the destructive dialog; triggers use `text-primary` text with a critical icon. Any new color pair needs a contrast ratio added to DESIGN.md before shipping.
 
 ### FR Coverage Map
 
-- FR-1: Epic 1 - Google-only sign-in on Android and Web
-- FR-2: Epic 1 - Session persistence and restore on launch
-- FR-3: Epic 1 - Sign-out (basic); Epic 3 - sign-out confirmation while writes are pending
-- FR-4: Epic 5 - Account deletion with re-authentication and the `delete-user-data` purge
-- FR-5: Epic 2 - Add racquet with embedded `currentStringJob`
-- FR-6: Epic 2 - Live Virtual Bag with health gauges
-- FR-7: Epic 4 - Edit name/notes and delete racquet
-- FR-8: Epic 4 - Set as Primary (Epics 2–3 already resolve a default primary via `resolvePrimary`)
-- FR-9: Epic 2 - Engine refactor (4 materials, companion metrics) and `RacquetHealth.of` shown on cards
-- FR-10: Epic 2 - Engine tiers, tier colors and labels in the UI
-- FR-11: Epic 2 - Health recomputed on snapshot and app resume, never stored
-- FR-12: Epic 3 - Quick-Log Sheet (≤ 3 taps)
-- FR-13: Epic 3 - Atomic `logSession` WriteBatch
-- FR-14: Epic 2 - Live racquet streams; Epic 3 - live session feed
-- FR-15: Epic 4 - Restrung Today (Keep Same & Reset, Change Strings)
-- FR-16: Epic 4 - Archive to `pastStringJobs` with end reason
-- FR-17: Epic 4 - Restring History Timeline
-- FR-18: Epic 1 - rules harness and user doc; Epic 2 - racquet create; Epic 3 - `logSession`; Epic 4 - `updateRacquet`, `deleteRacquet`, `setPrimary`, `restring`
-- FR-19: Epic 1 - App Check activated (monitor mode); Epic 5 - enforcement in prod
-- FR-20: Epic 5 - Firebase Hosting with SPA rewrites and `/privacy.html`
-- FR-21: Epic 1 - Crashlytics, Performance, Analytics services and `sign_in`; Epic 2 - `racquet_created`; Epic 3 - `session_logged`; Epic 4 - `racquet_restrung`
-- FR-22: Epic 1 - Remote Config defaults and activation
+- FR-1: Epic 1: Google-only sign-in on Android and Web
+- FR-2: Epic 1: Session persistence and restore on launch
+- FR-3: Epic 1: Sign-out (basic); Epic 3: sign-out confirmation while writes are pending
+- FR-4: Epic 5: Account deletion with re-authentication and the `delete-user-data` purge
+- FR-5: Epic 2: Add racquet with embedded `currentStringJob`
+- FR-6: Epic 2: Live Virtual Bag with health gauges
+- FR-7: Epic 4: Edit name/notes and delete racquet
+- FR-8: Epic 4: Set as Primary (Epics 2–3 already resolve a default primary via `resolvePrimary`)
+- FR-9: Epic 2: Engine refactor (4 materials, companion metrics) and `RacquetHealth.of` shown on cards
+- FR-10: Epic 2: Engine tiers, tier colors and labels in the UI
+- FR-11: Epic 2: Health recomputed on snapshot and app resume, never stored
+- FR-12: Epic 3: Quick-Log Sheet (≤ 3 taps)
+- FR-13: Epic 3: Atomic `logSession` WriteBatch
+- FR-14: Epic 2: Live racquet streams; Epic 3: live session feed
+- FR-15: Epic 4: Restrung Today (Keep Same & Reset, Change Strings)
+- FR-16: Epic 4: Archive to `pastStringJobs` with end reason
+- FR-17: Epic 4: Restring History Timeline
+- FR-18: Epic 1: rules harness and user doc; Epic 2: racquet create; Epic 3: `logSession`; Epic 4: `updateRacquet`, `deleteRacquet`, `setPrimary`, `restring`
+- FR-19: Epic 1: App Check activated (monitor mode); Epic 5: enforcement in prod after launch (Story 5.10)
+- FR-20: Epic 5: Firebase Hosting with SPA rewrites and `/privacy.html`
+- FR-21: Epic 1: Crashlytics, Performance, Analytics services and `sign_in`; Epic 2: `racquet_created`; Epic 3: `session_logged`; Epic 4: `racquet_restrung`
+- FR-22: Epic 1: Remote Config defaults and activation
 
-**NFR coverage:** NFR-1 Epic 2 (gauge); NFR-2 Epics 2–3; NFR-3 Epics 1–2 (bootstrap and cached bag); NFR-4, NFR-5, SM-C1 Epic 3; NFR-6 Epic 1 (cleanup), verified in Epic 5; NFR-7 Epics 1–4 (rules per shape); NFR-8 Epic 5; NFR-9 accessibility ACs on every UI story, screen-reader verification in Epic 5; SM-C2 Epic 2.
-
-## Epic List
-
-### Epic 1: Sign in with Google
-Users sign in with Google on Android or Web, stay signed in across relaunches, and can sign out from Settings. The app runs on Firebase (dev and prod flavors, App Check in monitor mode, telemetry and Remote Config), the theme carries the v1 tokens and focus ring, and Serverpod, health integrations and demo controls are gone. Between the auth story and Epic 2 the bag shows an empty placeholder; this is accepted because there are no production users.
-**FRs covered:** FR-1, FR-2, FR-3 (basic), FR-18 (rules harness, user doc), FR-19 (monitor mode), FR-21 (services, `sign_in`), FR-22
-**Implementation notes:** Story order: Flutter upgrade → theme tokens and focus ring → Firebase projects, flavors and bootstrap → telemetry and Remote Config → auth repository with user-doc rules and the rules CI job → Welcome, auth gate and shell (Patrol step removed) → v1 cleanup (explicit approval, Serverpod CI jobs removed, AGENTS.md updated). The engine refactor opens Epic 2 because `string_theory_server` depends on the engine and cannot be modified before the cleanup.
-
-### Epic 2: Build my live Virtual Bag
-The decay engine moves to exactly four materials with typed companion metrics. Users add racquets and see each one's live health gauge, tier and companion metrics, computed on the device and synced across devices and tabs, with skeleton, empty and cold-start states.
-**FRs covered:** FR-5, FR-6, FR-9, FR-10, FR-11, FR-14, FR-18 (racquet create), FR-21 (`racquet_created`)
-
-### Epic 3: Log sessions in seconds, online or offline
-Users log a session in three taps from the FAB or a card, even with no signal; pending writes show `Waiting to sync`, late rejections are reported, sign-out warns about unsynced changes, and the Sessions screen lists history with racquet filters.
-**FRs covered:** FR-3 (pending-writes confirmation), FR-12, FR-13, FR-14, FR-18 (`logSession`), FR-21 (`session_logged`)
-
-### Epic 4: Manage racquets and the restring lifecycle
-Users open Racquet Detail, edit name and notes, set a primary, delete a racquet, restring with Keep Same or Change Strings (routine, dead or broken), and review the restring history timeline.
-**FRs covered:** FR-7, FR-8, FR-15, FR-16, FR-17, FR-18 (`updateRacquet`, `deleteRacquet`, `setPrimary`, `restring`), FR-21 (`racquet_restrung`)
-
-### Epic 5: Account control, store compliance and public launch
-Users can delete their account and all data from Android or Web, read a public privacy policy, and install the app from Google Play or use it on Firebase Hosting with App Check enforced. Includes web keyboard shortcuts and page titles, the screen-reader verification pass, Play release, and, as the last story after launch, replacing the deletion extension with a self-owned v2 function before 2027-03-31.
-**FRs covered:** FR-4, FR-19 (enforcement), FR-20; NFR-6 (verified), NFR-8, NFR-9 (verification)
-**Implementation notes:** Two open decisions gate stories here: keyboard-shortcut storage, and web Analytics consent before the web URL is announced.
+**NFR coverage:** NFR-1 Epic 2 (gauge); NFR-2 Epics 2–3, measured on dev in Story 2.3; NFR-3 Epics 1–2 (bootstrap and cached bag); NFR-4, NFR-5, SM-C1 Epic 3; NFR-6 Epic 1 (cleanup), verified in Epic 5; NFR-7 Epics 1–4 (rules per shape); NFR-8 Epic 5; NFR-9 accessibility ACs on every UI story, screen-reader verification in Epic 5; SM-C2 Epic 2.
 
 ## Epic 1: Sign in with Google
 
-Users sign in with Google on Android or Web, stay signed in across relaunches, and can sign out from Settings. The app runs on Firebase with dev and prod flavors, App Check in monitor mode, telemetry and Remote Config. The theme carries the v1 tokens and focus ring, and Serverpod, health integrations and demo controls are removed. Until Epic 2 lands, the signed-in Bag shows an empty placeholder, which is acceptable because there are no production users.
+Users sign in with Google on Android or Web, stay signed in across relaunches, and can sign out from Settings. The app runs on Firebase with dev and prod flavors, App Check in monitor mode, telemetry and Remote Config. The theme carries the v1 tokens and focus ring, and Serverpod, health integrations and demo controls are removed. Until Epic 2 lands, the signed-in Bag shows an empty placeholder, which is acceptable because there are no production users. The engine refactor opens Epic 2, not this epic, because `string_theory_server` depends on the engine and cannot be modified before the cleanup in Story 1.7.
 
 ### Story 1.1: Upgrade Flutter and Dart to the latest stable SDK
 
@@ -244,7 +241,8 @@ So that the FlutterFire 7.x packages added in later stories resolve on a support
 
 **Given** the workspace pins Flutter 3.44.4 / Dart ^3.12.2
 **When** the SDK constraints in every workspace `pubspec.yaml` and the `flutter-version` in `analyze.yml`, `format.yml` and `tests.yml` are moved to the latest stable release (3.47.7 / 3.13.5 at authoring, or newer if released)
-**Then** `flutter pub get` resolves the whole workspace with no dependency added, upgraded or removed
+**Then** `flutter pub get` resolves the whole workspace with no dependency added, upgraded or removed, and `pubspec.lock` changes only in its `sdks` section
+**And** if resolution needs any other dependency change (for example a legacy `serverpod_*`, `health` or `patrol_finders` package caps the SDK), work stops and the user is asked to approve the change or to move this story after Story 1.7
 **And** `flutter analyze --fatal-infos`, `dart format --set-exit-if-changed .`, the engine's `dart test` and `flutter test` all pass locally and in CI
 **And** any new lints or deprecations the SDK raises are fixed in this story, not suppressed
 **And** AGENTS.md and README.md name the new SDK versions
@@ -300,6 +298,7 @@ So that development never touches real user data and the app cannot start agains
 **Given** a valid flavor
 **When** `main()` runs inside `runZonedGuarded`
 **Then** it calls `Firebase.initializeApp` with that flavor's options, then `FirebaseAppCheck.instance.activate(providerAndroid: AndroidPlayIntegrityProvider() | AndroidDebugProvider(), providerWeb: ReCaptchaEnterpriseProvider(siteKey) | WebDebugProvider())`, with prod providers in prod and debug providers in dev (AD-11 steps 1–2, FR-19 monitor mode)
+**And** if App Check activation throws (for example reCAPTCHA is blocked), the error is reported and startup continues
 **And** it then sets `FirebaseFirestore.instance.settings = Settings(persistenceEnabled: true, webPersistentTabManager: WebPersistentMultipleTabManager())` before any other Firestore use (AD-11 step 4)
 **And** `flutter run --flavor dev --dart-define=FLAVOR=dev` starts on Android and Web, and README.md documents the run and build commands for both flavors
 
@@ -319,6 +318,7 @@ So that I can see problems after launch and adjust monetization later without a 
 **When** `main()` bootstraps on Android
 **Then** `FlutterError.onError` and `PlatformDispatcher.onError` forward to Crashlytics, right after App Check activation (AD-11 step 3)
 **And** on Web no Crashlytics hooks are installed, because Crashlytics has no web support
+**And** on Web, Analytics collection is disabled (`setAnalyticsCollectionEnabled(false)`) until Story 5.5 records the consent decision
 
 **Given** the AD-1 layering
 **When** the telemetry seams are added
@@ -329,7 +329,7 @@ So that I can see problems after launch and adjust monetization later without a 
 **Given** the Remote Config service
 **When** the app starts
 **Then** `setDefaults` sets exactly `show_ads: false`, `pro_paywall_trigger: false`, `free_racquet_limit: 99`, `activate()` runs, and `fetch()` runs in the background without blocking the first frame (AD-11 step 5, FR-22)
-**And** the service exposes one typed getter per key, and nothing in the app changes behaviour based on them
+**And** the service exposes one typed getter per key, and nothing in the app changes behavior based on them
 **And** a unit test proves the first frame is not delayed by a slow fetch
 
 **Given** Performance Monitoring is added
@@ -349,18 +349,22 @@ So that my data lives under my account and nobody else can read or write it.
 **Then** on Android it calls `GoogleSignIn.instance.initialize(serverClientId: <flavor's web client id>)` exactly once, then `authenticate()`, builds `GoogleAuthProvider.credential` from the `idToken`, and calls `signInWithCredential` (AD-9)
 **And** on Web it calls `signInWithPopup(GoogleAuthProvider())`
 **And** sign-out calls `FirebaseAuth.signOut()` and, on Android, `GoogleSignIn.instance.signOut()`
-**And** it exposes the current user as a stream, plus typed failures for canceled, popup-blocked and network errors (no Firebase error codes leave `lib/data/`)
+**And** it exposes the current user as a stream, plus a sealed `AuthFailure` with `canceled`, `popupBlocked`, `network` and `unknown` (a null `idToken`, a SHA mismatch and any other unmapped error become `unknown`), and no Firebase error codes leave `lib/data/`
 
 **Given** an auth state with a user (fresh sign-in or restored session)
 **When** `ensureUserDoc()` runs
-**Then** it creates `/users/{uid}` with `email`, optional `displayName` and server `createdAt` if the document doesn't exist, and otherwise updates only `email` and `displayName` (AD-9, AD-3)
-**And** a repository test with `fake_cloud_firestore` covers create, update and the immutable `createdAt`, using the approved workspace `dependency_overrides: equatable: ^3.0.0`
+**Then** it reads `/users/{uid}` from the server when online and creates it with `email`, optional `displayName` and server `createdAt` only when the server reports it absent; otherwise it updates only `email` and `displayName` (AD-9, AD-3)
+**And** on a restored session it first calls `currentUser.reload()` when online, and if the user no longer exists it signs out instead of writing
+**And** offline, it updates from the cached document if there is one and otherwise defers until the connection returns, so a cache miss never triggers a create
+**And** a repository test with `fake_cloud_firestore` covers create, update, the deferred offline path and the immutable `createdAt`, using the approved workspace `dependency_overrides: equatable: ^3.0.0`
+**And** AD-9 in the architecture spine is updated to match (non-blocking restored sessions, server-confirmed create) in a `docs(architecture): ...` commit
 
 **Given** `firestore.rules` and `firestore.indexes.json` at the repo root
 **When** the user-document rules are written (via the `firestore-rules-author` subagent or the rules skills, per AGENTS.md)
-**Then** `/users/{uid}` allows read only to the owner, create with the AD-3 fields and ≤ 10 keys, update of only `email`/`displayName`, and every other path is denied (FR-18)
-**And** `rules_test/` (npm, `@firebase/rules-unit-testing` 6.0.0, Node ≥ 24.12) has at least one positive and one negative test per user-document operation, including a different uid and an attempt to change `createdAt`
+**Then** `/users/{uid}` allows read only to the owner, create with the AD-3 fields and ≤ 10 keys only when `request.auth.token.auth_time` is within 5 minutes of `request.time`, update of only `email`/`displayName`, and every other path is denied (FR-18)
+**And** `rules_test/` (npm, `@firebase/rules-unit-testing` 6.0.0, Node ≥ 24.12) has at least one positive and one negative test per user-document operation, including a different uid, an attempt to change `createdAt`, and a create with a stale `auth_time`
 **And** a CI job runs the rules tests against the Firestore emulator and is required before merge
+**And** the rules and indexes are deployed to the dev project (`firebase deploy -P dev --only firestore:rules,firestore:indexes`), and README.md documents the command (Deploy convention)
 
 ### Story 1.6: Welcome screen, auth gate, signed-in shell and sign-out
 
@@ -383,21 +387,23 @@ So that my account is the only way into my bag.
 
 **Given** sign-in succeeds or a session is restored on launch
 **When** the auth gate receives the user
-**Then** `ensureUserDoc()` completes before the signed-in shell opens (AD-9), and a restored session goes straight to the shell with no Welcome screen (FR-2)
+**Then** after a fresh sign-in, the shell opens once `ensureUserDoc()` completes; a restored session goes straight to the shell with no Welcome screen and runs `ensureUserDoc()` in the background, including when the device is offline (AD-9, FR-2, NFR-3)
+**And** a widget test proves an offline restored launch opens the shell without waiting for the server
 **And** an `AuthBloc` emits signed-in / signed-out states; data BLoCs added later are created under the signed-in subtree
 **And** `sign_in` is sent through `AnalyticsSink` with `is_new_user` on a fresh sign-in only
 
 **Given** the signed-in shell
 **When** it renders
 **Then** the destinations Bag, Sessions and Settings come from one shared definition, shown as a bottom bar under 600dp, a `NavigationRail` from 600 to 1024dp, and a persistent drawer above 1024dp (UX-DR24)
-**And** Bag and Sessions show a neutral empty placeholder with no internal planning vocabulary, which Epics 2 and 3 replace
+**And** Bag and Sessions show a neutral empty placeholder that mentions no epics, stories or other internal planning terms, which Epics 2 and 3 replace
+**And** the destinations replace the duplicated `BagBottomNav` / `BagNavigationRail` definitions (deferred-work carryover)
 
 **Given** Settings
 **When** it renders
 **Then** an Account group shows the Google name and email, and a `[Sign Out]` row signs the user out at once, clears in-memory BLoC state and returns to Welcome (FR-3)
-**And** `clearPersistence()` is never called
+**And** sign-out keeps the local cache and never calls `clearPersistence()`, so queued writes survive; `/privacy.html` (Story 5.3) says that data stays cached on the device after sign-out until the next sign-in syncs it
 
-**Given** this story replaces the guest and email authentication
+**Given** this story replaces guest mode and email authentication
 **When** it merges
 **Then** the old `AuthService`, the email sign-in screen and their tests are removed from the app's startup path, and the Patrol E2E step is removed from `tests.yml`, so CI stays green
 **And** the Welcome and Settings screens meet the accessibility floor: 48dp targets, headings, semantic labels and 200% text with no clipping (UX-DR26)
@@ -414,7 +420,7 @@ So that I can trust what it accesses and the store review passes without a Healt
 **Given** the user has explicitly approved each removal listed below (AGENTS.md dependency policy)
 **When** the cleanup is applied
 **Then** `string_theory_server/` and `string_theory_client/` are deleted and removed from the workspace `pubspec.yaml`
-**And** `serverpod_flutter`, `serverpod_auth_idp_flutter`, `string_theory_client`, `health`, `shared_preferences`, `patrol_finders` and the `flutter_secure_storage` override are removed from `string_theory_flutter/pubspec.yaml`
+**And** `serverpod_flutter`, `serverpod_auth_idp_flutter`, `string_theory_client`, `health`, `shared_preferences`, `patrol_finders` and the `flutter_secure_storage` override are removed from `string_theory_flutter/pubspec.yaml`, except that `shared_preferences` stays if the keyboard-shortcut storage decision (Overview) has chosen browser storage
 **And** `lib/client.dart`, `lib/services/health/`, `lib/services/offline_session_queue.dart`, `lib/widgets/health/`, `lib/widgets/workout_assignment/`, `workout_assignment_sheet.dart`, `simulate_workout_badge.dart`, the Serverpod-backed `BagBloc` and every `SeedSampleBag`, `FastForwardRacquetAge` and Simulate Workout path are deleted with their tests
 **And** every other file in `lib/` and `test/` that imports `string_theory_client`, `serverpod_*`, `health` or `shared_preferences` (today including the old racquet card, bag list, Racquet Detail, restring sheet, timeline tile, Sessions screen, session card, Add Racquet modal and racquet presets) is either deleted with its tests or stripped of those types; Epics 2–4 rebuild those surfaces on the domain models, reusing pure widgets such as the radial gauge where they carry no Serverpod types
 **And** the signed-in shell from Story 1.6 still builds and runs with the Bag and Sessions placeholders
@@ -454,15 +460,16 @@ So that every screen agrees on how worn my strings are.
 
 **Given** hours played, max hours, strung date, material and a required `now`
 **When** the engine computes health
-**Then** `healthScore` = max(0, round(100 − (hours / maxHours × 70 + daysElapsed / shelfLife × 30))) (FR-9)
-**And** `tier` returns optimal for ≥ 70, degraded for 40–69 and critical for < 40 (FR-10)
+**Then** `healthScore` = max(0, round(100 − (hours / maxHours × 70 + daysElapsed / shelfLife × 30))) (FR-9), where `daysElapsed` = max(0, (now − strungAt) in minutes / 1440)
+**And** `maxHours` must be > 0; the engine rejects anything else with an `ArgumentError` instead of dividing by zero
+**And** `tier` is derived from the rounded score and returns optimal for ≥ 70, degraded for 40–69 and critical for < 40 (FR-10)
 **And** `tensionLossLbs` = tension × (100 − score) / 100 × 0.25 as a `double`, and is absent when no tension is set
 **And** `remainingHours` = max(0, round((score − 40) / 70 × maxHours))
 **And** a strung date later than `now` counts as 0 days elapsed
 
 **Given** the engine's `dart test` suite
 **When** it runs
-**Then** it covers every material's constants, the tier boundaries 39/40/69/70, zero and over-limit hours, future dates, and at least these fixtures: monofilament, 0 h, 21 days → 92; monofilament, 19 h of 20, 70 days → 6
+**Then** it covers every material's constants, the tier boundaries 39/40/69/70 including unrounded scores of 69.5 and 39.5, zero and over-limit hours, `maxHours` of 0, future dates, a span crossing a DST change, and at least these fixtures: monofilament, 0 h, 21 days → 92; monofilament, 19 h of 20, 70 days → 6
 **And** the Flutter app compiles against the new API, with call sites in `lib/` updated and no formatting of numbers left inside the engine
 
 ### Story 2.2: Racquet domain model and live racquet stream
@@ -481,7 +488,8 @@ So that my bag is always current on every device and opens instantly from cache.
 **Given** a racquet document
 **When** the `lib/data/` mapper decodes it
 **Then** absent optional fields map to null, numbers decode with `(v as num).toDouble()`, and a pending server timestamp (`null` in a local snapshot) decodes to `clock.now()` without failing
-**And** an unknown material or missing required field produces a typed decode failure reported through `ErrorReporter`, and that racquet is left out of the stream (AD-4)
+**And** an unknown material or missing required field in the racquet or its `currentStringJob` produces a typed decode failure reported through `ErrorReporter`, and that racquet is left out of the stream (AD-4)
+**And** each `pastStringJobs` entry decodes on its own: a bad entry is skipped and reported, and the racquet stays in the stream
 **And** `isPendingSync` reflects the snapshot's `hasPendingWrites`
 **And** `pastStringJobs` duplicates are dropped by `id` (AD-6)
 
@@ -489,7 +497,7 @@ So that my bag is always current on every device and opens instantly from cache.
 **When** `watchRacquets()` and `watchRacquet(id)` are subscribed
 **Then** the bag costs exactly one query on `/users/{uid}/racquets` with no joined reads (SM-C2)
 **And** each stream completes without error when the auth uid changes or becomes null, and permission-denied errors after that change are dropped, not reported (AD-10)
-**And** repository tests with `fake_cloud_firestore` cover decode, pending timestamps, unknown material and stream completion
+**And** repository tests with `fake_cloud_firestore` cover decode, pending timestamps, unknown material, a bad past job and stream completion
 
 **Given** `lib/domain/`
 **When** health and primary are derived
@@ -513,7 +521,7 @@ So that I know at a glance which strings are fresh and which need restringing.
 **When** the Bag destination opens
 **Then** a `BagBloc` under the signed-in subtree subscribes to `watchRacquets()` and replaces the Epic 1 placeholder
 **And** racquets are ordered primary first (per `resolvePrimary`), then by `createdAt` ascending (UX-DR6)
-**And** the bag uses 1, 2 or 3 columns below 600dp, 600–1024dp and above 1024dp, with cells sized to their content rather than a fixed extent (UX-DR24)
+**And** the bag uses 1, 2, or 3 columns below 600dp, from 600 to 1024dp, and above 1024dp, respectively, with cells sized to their content rather than a fixed `mainAxisExtent` (UX-DR24, deferred-work carryover)
 
 **Given** a racquet
 **When** its card renders
@@ -527,7 +535,7 @@ So that I know at a glance which strings are fresh and which need restringing.
 **When** the score changes from a snapshot or an app resume
 **Then** value and color tween from the previous value over 750 ms ease-out at 60 fps, and change without animation when reduce motion is on (NFR-1)
 **And** the gauge is 64px on cards and scales with the text scaler so its center never clips
-**And** its semantics label uses the settled value, e.g. `Wilson Blade 98: string health 82 percent, Optimal, 4 hours played, 12 hours remaining until dead zone`, plus `, waiting to sync` when pending, with no glyphs
+**And** its semantics label uses the settled value, for example `Wilson Blade 98: string health 82 percent, Optimal, 4 hours played, 12 hours remaining until dead zone`, plus `, waiting to sync` when pending, with no glyphs
 
 **Given** the app shell
 **When** the app returns to the foreground
@@ -536,12 +544,14 @@ So that I know at a glance which strings are fresh and which need restringing.
 **Given** loading and empty states
 **When** the bag has nothing cached on first load
 **Then** three Skeleton Cards appear under one `Loading your bag` label, the shimmer stops after 5 s and is static under reduce motion (UX-DR18)
+**And** an empty snapshot that comes from the cache (`metadata.isFromCache`) counts as loading, not as an empty bag, so a new device never shows the empty state to a user who has racquets
 **And** a restored session with cached data renders the bag straight from cache in under 1.5 s from cold start (NFR-3)
 **And** an empty bag shows the empty-bag illustration and a short line; there is no refresh control, pull-to-refresh or offline banner (UX-DR28)
 
 **Given** two signed-in devices or browser tabs
 **When** a racquet document changes on one
-**Then** the other updates without manual refresh, and web tabs share one offline cache (FR-14, NFR-2)
+**Then** the other updates without manual refresh, and web tabs share one offline cache (FR-14)
+**And** a two-client check on the dev project measures the time from commit to UI update and records it against the 500 ms target in the story's verification notes (NFR-2)
 **And** cards meet the accessibility floor: one semantics container per card, 200% text with no clipping, and every health color paired with its label (UX-DR26)
 
 ### Story 2.4: Add a racquet with smart string defaults
@@ -554,35 +564,38 @@ So that my bag starts tracking string health right away.
 
 **Given** `RacquetRepository.addRacquet`
 **When** a racquet is added
-**Then** it `set`s a new document with the AD-3 fields, server `createdAt` and `updatedAt`, `isPrimary: true` only when the bag is empty, and a `currentStringJob` whose `id` comes from `collection(...).doc().id` with `hoursPlayed: 0` and `endedAt`/`endReason` null (AD-5, AD-15)
+**Then** it `set`s a new document with the AD-3 fields, server `createdAt` and `updatedAt`, `isPrimary: true` only when the bag is server-confirmed empty, `pastStringJobs: []`, and a `currentStringJob` whose `id` comes from `collection(...).doc().id` with `hoursPlayed: 0` and `endedAt`/`endReason` null (AD-5, AD-15)
 **And** the method completes when the write is accepted into the local cache, without awaiting the server; a late server rejection is sent to `ErrorReporter` (AD-14)
 **And** a test proves a racquet added while offline appears in `watchRacquets()` at once with `isPendingSync` true
 
 **Given** `firestore.rules`
 **When** the racquet create rule is added
-**Then** it validates the full AD-3 racquet and StringJob shape (types, ≤ 15 racquet keys, ≤ 10 StringJob keys, string lengths, tension 20–80, hours 0–1000, maxHours > 0 and ≤ 200, `updatedAt == request.time`) and only while `/users/{uid}` exists (FR-18, NFR-7)
-**And** `rules_test/` has positive and negative tests for create, including too many keys, an out-of-range tension, a wrong owner and a missing user document
+**Then** it validates the full AD-3 racquet and StringJob shape (types, ≤ 15 racquet keys, ≤ 10 StringJob keys, string lengths, name 1–100 after trimming, tension 20–80, hours 0–1000, maxHours > 0 and ≤ 200, `pastStringJobs` an empty list, `updatedAt == request.time`) and only while `/users/{uid}` exists (FR-18, NFR-7)
+**And** `rules_test/` has positive and negative tests for create, including too many keys, an out-of-range tension, a missing `pastStringJobs`, a wrong owner and a missing user document
+**And** the rules are deployed to dev (Deploy convention)
 
 **Given** the bag
 **When** the user taps `[+ Add Racquet]` or the empty-state `[Add Your First Racquet]`
-**Then** the Add Racquet Form opens as a bottom sheet below 1024dp and as a centered dialog above (UX-DR13)
-**And** it has Racquet name (required), String material chips (four, required), String brand & model (one field), Stringing date (M3 date picker, defaults to today, future dates rejected), Tension (lbs) and Max court hours, with `(required)` in the required labels
+**Then** the Add Racquet Form opens as a bottom sheet below 1024dp and as a centered dialog above 1024dp (UX-DR13)
+**And** it has Racquet name (required, trimmed before validation), String material chips (four, required), String brand & model (one field), Stringing date (M3 date picker, defaults to today), Tension (lbs) and Max court hours, with `(required)` in the required labels
+**And** the stringing date is valid when the picked local date is on or before today's local date, so today is valid at any time of day and future dates are rejected (deferred-work carryover); widget tests pick today at 09:00 and at 15:00
 
 **Given** the user picks a material
 **When** Max court hours has not been edited
-**Then** it fills with that material's `defaultMaxHours` and shows `Suggested for {material}`; once edited, changing material leaves it alone, and it can never be left empty (AD-15)
+**Then** it fills with that material's `defaultMaxHours` and shows `Suggested for {material}`; once the user edits it, changing material leaves it alone; the field can never be left empty (AD-15)
 
 **Given** invalid input
 **When** the user taps `Save Racquet`
-**Then** each invalid field shows a range-naming message from `schema_bounds` (e.g. `Tension must be between 20 and 80 lbs`) with a `health-critical` outline and a ⚠ icon, and focus moves to the first invalid field
+**Then** each invalid field shows a range-naming message from `schema_bounds` (for example `Tension must be between 20 and 80 lbs`) with a `health-critical` outline and a ⚠ icon, and focus moves to the first invalid field
 **And** a picked stringing date is stored as that local date at 12:00 local time converted to UTC (AD-15)
 
 **Given** valid input
 **When** the user saves
 **Then** the form closes, the new card appears in the bag with its gauge animating to the computed score, and `racquet_created` is sent through `AnalyticsSink` (FR-5, FR-21)
+**And** a second tap on `Save Racquet` while the first save is in progress is ignored (AD-15)
 **And** dismissing a form that has input asks `Discard this racquet?`
 
-**Given** a first sign-in with an empty bag
+**Given** a first sign-in with a server-confirmed empty bag
 **When** the bag opens
 **Then** the Add Racquet Form opens by itself and announces its title, and dismissing it returns focus to `[Add Your First Racquet]` (UX-DR13)
 **And** the form meets the accessibility floor: 48dp targets, chips announced as a mutually exclusive group with a check icon on the selected one, 200% text, and the keyboard inset scrolls the sheet with `Save Racquet` pinned (UX-DR26)
@@ -606,25 +619,27 @@ So that my hours are never half-saved and sync by themselves when I'm back onlin
 **Given** `SessionRepository.logSession(Racquet racquet, double hours)`
 **When** it is called
 **Then** one `WriteBatch` `set`s `/users/{uid}/sessions/{autoId}` with `racquetId`, `stringJobId = racquet.currentStringJob.id`, `durationHours`, `playedAt = clock.now()` and server `createdAt`, and `update`s the racquet with `currentStringJob.hoursPlayed: FieldValue.increment(hours)` and server `updatedAt`, using only `racquet_fields.dart` paths (FR-13, AD-5, AD-16)
-**And** no `runTransaction` is used, `hours` is checked against `schema_bounds` (0.1–24) before writing, and the method completes when the batch is accepted into the local cache (AD-14)
+**And** no `runTransaction` is used, `hours` is checked against `schema_bounds` (0.1–24) and `hoursPlayed + hours` against the 1000-hour bound before writing, returning a typed failure instead of writing when either fails, and the method completes when the batch is accepted into the local cache (AD-14)
 **And** a late server rejection is sent to `ErrorReporter`, except permission-denied after sign-out and `unavailable`
 
 **Given** `firestore.rules`
 **When** the session and logSession rules are added
 **Then** sessions are create-only with the full AD-3 validation (≤ 12 keys, `durationHours` 0.1–24, string bounds, owner only, user document must exist), and owner-only read
-**And** a racquet update matches the logSession shape only when `affectedKeys()` is exactly {`currentStringJob`, `updatedAt`}, only `hoursPlayed` changed inside the job, and it increased (AD-5)
-**And** `rules_test/` has a positive and a negative test for the session create and for the logSession racquet update, including a decreased `hoursPlayed`, a changed `material`, and a batch against a racquet that no longer exists (rejected as a whole, AD-6)
+**And** a racquet update matches the logSession shape only when `affectedKeys()` is exactly {`currentStringJob`, `updatedAt`}, only `hoursPlayed` changed inside the job, and it increased by 0.1–24 (AD-5)
+**And** `rules_test/` has a positive and a negative test for the session create and for the logSession racquet update, including a decreased `hoursPlayed`, an increase above 24, a changed `material`, and a batch against a racquet that no longer exists (rejected as a whole, AD-6)
+**And** the rules are deployed to dev (Deploy convention)
 
 **Given** the Firestore emulator with the network disabled
 **When** a session is logged and the network is re-enabled
 **Then** an emulator test proves the batch is queued locally, the racquet shows the new hours immediately, and after reconnecting the server holds both the session and the incremented hours (AD-13, NFR-4, NFR-5)
+**And** the test runs locally on an Android emulator or Chrome, and the run is recorded in the story's verification notes (Testing convention)
 **And** a repository test with `fake_cloud_firestore` covers the batch contents and the bounds check
 
 ### Story 3.2: Three-tap Quick-Log Sheet
 
 As a player walking off court,
 I want to log how long I played and on which racquet in three taps,
-So that recording a session takes less than ten seconds.
+So that recording a session takes less than 10 seconds.
 
 **Acceptance Criteria:**
 
@@ -637,15 +652,17 @@ So that recording a session takes less than ten seconds.
 **When** the Quick-Log Sheet opens
 **Then** it shows the title `Log Session`, a Sheet Close Button, four duration chips (`30m`, `1h`, `1.5h`, `2h`) with `1h` pre-selected, and a wrapping racquet selector in bag order (UX-DR10, UX-DR12)
 **And** the racquet is pre-selected from the card that opened it, or otherwise from `resolvePrimary`
-**And** selected chips and selector items show a check icon and a 2px `primary` border on the selected racquet; chips read `30 minutes`, `1 hour`, `1 and a half hours`, `2 hours` as a mutually exclusive group
+**And** the selected chip and the selected racquet show a check icon, and the selected racquet also has a 2px `primary` border; chips read `30 minutes`, `1 hour`, `1 and a half hours`, `2 hours` as a mutually exclusive group
 **And** there are no other fields (SM-C1)
+**And** if the selected racquet disappears from the bag while the sheet is open, the selection moves to `resolvePrimary`, and the sheet closes if the bag is now empty
 
 **Given** the user taps `Save Session`
 **When** the device accepts the write
-**Then** a `session_log` BLoC calls `logSession`, the sheet closes, focus returns to the control that opened it, and a snackbar reads e.g. `1.5h logged • Wilson Blade 98 at 67%` and auto-dismisses after about 4 s (FR-12, UX-DR23)
+**Then** a `session_log` BLoC calls `logSession`, the sheet closes, focus returns to the control that opened it, and a snackbar reads, for example, `1.5h logged • Wilson Blade 98 at 67%` and auto-dismisses after about 4 s (FR-12, UX-DR23)
 **And** `session_logged` is sent through `AnalyticsSink` on local acceptance
 **And** the card's gauge animates to the new score
 **And** a widget test proves the default path (open, keep `1h` and the pre-selected racquet, save) takes at most 3 taps
+**And** a second tap on `Save Session` while the first is in progress is ignored, so the session is logged once
 
 **Given** the sheet is open
 **When** the user swipes down, taps the scrim, taps Close or presses `Esc`
@@ -662,20 +679,21 @@ So that I never lose a session or a racquet without knowing.
 
 **Given** one or more racquet documents with pending writes (every session batch, add and edit marks its racquet as pending)
 **When** the bag renders
-**Then** a Bag Sync Summary line under the header reads `N changes waiting to sync`, where N is the number of racquets with pending writes, derived from the existing bag stream with no extra query (SM-C2) (`1 change waiting to sync` for one) and disappears when nothing is pending (UX-DR8)
+**Then** a Bag Sync Summary line under the header reads `N racquets waiting to sync` (`1 racquet waiting to sync` for one), where N is the number of racquets with pending writes, derived from the existing bag stream with no extra query (SM-C2). The line disappears when nothing is pending (UX-DR8)
+**And** EXPERIENCE.md's sync copy is updated to match in the same PR
 **And** it is not tappable and not a live region, and no banner, color change or `Offline` wording is used (UX-DR29)
 
 **Given** a write the device accepted is later rejected by the server
 **When** the rejection arrives
 **Then** the repository publishes a typed `MutationFailure` on `RacquetRepository.failures` (`Stream<MutationFailure>`) naming the racquet and what was lost, and reports it to `ErrorReporter` (AD-14)
-**And** the bag shows a persistent snackbar with `Dismiss`, e.g. `Couldn't save your 1.5h session for Wilson Blade 98 — it was deleted on another device.`, while the card shows the server state (UX-DR23)
+**And** the bag shows a persistent snackbar with `Dismiss`, for example `Couldn't save your 1.5h session for Wilson Blade 98 — it was deleted on another device.`, while the card shows the server state (UX-DR23)
 **And** permission-denied after sign-out and `unavailable` are neither published nor reported
-**And** the same mechanism covers `addRacquet` and `logSession` rejections, and BLoC tests use a fake failures stream
+**And** the same mechanism covers every mutation: this story wires `addRacquet` and `logSession`, and each Epic 4 story adds its own failure copy; BLoC tests use a fake failures stream
 
-**Given** pending writes exist
-**When** the user taps `[Sign Out]` in Settings
-**Then** a dialog asks `{N} changes are still waiting to sync. Sign out anyway?` with `Stay signed in` and `Sign out` (FR-3, UX-DR20)
-**And** with no pending writes, sign-out happens at once as in Story 1.6
+**Given** the user taps `[Sign Out]` in Settings
+**When** `waitForPendingWrites()` does not complete within 500 ms, which means some write is still queued (including a racquet delete that has left the bag stream)
+**Then** a dialog asks `Some changes are still waiting to sync. Sign out anyway?` with `Stay signed in` and `Sign out` (FR-3, UX-DR20)
+**And** when it completes in time, sign-out happens at once as in Story 1.6
 **And** signing out never calls `clearPersistence()`, so queued writes survive and sync on the next sign-in
 
 ### Story 3.4: Session history with racquet filters
@@ -686,15 +704,16 @@ So that I can see how much I've played on each frame.
 
 **Acceptance Criteria:**
 
-**Given** `SessionRepository.watchSessions()`
+**Given** `SessionRepository.watchSessions({String? racquetId, required int limit})`
 **When** the Sessions destination opens
-**Then** a `sessions` BLoC under the signed-in subtree shows sessions newest first by `playedAt`, live as new sessions are logged on any device (FR-14), replacing the Epic 1 placeholder
-**And** older sessions load page by page as the user scrolls, with a loading row at the end; the page size and any composite index for the racquet filter are chosen in this story and committed to `firestore.indexes.json`
+**Then** a `sessions` BLoC under the signed-in subtree shows sessions newest first by `playedAt`, live as new sessions are logged on any device (FR-14), replacing the Epic 1 `SessionsPlaceholder` (deferred-work carryover)
+**And** older sessions load page by page as the user scrolls, by raising `limit`, with a loading row at the end; the page size and the composite index for the racquet filter are chosen in this story, committed to `firestore.indexes.json` and deployed to dev (Deploy convention)
+**And** AD-1's `SessionRepository` signature in the architecture spine is updated in the same PR
 
 **Given** sessions exist
 **When** each row renders
 **Then** it shows the date in the `data` style, the duration and the racquet name (UX-DR17)
-**And** a session whose racquet no longer exists shows `Deleted racquet`
+**And** a session whose racquet no longer exists shows `Deleted racquet`, decided only after the bag stream has emitted from the server; until then the row shows a neutral placeholder
 **And** sessions cannot be edited or deleted
 
 **Given** the racquet filter
@@ -705,7 +724,7 @@ So that I can see how much I've played on each frame.
 **Given** loading and empty states
 **When** the first page is loading
 **Then** a progress row appears
-**And** with no sessions at all it shows `No sessions yet. Log one from your bag.`
+**And** with no sessions at all, the screen shows `No sessions yet. Log one from your bag.`
 **And** the screen meets the accessibility floor: headings, 48dp chips with selected state announced, and 200% text with no clipping (UX-DR26)
 
 ## Epic 4: Manage racquets and the restring lifecycle
@@ -728,21 +747,29 @@ So that I can understand how this frame's setups have lasted.
 **Given** Racquet Detail
 **When** it renders from `watchRacquet(id)`
 **Then** a single column shows the gauge (at least 128px) with its Tier Label, the usage and companion lines, the current setup and stringing date, then the Restring History Timeline (UX-DR15)
-**And** content width is constrained on wide screens instead of stretching to the window
-**And** a detail-shaped skeleton shows until the racquet arrives
+**And** content width is constrained on wide screens instead of stretching to the window (deferred-work carryover)
+**And** a detail-shaped skeleton shows until the racquet arrives; a missing document that comes from the cache keeps the skeleton
 **And** health recomputes on every snapshot and on `AppResumed` (AD-7)
 
 **Given** `pastStringJobs`
 **When** the timeline renders
-**Then** entries are newest first and deduplicated by job id (AD-6), each reading e.g. `Aug 1 – Oct 2 • Luxilon ALU Power • 19.2 court hours • 62 days`, with the material in place of a missing brand & model and the archived `hoursPlayed` as the hours (FR-17, UX-DR16)
+**Then** entries are newest first and deduplicated by job id (AD-6), each reading, for example, `Aug 1 – Oct 2 • Luxilon ALU Power • 19.2 court hours • 62 days`, with the material in place of a missing brand & model and the archived `hoursPlayed` as the hours (FR-17, UX-DR16)
 **And** dead and broken jobs add a critical ⚠ icon and `Went dead` or `Broke`
+**And** calendar durations are floored whole days and never negative, even when a client clock put `endedAt` before `strungAt`
 **And** an empty history reads `No past string jobs yet.`
-**And** each entry's semantics read in full words, e.g. `August 1 to October 2, Luxilon ALU Power, 19.2 court hours, 62 days`
+**And** each entry's semantics read in full words, for example `August 1 to October 2, Luxilon ALU Power, 19.2 court hours, 62 days`
 
 **Given** the racquet is deleted on another device while Detail is open
-**When** its stream reports it gone
+**When** its stream goes from existing to not existing, and the delete was not made on this device
 **Then** the app returns to the bag and a snackbar reads `{racquet} was deleted on another device.`
-**And** the screen meets the accessibility floor: headings, 200% text on the timeline with no clipping, focus order following reading order (UX-DR26)
+
+**Given** a web deep link or reload of `/racquet/{id}`
+**When** the server reports that no such racquet exists
+**Then** the app returns to the bag with the snackbar `Racquet not found.`, and never shows the deleted-on-another-device message
+
+**Given** Racquet Detail
+**When** it renders
+**Then** the screen meets the accessibility floor: headings, 200% text on the timeline with no clipping, focus order following reading order (UX-DR26)
 
 ### Story 4.2: Edit a racquet's name and notes
 
@@ -753,13 +780,15 @@ So that my bag reflects how I tell my frames apart.
 **Acceptance Criteria:**
 
 **Given** `RacquetRepository.updateRacquet`
-**When** it is called with a new name and/or notes
-**Then** it `update`s only `name` and/or `notes`, uses `FieldValue.delete()` when notes are cleared, and sets server `updatedAt`; it completes on local acceptance and late rejections reach the failures stream (AD-5, AD-14)
+**When** it is called with a new name, new notes, or both
+**Then** it `update`s only `name`, `notes`, or both, trims the name, uses `FieldValue.delete()` when notes are cleared, and sets server `updatedAt`; it completes on local acceptance (AD-5, AD-14)
+**And** a late rejection reaches the failures stream and shows `Couldn't save your changes to {racquet}.`
 
 **Given** `firestore.rules`
 **When** the update rule is added
-**Then** the update shape is accepted only when `affectedKeys()` ⊆ {`name`, `notes`, `updatedAt`} with AD-3 bounds (name 1–100, notes 1–500)
-**And** `rules_test/` has a positive test and negative tests for an out-of-bounds name and an attempt to change `isPrimary` in the same update
+**Then** the update shape is accepted only when `affectedKeys()` ⊆ {`name`, `notes`, `updatedAt`} with AD-3 bounds (name 1–100 after trimming; notes 1–500, checked only when `notes` is present)
+**And** `rules_test/` has positive tests for a rename and for an update that deletes `notes`, and negative tests for an out-of-bounds name, a whitespace-only name and an attempt to change `isPrimary` in the same update
+**And** the rules are deployed to dev (Deploy convention)
 
 **Given** Racquet Detail
 **When** the user taps the `Edit` app-bar action (with tooltip)
@@ -780,10 +809,12 @@ So that the quick logger pre-selects the frame I play with most.
 **When** it is called
 **Then** one `WriteBatch` sets the target's `isPrimary: true` and every racquet currently flagged to `false`, each write including server `updatedAt` (AD-5, AD-8)
 **And** it completes on local acceptance, and a test covers the bag having zero, one and two flagged racquets beforehand
+**And** a late rejection (for example a flagged racquet was deleted on another device) reaches the failures stream and shows `Couldn't make {racquet} your primary.`
+**And** two devices setting different primaries offline can leave two flags; this is an accepted race (AD-6), and the next Set as Primary clears both
 
 **Given** `firestore.rules`
 **When** the setPrimary rule is added
-**Then** an update is accepted only when `affectedKeys()` is exactly {`isPrimary`, `updatedAt`}, with a positive and a negative test in `rules_test/`
+**Then** an update is accepted only when `affectedKeys()` is exactly {`isPrimary`, `updatedAt`}, with a positive and a negative test in `rules_test/`, and the rules are deployed to dev (Deploy convention)
 
 **Given** Racquet Detail of a racquet that is not primary
 **When** the user taps `Set as Primary` (app-bar action with tooltip)
@@ -793,7 +824,7 @@ So that the quick logger pre-selects the frame I play with most.
 ### Story 4.4: Delete a racquet
 
 As a player retiring an old frame,
-I want to delete its racquet from my bag,
+I want to delete it from my bag,
 So that my bag only shows the frames I still use, while my session history stays intact.
 
 **Acceptance Criteria:**
@@ -801,7 +832,8 @@ So that my bag only shows the frames I still use, while my session history stays
 **Given** `RacquetRepository.deleteRacquet`
 **When** it is called
 **Then** it deletes only the racquet document (its embedded string history goes with it) and leaves its sessions in place (AD-5, FR-7)
-**And** `firestore.rules` allow delete to the owner only, with a positive and a negative test
+**And** `firestore.rules` allow only the owner to delete, with a positive and a negative test, and the rules are deployed to dev (Deploy convention)
+**And** a late rejection reaches the failures stream and shows `Couldn't delete {racquet}. It's back in your bag.`
 
 **Given** Racquet Detail
 **When** the user taps `Delete Racquet` (app-bar action with tooltip)
@@ -813,6 +845,8 @@ So that my bag only shows the frames I still use, while my session history stays
 **Then** the app returns to the bag with focus on the bag header and the card gone
 **And** if the deleted racquet was primary, `resolvePrimary` picks the next default with no prompt
 **And** its sessions still appear in Sessions, labeled `Deleted racquet`
+**And** the `bag` BLoC remembers the id as deleted on this device, so Story 4.1's deleted-on-another-device message never appears for it
+**And** a second tap on `Delete Racquet` while the first is in progress is ignored
 
 ### Story 4.5: Restrung Today — Keep Same & Reset
 
@@ -825,16 +859,19 @@ So that tracking restarts at 100% and the old string job is kept in history.
 **Given** `RacquetRepository.restring(Racquet racquet, StringJob newJob, EndReason reason)`
 **When** it is called
 **Then** one `update` sets `pastStringJobs: FieldValue.arrayUnion([archived])` where `archived` is the racquet's `currentStringJob` with `endedAt = Timestamp.now()` (client clock) and `endReason = reason`, sets `currentStringJob = newJob`, and sets server `updatedAt` (FR-16, AD-5)
-**And** it completes on local acceptance, and late rejections reach the failures stream (AD-14)
+**And** it completes on local acceptance (AD-14)
+**And** a late rejection reaches the failures stream and shows `Couldn't save the restring for {racquet}.`, or, when the job was already restrung on another device, `{racquet} was already restrung on another device. This restring wasn't saved.`
 
 **Given** `firestore.rules`
 **When** the restring rule is added
 **Then** an update is accepted only when `affectedKeys()` is exactly {`pastStringJobs`, `currentStringJob`, `updatedAt`}, the new list is the old list plus one, the new last element passes StringJob validation, and its `id` equals the old `currentStringJob.id`
-**And** `rules_test/` has a positive test and negative tests for removing a past job, appending two, and a second restring of the same job (AD-6)
+**And** the new `currentStringJob` passes the full StringJob validation, with `hoursPlayed == 0`, `maxHours` > 0, null `endedAt` and `endReason`, and an `id` different from the old one
+**And** `rules_test/` has positive tests for a first restring (`pastStringJobs` empty) and a later one, and negative tests for removing a past job, appending two, a second restring of the same job (AD-6), a new job with `hoursPlayed` above 0, a new job with `maxHours` of 0, and a reused job id
+**And** the rules are deployed to dev (Deploy convention)
 
 **Given** the Firestore emulator with the network disabled
 **When** a racquet is restrung and the network is re-enabled
-**Then** an emulator test proves the `arrayUnion` is queued, applied locally at once, and present on the server after reconnecting (AD-13)
+**Then** an emulator test proves the `arrayUnion` is queued, applied locally at once, and present on the server after reconnecting (AD-13), run locally and recorded in the story's verification notes (Testing convention)
 
 **Given** a racquet card or Racquet Detail
 **When** the user taps `[Restrung Today]` (secondary button, labeled `Restrung today: {racquet}` for screen readers)
@@ -847,6 +884,7 @@ So that tracking restarts at 100% and the old string job is kept in history.
 **And** the sheet closes, the gauge animates to 100% `Optimal`, any critical treatment lifts, and a snackbar reads `Fresh stringbed mounted! Restrung to 100% health.`
 **And** `racquet_restrung` is sent through `AnalyticsSink` on local acceptance (FR-21)
 **And** the archived job appears at the top of the timeline on Racquet Detail
+**And** a second tap on `[Keep Same & Reset]` while the first is in progress is ignored, so only one job is archived
 
 ### Story 4.6: Restrung Today — Change Strings
 
@@ -859,6 +897,7 @@ So that my history shows which setups died, broke or were routinely replaced.
 **Given** the Restrung Today Sheet
 **When** the user taps `[Change Strings]`
 **Then** it expands inline into String material, String brand & model, Stringing date, Tension and Max court hours, pre-filled from the current job, with the same validation as the Add Racquet Form (UX-DR11)
+**And** the stringing date must also be on or after the current job's stringing date
 **And** below the fields a chip row offers `Routine restring` (selected by default), `Strings went dead` and `Strings broke`
 **And** `Save & Reset` is pinned to the bottom and the sheet scrolls with the keyboard inset (UX-DR26)
 
@@ -871,11 +910,12 @@ So that my history shows which setups died, broke or were routinely replaced.
 **Then** the new job gets a new `id`, `hoursPlayed: 0` and the entered fields, a picked date is stored as that local date at 12:00 local time converted to UTC, and the old job is archived with `manual_restring`, `dead` or `broken` according to the chip (AD-15, FR-15, FR-16)
 **And** the success path matches Story 4.5: sheet closes, gauge resets, success snackbar, `racquet_restrung`
 **And** a dead or broken job shows `Went dead` or `Broke` with a critical ⚠ icon in the timeline
-**And** if the same job was already restrung on another device, the persistent rejection snackbar says this restring wasn't saved and the card shows the other device's restring (AD-6)
+**And** if the same job was already restrung on another device, the persistent rejection snackbar from Story 4.5 appears and the card shows the other device's restring (AD-6)
+**And** a second tap on `Save & Reset` while the first is in progress is ignored
 
 ## Epic 5: Account control, store compliance and public launch
 
-Users can delete their account and all data from Android or Web, read a public privacy policy, and install the app from Google Play or use it on Firebase Hosting with App Check enforced. Includes web keyboard shortcuts, the screen-reader verification pass, Play release, and, as the last story after launch, replacing the deletion extension with a self-owned v2 function before 2027-03-31.
+Users can delete their account and all data from Android or Web, read a public privacy policy, and install the app from Google Play or use it on Firebase Hosting with App Check enforced. Includes web keyboard shortcuts, the screen-reader verification pass, Play release, and two post-launch stories: replacing the deletion extension with a self-owned 2nd-gen function before 2027-03-31, and enforcing App Check once prod traffic is verified.
 
 ### Story 5.1: Server-side purge of a deleted user's data
 
@@ -898,6 +938,11 @@ So that nothing I stored survives my account.
 **Given** the purge has run
 **When** another signed-in device of that user still tries to write
 **Then** the write is rejected because `/users/{uid}` no longer exists (AD-3, AD-10), with a rules test proving writes fail without the user document
+**And** that device cannot recreate `/users/{uid}`: `ensureUserDoc()` finds the user gone on `reload()` and signs out, and the create rule rejects its stale `auth_time` (Story 1.5), with a test for a second device whose session outlives the deletion
+
+**Given** the extension runs in prod
+**When** one of its function invocations fails
+**Then** a Cloud Monitoring alert notifies the owner, and README.md's operations section has a manual purge runbook for a user whose data survived deletion
 
 ### Story 5.2: Delete my account and all data
 
@@ -919,15 +964,17 @@ So that I'm in control of my data and the app meets Play's deletion requirement.
 **When** a `settings` BLoC calls `AuthRepository.deleteAccount()`
 **Then** it calls `currentUser.delete()` first; on `requires-recent-login` it re-authenticates through the same Android/Web Google flow and retries (FR-4, AD-9, AD-10)
 **And** a re-authentication that returns a different account aborts with a typed `user-mismatch` failure
+**And** on web, a re-authentication pop-up the browser blocks (it opens after an await, outside the tap's user activation) shows `Allow pop-ups for this site to confirm your account.` with a `Retry` that re-authenticates directly from the tap
 **And** repository streams complete on the uid change and late permission-denied errors are dropped, not reported
 
 **Given** the outcome
 **When** deletion succeeds
-**Then** the user lands on Welcome, which shows and announces `Your account and all data were deleted.` for that visit, with focus on the headline (UX-DR21)
+**Then** the client terminates Firestore and calls `clearPersistence()`, and on Android `GoogleSignIn.instance.signOut()`, so no cached documents for the old uid remain on the device (AD-10)
+**And** the user lands on Welcome, which shows and announces `Your account and all data were deleted.` for that visit, with focus on the headline (UX-DR21)
 **And** when re-authentication is canceled, the dialog closes, the user stays signed in and a persistent snackbar reads `Account not deleted.`
 **And** when a different account is chosen, the persistent snackbar reads `That's a different Google account. Account not deleted.`
 **And** when deletion fails, an inline message under the row and a persistent snackbar with `Retry` read `Couldn't delete your account. Check your connection and try again.`, and the bag keeps working (UX-DR22)
-**And** BLoC tests cover each outcome with a fake `AuthRepository`
+**And** BLoC tests cover each outcome, including the blocked web pop-up, with a fake `AuthRepository`
 
 ### Story 5.3: Public web app and privacy policy on Firebase Hosting
 
@@ -944,6 +991,7 @@ So that I can read how my data is handled and delete my account without installi
 **Given** `string_theory_flutter/web/privacy.html`
 **When** it is written
 **Then** it states what is collected (name and email from Google Sign-In; racquets, string jobs and sessions under the account; crash and performance diagnostics), that data is encrypted in transit, and the exact steps to delete an account in the app or the web app (NFR-8)
+**And** it says that data stays cached on a device after sign-out until the next sign-in syncs it, and is removed from the device on account deletion
 **And** it links to the web app, uses accessible static HTML (`lang="en"`, headings, readable contrast), and claims nothing the app doesn't do
 
 **Given** Settings
@@ -964,12 +1012,12 @@ So that I can log sessions and add racquets without reaching for the mouse.
 
 **Given** the open decision on where the Keyboard shortcuts setting is stored
 **When** this story starts
-**Then** the user decides between browser storage (a new dependency needing approval) and a field on `/users/{uid}` (an AD-3 change updating mappers, rules and tests); until a decision is recorded, the switch resets to on with every visit (UX open question)
+**Then** the decision recorded before Story 1.7 (Overview) is implemented: browser storage (a new dependency needing approval) or a field on `/users/{uid}` (an AD-3 change updating mappers, rules and tests); until a decision is recorded, the switch resets to On at every visit (UX open question)
 
 **Given** the bag on web, with no sheet or dialog open, no text field focused and the switch on
 **When** the user presses `L` or `N`
 **Then** `L` opens the Quick-Log Sheet and `N` opens the Add Racquet Form (UX-DR25)
-**And** the shortcuts do nothing on other screens, while a sheet or dialog is open, while a text field has focus, or when the switch is off
+**And** the shortcuts do nothing on other screens, while a sheet or dialog is open, while a text field has focus, or when the switch is off, and `L` does nothing on an empty bag
 **And** the FAB and `[+ Add Racquet]` tooltips show the keys
 **And** `Esc` closes the topmost sheet or dialog and returns focus to its opener
 
@@ -991,16 +1039,16 @@ So that the public web URL can be announced without a privacy compliance gap.
 
 **Given** the open architecture question on web Analytics consent
 **When** this story starts
-**Then** the user decides between a consent banner, Consent Mode defaults, or documented reasons none is needed, and the decision is recorded in the architecture spine's Open Questions (as a `docs(architecture): ...` commit)
+**Then** the user chooses among a consent banner, Consent Mode defaults, or a documented reason that none is needed, and the decision is recorded in the architecture spine's Open Questions (as a `docs(architecture): ...` commit)
 
 **Given** a decision requiring consent handling
 **When** it is implemented
-**Then** Analytics on web collects only as the decision allows, Android behaviour is unchanged, and any new UI surface follows DESIGN.md tokens and the accessibility floor (UX-DR26)
-**And** `/privacy.html` describes the web analytics behaviour accurately
+**Then** Analytics on web, disabled since Story 1.4, is enabled only as the decision allows, Android behavior is unchanged, and any new UI surface follows DESIGN.md tokens and the accessibility floor (UX-DR26)
+**And** `/privacy.html` describes the web analytics behavior accurately
 
 **Given** this story is not done
 **When** the launch checklist is reviewed
-**Then** the web URL is not announced publicly; the Android launch is not blocked
+**Then** the web URL is not announced publicly, and web Analytics stays disabled; the Android launch is not blocked, and the Play listing's deletion URL may point to the web app because no Analytics is collected there
 
 ### Story 5.6: Screen-reader and accessibility verification pass
 
@@ -1022,12 +1070,12 @@ So that I can log, add, restring and delete my account without barriers.
 **Given** the DESIGN.md contrast table
 **When** shipped color pairs are audited
 **Then** every pair in use is listed with a passing ratio, and any new pair found is either added with its ratio or replaced (UX-DR29)
-**And** every defect found is fixed in this story or filed as a story before launch
+**And** every defect found is fixed in this story or filed as a story to be done before launch
 
-### Story 5.7: Production readiness and App Check enforcement
+### Story 5.7: Production readiness
 
 As the app owner,
-I want the prod project protected against abuse and runaway costs before the public arrives,
+I want the prod project protected against runaway costs and data loss before the public arrives,
 So that a bot or a bug can't inflate the bill or reach user data.
 
 **Acceptance Criteria:**
@@ -1038,9 +1086,8 @@ So that a bot or a bug can't inflate the bill or reach user data.
 **And** `firebase deploy -P prod --only hosting,firestore:rules,firestore:indexes,extensions` runs from `main` after green CI, with dev deployed first (Deploy convention)
 
 **Given** App Check in monitor-only mode in prod
-**When** the console shows verified requests at or above 98%
-**Then** App Check enforcement is turned on for Firestore, and the date and percentage are recorded (AD-12, FR-19, SM-3)
-**And** until that threshold is met, enforcement stays off and the launch checklist says so
+**When** the launch checklist is reviewed
+**Then** it says that enforcement stays off until Story 5.10, because the 98% threshold needs real prod traffic (AD-12, SM-3)
 
 **Given** a release build of the prod flavor
 **When** its merged Android manifest is inspected
@@ -1071,7 +1118,9 @@ So that I can track my strings on my Android phone or tablet.
 **When** it is promoted to production
 **Then** README.md records the released version and how to install it, describing only what has shipped
 
-### Story 5.9: Replace the deletion extension with a self-owned function (post-launch, due before 2027-03-31)
+### Story 5.9: Replace the deletion extension with a self-owned function
+
+**Timing:** post-launch; due before 2027-03-31.
 
 As a player who deletes their account after the Firebase Extensions shutdown,
 I want my data still purged,
@@ -1086,9 +1135,32 @@ So that account deletion keeps working once the extension can no longer be maint
 
 **Given** a test account with racquets, past string jobs and sessions
 **When** the Auth user is deleted in dev, and then in prod with a dedicated test account
-**Then** `/users/{uid}` and all subcollections are gone, matching the behaviour verified in Story 5.1
+**Then** `/users/{uid}` and all subcollections are gone, matching the behavior verified in Story 5.1
 **And** an automated test of the function runs in CI against the emulator
+
+**Given** the switchover
+**When** it is carried out in each project, dev first
+**Then** the function is deployed and verified before the extension is uninstalled, so no deletion goes unpurged in between (a user deleted while both run is purged twice, which is harmless)
 
 **Given** the switchover
 **When** it merges
 **Then** `firebase.json` and `extensions/` no longer reference the extension, the architecture spine's AD-10 and Deferred list are updated in a `docs(architecture): ...` commit, and README.md documents the function deploy
+
+### Story 5.10: Enforce App Check in prod
+
+**Timing:** post-launch; review 14 days after the production release.
+
+As the app owner,
+I want App Check enforced on Firestore once real traffic proves it works,
+So that only my genuine app can reach user data.
+
+**Acceptance Criteria:**
+
+**Given** the app has been in production for 14 days
+**When** the App Check metrics in the prod console are reviewed
+**Then** if verified requests are at or above 98%, enforcement is turned on for Firestore, and the date and percentage are recorded in README.md's operations section (AD-12, FR-19, SM-3)
+**And** if they are below 98%, the unverified sources are investigated, the finding is recorded, and the review is repeated every 14 days until the threshold is met
+
+**Given** enforcement is on
+**When** a write is rejected because App Check failed
+**Then** the repository maps it to its own typed failure, separate from the permission-denied that follows sign-out, and reports it through `ErrorReporter`
