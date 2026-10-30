@@ -27,6 +27,11 @@ This document provides the complete epic and story breakdown for String Theory v
 - Keyboard shortcuts switch storage (gates Story 5.4; decide before Story 1.7, which removes `shared_preferences`): browser storage (new dependency) vs a field on `/users/{uid}` (AD-3 change). Until decided, the switch resets to On at every visit.
 - Web Analytics consent for EU visitors (gates Story 5.5): banner, Consent Mode defaults, or a documented reason that none is needed. Until decided, Analytics collection is disabled on web (Story 1.4). Does not block the Android launch.
 
+**Test design decisions (2026-10-30, see `_bmad-output/test-artifacts/test-design-architecture.md`)**
+- D-1: The network-off emulator tests run in CI as an `integration_test` job on headless Chrome against the Firestore and Auth emulators, required before merge (Stories 3.1, 4.5).
+- D-2: NFR-1 and NFR-3 are measured on the newest Pixel phone running the latest stable Android release, with a profile build, recording the device model and Android version (Story 2.3).
+- D-3: SM-1 (> 90% of logs in ≤ 10 s) is evidenced by SM-C1's ≤ 3-tap widget test (Story 3.2); no logging-duration telemetry is added.
+
 ## Epic List
 
 | Epic | Outcome | Stories |
@@ -135,8 +140,12 @@ This document provides the complete epic and story breakdown for String Theory v
 - The Blaze plan is required by the extension, so billing budget alerts and Firestore PITR/backups are set up before prod opens to the public.
 
 **Testing and CI (AD-13, CI convention)**
-- BLoCs: `bloc_test` + `mocktail` fakes of repository interfaces. Repositories: `fake_cloud_firestore`; the first repository story adds one emulator test with the network off proving `increment` and `arrayUnion` are queued and applied. These network-off tests need a device or browser, so they run locally against the emulator (Android emulator or Chrome), not in CI, and each run is recorded in the story's verification notes. Rules: `@firebase/rules-unit-testing` 6.0.0 (Node ≥ 24.12) in `rules_test/`, one positive and one negative test per AD-5 shape. Engine: `dart test`.
-- CI jobs: `flutter analyze --fatal-infos`, `dart format`, engine `dart test`, `flutter test`, rules emulator tests, `flutter build web`; all required before merge. Patrol and Serverpod jobs are removed.
+- BLoCs: `bloc_test` + `mocktail` fakes of repository interfaces. Repositories: `fake_cloud_firestore`; the first repository story adds one emulator test with the network off proving `increment` and `arrayUnion` are queued and applied. These network-off tests need a browser or device, so they run as an `integration_test` job on headless Chrome against the Firestore and Auth emulators, toggling the network with `disableNetwork()`/`enableNetwork()` (D-1). Rules: `@firebase/rules-unit-testing` 6.0.0 (Node ≥ 24.12) in `rules_test/`, one positive and one negative test per AD-5 shape, with `firebase-tools` and the Java runtime pinned in CI. Engine: `dart test`.
+- Schema fixtures: one shared corpus of valid and invalid JSON documents (user, racquet, StringJob, session) drives both the rules tests and the Dart mapper and `schema_bounds` tests, so a bound changed in only one place fails a test. Every story that changes a bound or a rule updates the corpus in the same PR.
+- Testability seams: mappers decode from a plain map plus `hasPendingWrites` and `isFromCache`, never from a `DocumentSnapshot`; every unawaited `commit()`/`update()` reports its error through one repository handler that is unit-tested with an injected failing future; `FirebaseAuth` and `GoogleSignIn` are injected into `FirebaseAuthRepository`.
+- Date-sensitive tests (stringing date validation, 12:00 local → UTC, floored days) also run in CI under one positive and one negative UTC offset.
+- Accessibility ACs on UI stories are verified with `flutter_test`'s `meetsGuideline` (tap target, labeled tap target, text contrast) and a 200% text-scale widget test with no overflow.
+- CI jobs: `flutter analyze --fatal-infos`, `dart format`, engine `dart test`, `flutter test` (plus the time-zone-pinned run), rules emulator tests, the headless-Chrome emulator integration job, the import-boundary check, the merged-manifest permission check, `flutter build web`; all required before merge. Patrol and Serverpod jobs are removed.
 
 **Conventions**
 - Errors: repositories convert `FirebaseException` to typed failures in `lib/domain/failures.dart`, with an `unknown` failure for anything unmapped; BLoCs map failures to states and never inspect Firebase codes.
@@ -294,6 +303,11 @@ So that development never touches real user data and the app cannot start agains
 **Given** the app is launched
 **When** `--dart-define=FLAVOR` is missing, or on Android does not match `appFlavor`
 **Then** `main()` stops immediately with a clear error, and there is no default flavor
+**And** flavor selection is a pure function (for example `resolveFlavor(String? define, String? appFlavor)`) with unit tests for a missing define, an Android mismatch, dev and prod (P0-015)
+
+**Given** the AD-1 layering
+**When** CI runs
+**Then** a check fails the build if `cloud_firestore`, `firebase_auth` or `google_sign_in` is imported outside `lib/data/` (P1-016)
 
 **Given** a valid flavor
 **When** `main()` runs inside `runZonedGuarded`
@@ -349,6 +363,7 @@ So that my data lives under my account and nobody else can read or write it.
 **Then** on Android it calls `GoogleSignIn.instance.initialize(serverClientId: <flavor's web client id>)` exactly once, then `authenticate()`, builds `GoogleAuthProvider.credential` from the `idToken`, and calls `signInWithCredential` (AD-9)
 **And** on Web it calls `signInWithPopup(GoogleAuthProvider())`
 **And** sign-out calls `FirebaseAuth.signOut()` and, on Android, `GoogleSignIn.instance.signOut()`
+**And** `FirebaseAuth` and `GoogleSignIn` are injected through the constructor, so the Android and Web branches are unit-tested with fakes
 **And** it exposes the current user as a stream, plus a sealed `AuthFailure` with `canceled`, `popupBlocked`, `network` and `unknown` (a null `idToken`, a SHA mismatch and any other unmapped error become `unknown`), and no Firebase error codes leave `lib/data/`
 
 **Given** an auth state with a user (fresh sign-in or restored session)
@@ -363,7 +378,8 @@ So that my data lives under my account and nobody else can read or write it.
 **When** the user-document rules are written (via the `firestore-rules-author` subagent or the rules skills, per AGENTS.md)
 **Then** `/users/{uid}` allows read only to the owner, create with the AD-3 fields and ≤ 10 keys only when `request.auth.token.auth_time` is within 5 minutes of `request.time`, update of only `email`/`displayName`, and every other path is denied (FR-18)
 **And** `rules_test/` (npm, `@firebase/rules-unit-testing` 6.0.0, Node ≥ 24.12) has at least one positive and one negative test per user-document operation, including a different uid, an attempt to change `createdAt`, and a create with a stale `auth_time`
-**And** a CI job runs the rules tests against the Firestore emulator and is required before merge
+**And** a default-deny test proves unauthenticated access and every path outside `/users/{uid}/**` are rejected (P0-002)
+**And** a CI job runs the rules tests against the Firestore emulator, with `firebase-tools` and the Java runtime pinned, and is required before merge
 **And** the rules and indexes are deployed to the dev project (`firebase deploy -P dev --only firestore:rules,firestore:indexes`), and README.md documents the command (Deploy convention)
 
 ### Story 1.6: Welcome screen, auth gate, signed-in shell and sign-out
@@ -492,6 +508,11 @@ So that my bag is always current on every device and opens instantly from cache.
 **And** each `pastStringJobs` entry decodes on its own: a bad entry is skipped and reported, and the racquet stays in the stream
 **And** `isPendingSync` reflects the snapshot's `hasPendingWrites`
 **And** `pastStringJobs` duplicates are dropped by `id` (AD-6)
+**And** the mapper decodes from the document map plus `hasPendingWrites` and `isFromCache`, never from a `DocumentSnapshot`, so these cases are plain unit tests; whether `fake_cloud_firestore` models snapshot metadata is checked and recorded in the story's verification notes
+
+**Given** the shared schema fixture corpus (Testing and CI)
+**When** it is created in this story
+**Then** it holds valid and invalid user, racquet and StringJob documents, the Dart tests assert valid fixtures decode and pass `schema_bounds` and invalid ones fail, and the rules tests read the same files (P0-006)
 
 **Given** `RacquetRepository` (interface in `lib/domain/`, Firestore implementation in `lib/data/`)
 **When** `watchRacquets()` and `watchRacquet(id)` are subscribed
@@ -545,7 +566,7 @@ So that I know at a glance which strings are fresh and which need restringing.
 **When** the bag has nothing cached on first load
 **Then** three Skeleton Cards appear under one `Loading your bag` label, the shimmer stops after 5 s and is static under reduce motion (UX-DR18)
 **And** an empty snapshot that comes from the cache (`metadata.isFromCache`) counts as loading, not as an empty bag, so a new device never shows the empty state to a user who has racquets
-**And** a restored session with cached data renders the bag straight from cache in under 1.5 s from cold start (NFR-3)
+**And** a restored session with cached data renders the bag straight from cache in under 1.5 s from cold start (NFR-3), and the gauge animates at 60 fps (NFR-1), both measured with a profile build on the newest Pixel phone running the latest stable Android release, with the device model, Android version and results recorded in the story's verification notes (D-2)
 **And** an empty bag shows the empty-bag illustration and a short line; there is no refresh control, pull-to-refresh or offline banner (UX-DR28)
 
 **Given** two signed-in devices or browser tabs
@@ -566,6 +587,7 @@ So that my bag starts tracking string health right away.
 **When** a racquet is added
 **Then** it `set`s a new document with the AD-3 fields, server `createdAt` and `updatedAt`, `isPrimary: true` only when the bag is server-confirmed empty, `pastStringJobs: []`, and a `currentStringJob` whose `id` comes from `collection(...).doc().id` with `hoursPlayed: 0` and `endedAt`/`endReason` null (AD-5, AD-15)
 **And** the method completes when the write is accepted into the local cache, without awaiting the server; a late server rejection is sent to `ErrorReporter` (AD-14)
+**And** the unawaited write reports its error through one repository handler, which every later mutation reuses and which is unit-tested with an injected failing future (P0-010)
 **And** a test proves a racquet added while offline appears in `watchRacquets()` at once with `isPendingSync` true
 
 **Given** `firestore.rules`
@@ -578,7 +600,7 @@ So that my bag starts tracking string health right away.
 **When** the user taps `[+ Add Racquet]` or the empty-state `[Add Your First Racquet]`
 **Then** the Add Racquet Form opens as a bottom sheet below 1024dp and as a centered dialog above 1024dp (UX-DR13)
 **And** it has Racquet name (required, trimmed before validation), String material chips (four, required), String brand & model (one field), Stringing date (M3 date picker, defaults to today), Tension (lbs) and Max court hours, with `(required)` in the required labels
-**And** the stringing date is valid when the picked local date is on or before today's local date, so today is valid at any time of day and future dates are rejected (deferred-work carryover); widget tests pick today at 09:00 and at 15:00
+**And** the stringing date is valid when the picked local date is on or before today's local date, so today is valid at any time of day and future dates are rejected (deferred-work carryover); widget tests pick today at 09:00, 15:00 and 23:30, and the date tests also run in CI under one positive and one negative UTC offset (P1-009)
 
 **Given** the user picks a material
 **When** Max court hours has not been edited
@@ -632,7 +654,9 @@ So that my hours are never half-saved and sync by themselves when I'm back onlin
 **Given** the Firestore emulator with the network disabled
 **When** a session is logged and the network is re-enabled
 **Then** an emulator test proves the batch is queued locally, the racquet shows the new hours immediately, and after reconnecting the server holds both the session and the incremented hours (AD-13, NFR-4, NFR-5)
-**And** the test runs locally on an Android emulator or Chrome, and the run is recorded in the story's verification notes (Testing convention)
+**And** this story adds the CI job that runs it as an `integration_test` on headless Chrome against the Firestore and Auth emulators, required before merge (D-1, P0-008)
+**And** the same job proves one real late rejection: a session batch against a racquet deleted with rules disabled reaches `RacquetRepository.failures` after reconnecting
+**And** the spine's CI convention lists the new job, in a `docs(architecture): ...` commit
 **And** a repository test with `fake_cloud_firestore` covers the batch contents and the bounds check
 
 ### Story 3.2: Three-tap Quick-Log Sheet
@@ -661,7 +685,7 @@ So that recording a session takes less than 10 seconds.
 **Then** a `session_log` BLoC calls `logSession`, the sheet closes, focus returns to the control that opened it, and a snackbar reads, for example, `1.5h logged • Wilson Blade 98 at 67%` and auto-dismisses after about 4 s (FR-12, UX-DR23)
 **And** `session_logged` is sent through `AnalyticsSink` on local acceptance
 **And** the card's gauge animates to the new score
-**And** a widget test proves the default path (open, keep `1h` and the pre-selected racquet, save) takes at most 3 taps
+**And** a widget test proves the default path (open, keep `1h` and the pre-selected racquet, save) takes at most 3 taps; this test is the accepted evidence for SM-1, and no logging-duration telemetry is added (D-3)
 **And** a second tap on `Save Session` while the first is in progress is ignored, so the session is logged once
 
 **Given** the sheet is open
@@ -871,7 +895,7 @@ So that tracking restarts at 100% and the old string job is kept in history.
 
 **Given** the Firestore emulator with the network disabled
 **When** a racquet is restrung and the network is re-enabled
-**Then** an emulator test proves the `arrayUnion` is queued, applied locally at once, and present on the server after reconnecting (AD-13), run locally and recorded in the story's verification notes (Testing convention)
+**Then** an emulator test proves the `arrayUnion` is queued, applied locally at once, and present on the server after reconnecting (AD-13), running in the headless-Chrome emulator CI job from Story 3.1 (D-1, P0-009)
 
 **Given** a racquet card or Racquet Detail
 **When** the user taps `[Restrung Today]` (secondary button, labeled `Restrung today: {racquet}` for screen readers)
